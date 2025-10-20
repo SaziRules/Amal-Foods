@@ -10,6 +10,11 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+       {
+        protocol: "https",
+        hostname: "dtaxllamkswcgznkezuh.supabase.co", // 👈 your Supabase project ref
+        pathname: "/storage/v1/object/public/**",
+      },
     ],
   },
 };

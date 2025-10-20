@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Roboto, Roboto_Condensed } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "@/context/CartContext" // ✅ Import your CartProvider
+import Navbar from "@/components/Navbar";
 
 // Base fonts
 const geistSans = Geist({
@@ -13,15 +15,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// ✅ Add Roboto (Bold) and Roboto Condensed (Extra Bold)
+// ✅ Roboto (Base font for body, UI)
 const roboto = Roboto({
-  weight: ["700"], // Bold
+  weight: ["400", "500", "700"], // Regular, Medium, Bold
   subsets: ["latin"],
   variable: "--font-roboto",
 });
 
+// ✅ Roboto Condensed (Extra Bold for big headings)
 const robotoCondensed = Roboto_Condensed({
-  weight: ["800"], // Extra Bold
+  weight: ["800"],
   subsets: ["latin"],
   variable: "--font-roboto-condensed",
 });
@@ -40,14 +43,21 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`
-          ${geistSans.variable} 
-          ${geistMono.variable} 
-          ${roboto.variable} 
-          ${robotoCondensed.variable} 
-          antialiased
+          ${geistSans.variable}
+          ${geistMono.variable}
+          ${roboto.variable}
+          ${robotoCondensed.variable}
+          font-sans antialiased
         `}
+        style={{
+          fontFamily: "var(--font-roboto), system-ui, sans-serif",
+        }}
       >
-        {children}
+        {/* ✅ Wrap the entire app in the CartProvider */}
+        <CartProvider>
+          <Navbar />
+          {children}
+        </CartProvider>
       </body>
     </html>
   );

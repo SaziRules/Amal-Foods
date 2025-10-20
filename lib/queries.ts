@@ -7,6 +7,7 @@ export const productsByRegionQuery = (region: string) => groq`
     title,
     price,
     unit,
+    description,
     region,
     "imageUrl": image.asset->url
   } | order(title asc)
