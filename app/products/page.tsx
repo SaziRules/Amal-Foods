@@ -85,7 +85,7 @@ export default function ProductsPage() {
       <FilterBar />
 
       {/* 🛍️ Product Grid */}
-      <section className="min-h-screen bg-[#f4f4f4] py-20 text-[#1e1e1e]">
+      <section className="min-h-screen bg-[#f4f4f4] py-2 text-[#1e1e1e]">
         {loading ? (
           <p className="text-center text-gray-400">Loading products...</p>
         ) : products.length === 0 ? (

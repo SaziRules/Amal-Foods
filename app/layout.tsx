@@ -3,6 +3,8 @@ import { Geist, Geist_Mono, Roboto, Roboto_Condensed } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext" // ✅ Import your CartProvider
 import Navbar from "@/components/Navbar";
+import FloatingButtons from "@/components/FloatingButtons";
+import Footer from "@/components/Footer";
 
 // Base fonts
 const geistSans = Geist({
@@ -57,6 +59,8 @@ export default function RootLayout({
         <CartProvider>
           <Navbar />
           {children}
+          <FloatingButtons />
+          <Footer />
         </CartProvider>
       </body>
     </html>

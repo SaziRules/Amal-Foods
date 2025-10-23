@@ -48,16 +48,25 @@ export default function AdminDashboard() {
     branch: "Durban",
   });
 
-  useEffect(() => {
+    useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
-      if (!data.user) return router.push("/admin/login");
+
+      // ✅ Auth check: if no user, force redirect immediately
+      if (!data.user) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/admin/login";
+        }
+        return;
+      }
+
       setUser(data.user);
 
       const { data: allOrders } = await supabase
         .from("orders")
         .select("*")
         .order("created_at", { ascending: false });
+
       const { data: allManagers } = await supabase
         .from("managers")
         .select("*")
@@ -68,7 +77,8 @@ export default function AdminDashboard() {
       setLoading(false);
     };
     init();
-  }, [router]);
+  }, []);
+
 
   const [selectedManager, setSelectedManager] = useState<any>(null);
 
@@ -135,10 +145,29 @@ const handleDeleteManager = async (id: string) => {
 
   const COLORS = ["url(#gradientRed)", "url(#gradientGold)"];
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/admin/login");
-  };
+    const handleLogout = () => {
+  try {
+    // Kick off sign-out in background (don’t await)
+    supabase.auth.signOut();
+
+    // Immediately clear local/session storage
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Add a slight visual feedback
+    document.body.style.opacity = "0.5";
+    document.body.style.pointerEvents = "none";
+
+    // 🔥 Force reload regardless of Supabase completion
+    setTimeout(() => {
+      window.location.reload();
+    }, 200); // non-blocking, guaranteed execution
+  } catch (error) {
+    console.error("Logout error:", error);
+    alert("Logout failed — please refresh manually.");
+  }
+};
+
 
   const handleAddManager = async () => {
     const { name, email, password, branch } = managerForm;
@@ -420,15 +449,40 @@ const handleDeleteManager = async (id: string) => {
     </div>
   </div>
 
-  {/* Bottom Section (Logout pinned) */}
-  <div className="mt-8 pt-4 border-t border-white/10">
+    {/* Bottom Section (Logout pinned) */}
+  <div className="mt-8 pt-4 border-t border-white/10 space-y-2">
+    {/* 🔄 Refresh Button */}
+    <button
+      onClick={() => window.location.reload()}
+      className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition text-gray-200"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="w-4 h-4"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4 4v6h6M20 20v-6h-6M20 4l-3.5 3.5a9 9 0 00-13 9.5"
+        />
+      </svg>
+      Refresh Dashboard
+    </button>
+
+    {/* 🚪 Logout Button */}
     <button
       onClick={handleLogout}
       className="flex items-center justify-center gap-2 w-full py-2 bg-red-700/70 hover:bg-red-800 rounded-lg text-sm transition"
     >
       <LogOut size={16} /> Logout
     </button>
+
   </div>
+
 
   {/* ✏️ Edit Manager Modal */}
   {selectedManager && (

@@ -31,17 +31,17 @@ export default function ContactPage() {
   const branches = [
     {
       title: "Durban Branch",
-      address: "202 Brickfield Road, Durban, South Africa",
-      phone: "031 209 0176",
+      address: "1277 Umgeni Rd, Stamford Hill, Durban, 4025",
+      phone: "031 303 7786",
       email: "info@aminasfoods.co.za",
-      mapUrl: "https://maps.google.com/?q=202+Brickfield+Road,+Durban",
+      mapUrl: "https://maps.google.com/?q=1277+Umgeni+Rd,+Stamford+Hill,+Durban,+4025",
     },
     {
       title: "Johannesburg Branch",
-      address: "55 Crown Road, Fordsburg, Johannesburg",
+      address: "123 Van Tonder St, Sunderland Ridge, Centurion, 0157",
       phone: "011 838 3299",
-      email: "sales@aminasfoods.co.za",
-      mapUrl: "https://maps.google.com/?q=55+Crown+Road,+Fordsburg,+Johannesburg",
+      email: "jhb@aminasfoods.co.za",
+      mapUrl: "https://maps.google.com/?q=123+Van+Tonder+St,+Sunderland+Ridge,+Centurion,+0157",
     },
   ];
 

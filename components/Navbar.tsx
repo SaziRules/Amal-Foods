@@ -58,26 +58,49 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
-  // 👤 Fetch user + role
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
+  // 👤 Fetch user + resolve role robustly
+useEffect(() => {
+  const resolveRole = async (uid: string, email: string | null) => {
+    // Try profiles.role first
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", uid)
+      .maybeSingle();
 
-      if (user) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        setRole(profile?.role || "customer");
-      }
-    };
-    fetchUser();
+    if (profile?.role === "admin") return "admin";
+    if (profile?.role === "manager") return "manager";
 
-    const { data: listener } = supabase.auth.onAuthStateChange(() => fetchUser());
-    return () => listener.subscription.unsubscribe();
-  }, []);
+    // Fallback: check managers table by email
+    if (email) {
+      const { data: mgr } = await supabase
+        .from("managers")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (mgr) return "manager";
+    }
+
+    return "customer";
+  };
+
+  const fetchUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user ?? null);
+
+    if (user) {
+      const resolved = await resolveRole(user.id, user.email ?? null);
+      setRole(resolved);
+    } else {
+      setRole(null);
+    }
+  };
+
+  fetchUser();
+  const { data: listener } = supabase.auth.onAuthStateChange(() => fetchUser());
+  return () => listener.subscription.unsubscribe();
+}, []);
+
 
   // 🔍 Live Sanity search
   useEffect(() => {
@@ -95,20 +118,42 @@ export default function Navbar() {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  // 🚪 Logout
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setRole(null);
-    window.location.href = "/";
-  };
+  // 🚪 Universal Logout with hard navigation to Home
+const handleLogout = async () => {
+  try {
+    await supabase.auth.signOut().catch(() => {});
+    localStorage.clear();
+    sessionStorage.clear();
 
-  // 🎯 Dashboard route
-  const getDashboardRoute = () => {
-    if (role === "admin") return "/dashboard/admin";
-    if (role === "manager") return "/dashboard/dashboard";
-    return "/customer/dashboard";
-  };
+    // Close any open menus for immediate visual feedback
+    setUserMenuOpen(false);
+    setMenuOpen(false);
+
+    // Hard replace to Home (fresh load, no SPA cache)
+    window.location.replace("/");
+
+    // Fallback in case replace is intercepted
+    setTimeout(() => {
+      if (typeof window !== "undefined" && window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }, 150);
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Last-resort escape hatch
+    window.location.href = "/";
+  }
+};
+
+
+
+  // 🎯 Dashboard route per role (matches your actual pages)
+const getDashboardRoute = () => {
+  if (role === "admin") return "/admin/dashboard";
+  if (role === "manager") return "/dashboard/dashboard"; // your manager page
+  return "/customer/dashboard";
+};
+
 
   // ❌ Close menus when clicking outside
   useEffect(() => {

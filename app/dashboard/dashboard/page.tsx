@@ -33,7 +33,7 @@ export default function ManagerDashboard() {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
       if (!data.user) {
-        window.location.href = "/manager/login";
+        window.location.href = "/dashboard/login";
         return;
       }
       setUser(data.user);
@@ -55,12 +55,13 @@ export default function ManagerDashboard() {
       const branchName = manager.branch.trim();
       setBranch(branchName);
 
-      // Get orders for Durban branch only
-      const { data: branchOrders, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("branch", "Durban")
-        .order("created_at", { ascending: false });
+      // ✅ Get orders for the manager’s actual branch
+const { data: branchOrders, error } = await supabase
+  .from("orders")
+  .select("*")
+  .eq("branch", branchName)
+  .order("created_at", { ascending: false });
+
 
       if (error) {
         console.error("Error fetching orders:", error.message);
@@ -108,15 +109,29 @@ export default function ManagerDashboard() {
   };
 
   // 🧠 Logout function
-  const handleLogout = async () => {
+  const handleLogout = () => {
   try {
-    await supabase.auth.signOut();
-    localStorage.clear(); // <-- add this line for stubborn sessions
-    window.location.replace("/manager/login");
+    // Trigger sign-out but don’t block
+    supabase.auth.signOut();
+
+    // Clear any cached tokens
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Optional: dim screen for feedback
+    document.body.style.opacity = "0.5";
+    document.body.style.pointerEvents = "none";
+
+    // 🔥 Guaranteed immediate refresh
+    setTimeout(() => {
+      window.location.reload();
+    }, 200);
   } catch (error) {
-    console.error("Logout failed:", error);
+    console.error("Logout error:", error);
+    alert("Logout failed — please refresh manually.");
   }
 };
+
 
 
   // 📊 Quick Stats
@@ -164,8 +179,9 @@ export default function ManagerDashboard() {
               Welcome, {user?.email?.split("@")[0]}
             </h1>
             <p className="text-gray-300">
-              Managing <span className="text-[#B80013] font-semibold">Durban</span> Orders
-            </p>
+  Managing <span className="text-[#B80013] font-semibold">{branch}</span> Orders
+</p>
+
           </div>
 
           {/* Right-side buttons */}
@@ -312,10 +328,13 @@ export default function ManagerDashboard() {
 
         {/* Orders */}
         <section className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-[#B80013] mb-4">Durban Orders</h2>
+          <h2 className="text-lg font-semibold text-[#B80013] mb-4">
+  {branch} Orders
+</h2>
+
 
           {filteredOrders.length === 0 ? (
-            <p className="text-gray-400 text-sm">No {filter} orders found for Durban branch.</p>
+            <p className="text-gray-400 text-sm">No {filter} orders found for {branch} branch.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredOrders.map((order) => (
