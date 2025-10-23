@@ -38,14 +38,15 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 //
-// ⚙️ Provider component
+// ⚙️ Provider
 //
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null); // 🍞 message
 
   //
-  // 🔄 Load persisted cart + region on mount
+  // 🔄 Load persisted cart + region
   //
   useEffect(() => {
     try {
@@ -59,7 +60,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   //
-  // 💾 Save cart + region on change
+  // 💾 Persist
   //
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
@@ -71,16 +72,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [selectedRegion]);
 
   //
-  // ➕ Add item
+  // ➕ Add item (with region guard)
   //
   const addToCart = (item: CartItem) => {
     setCart((prev) => {
+      const existingRegion = prev.length > 0 ? prev[0].region : null;
+
+      // 🛑 Restrict mixed regions
+      if (existingRegion && item.region && existingRegion !== item.region) {
+        setToast(
+          `Cart locked to ${existingRegion.toUpperCase()} region — clear cart to add ${item.region.toUpperCase()} products.`
+        );
+        return prev;
+      }
+
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
         return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
+
+      // ✅ Assign region on first add
+      if (!selectedRegion && item.region) {
+        setSelectedRegion(item.region);
+        localStorage.setItem("selectedRegion", item.region);
+      }
+
       return [...prev, { ...item, quantity: 1 }];
     });
   };
@@ -104,11 +122,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   //
-  // 🧹 Clear cart
+  // 🧹 Clear cart (unlock region)
   //
   const clearCart = () => {
     setCart([]);
+    setSelectedRegion(null);
     localStorage.removeItem("cart");
+    localStorage.removeItem("selectedRegion");
+    setToast("Cart cleared — you can now shop any region.");
   };
 
   //
@@ -118,7 +139,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const totalPrice = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   //
-  // 🚀 Return provider
+  // 🕒 Auto-hide toast
+  //
+  useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 3500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+
+  //
+  // 🚀 Return
   //
   return (
     <CartContext.Provider
@@ -135,6 +166,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+
+      {/* 🍞 Toast notification */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-full shadow-[0_0_25px_rgba(184,0,19,0.6)] text-sm font-medium z-[9999] border border-[#B80013]/40 flex items-center gap-4 animate-fade-in-out">
+          <span>{toast}</span>
+          <button
+            onClick={clearCart}
+            className="bg-[#B80013] text-white px-3 py-1 rounded-full text-xs font-semibold hover:bg-[#d81428] transition"
+          >
+            Clear Cart
+          </button>
+        </div>
+      )}
     </CartContext.Provider>
   );
 }

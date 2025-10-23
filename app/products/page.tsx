@@ -3,27 +3,64 @@
 
 import { useEffect, useState } from "react";
 import { sanityClient } from "@/lib/sanityClient";
-import { productsByRegionQuery } from "@/lib/queries";
 import ProductCard from "@/components/ProductCard";
 import HeroSection from "@/components/HeroSection";
-import FilterBar from "@/components/FilterBar"; // ✅ imported
+import FilterBar from "@/components/FilterBar";
+
+// ✅ Fixed GROQ Query — aligned with new schema
+const productsByRegionQuery = `
+  *[
+    _type == "product" &&
+    active == true &&
+    $region in coalesce(available_in, [])
+  ]{
+    _id,
+    title,
+    unit,
+    description,
+    "imageUrl": image.asset->url,
+    available_in,
+    pricing,
+    "category": category,
+    active
+  } | order(title asc)
+`;
 
 export default function ProductsPage() {
-  const [region, setRegion] = useState("durban");
+  const [region, setRegion] = useState<"durban" | "joburg">("durban");
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // 🧭 Load saved region preference
+  useEffect(() => {
+    const stored = localStorage.getItem("selectedRegion");
+    if (stored === "joburg" || stored === "durban") setRegion(stored);
+  }, []);
+
+  // 💾 Persist region in localStorage
+  useEffect(() => {
+    localStorage.setItem("selectedRegion", region);
+  }, [region]);
+
+  // 🧠 Fetch products based on region
   useEffect(() => {
     const run = async () => {
-      setLoading(true);
-      const query = productsByRegionQuery(region);
-      const data = await sanityClient.fetch(query);
-      setProducts(Array.isArray(data) ? data.filter(Boolean) : []);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const data = await sanityClient.fetch(productsByRegionQuery, { region });
+        console.log("Fetched products for", region, data);
+        setProducts(Array.isArray(data) ? data.filter(Boolean) : []);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
     };
     run();
   }, [region]);
 
+  // 🧱 Group into rows (same as before)
   const columns = 5;
   const rows: any[][] = [];
   for (let i = 0; i < products.length; i += columns) {
@@ -32,7 +69,7 @@ export default function ProductsPage() {
 
   return (
     <>
-      {/* ✅ Hero Section */}
+      {/* 🏷️ Hero Section */}
       <HeroSection
         title="Savor the"
         highlight="Crunch"
@@ -41,15 +78,20 @@ export default function ProductsPage() {
         secondaryLabel="Shop Joburg"
         onPrimaryClick={() => setRegion("durban")}
         onSecondaryClick={() => setRegion("joburg")}
+        activeRegion={region}
       />
 
-      {/* ✅ Filter Bar replaces heading and region buttons */}
+      {/* 🔍 Filter Bar */}
       <FilterBar />
 
-      {/* ✅ Product Section remains the same */}
+      {/* 🛍️ Product Grid */}
       <section className="min-h-screen bg-[#f4f4f4] py-20 text-[#1e1e1e]">
         {loading ? (
           <p className="text-center text-gray-400">Loading products...</p>
+        ) : products.length === 0 ? (
+          <p className="text-center text-gray-400">
+            No products available in this region.
+          </p>
         ) : (
           rows.map((row, rowIndex) => (
             <div
@@ -58,9 +100,6 @@ export default function ProductsPage() {
                 rowIndex % 2 === 1 ? "bg-[#272727]" : "bg-[#f4f4f4]"
               } flex justify-center`}
             >
-              {/* 
-                Balanced vertical padding to visually center capsules and overlapped images
-              */}
               <div className="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 w-full flex justify-center items-center pt-28 pb-20 sm:pt-32 sm:pb-24 md:pt-36 md:pb-28">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-20 sm:gap-y-24 md:gap-y-28 justify-items-center">
                   {row.map((p, i) => (
@@ -68,7 +107,10 @@ export default function ProductsPage() {
                       className="flex h-full items-stretch justify-center"
                       key={p._id || i}
                     >
-                      <ProductCard product={p} index={i + rowIndex * columns} />
+                      <ProductCard
+                        product={p}
+                        index={i + rowIndex * columns}
+                      />
                     </div>
                   ))}
                 </div>

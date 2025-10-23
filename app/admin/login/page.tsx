@@ -33,7 +33,7 @@ export default function AdminLogin() {
     // 🔍 Step 2: Fetch user metadata (role check)
     if (user) {
       const { data: userData, error: userError } = await supabase
-        .from("user_profiles")
+        .from("profiles")
         .select("role")
         .eq("id", user.id)
         .single();
@@ -44,12 +44,13 @@ export default function AdminLogin() {
         return;
       }
 
-      if (userData?.role === "admin") {
-        router.push("/dashboard/owner");
-      } else {
-        setError("Access denied — managers must use their branch login page.");
-        await supabase.auth.signOut();
-      }
+      if (userData?.role === "owner") {
+  router.push("/admin/dashboard");
+} else {
+  setError("Access denied — managers must use their branch login page.");
+  await supabase.auth.signOut();
+}
+
     }
 
     setLoading(false);

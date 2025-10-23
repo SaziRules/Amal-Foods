@@ -56,3 +56,43 @@ h1, h2, h3, h4, h5, h6 {
   line-height: 1.1;
   letter-spacing: 0.5px;
 }
+
+@keyframes fade-in-out {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 3.5s ease-in-out forwards;
+}
+
+@keyframes cart-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(184, 0, 19, 0);
+  }
+  40% {
+    box-shadow: 0 0 20px rgba(184, 0, 19, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(184, 0, 19, 0);
+  }
+}
+
+.animate-cart-glow {
+  animation: cart-glow 0.6s ease-in-out;
+}
+

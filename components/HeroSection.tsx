@@ -10,6 +10,7 @@ interface HeroSectionProps {
   secondaryLabel: string;
   onPrimaryClick?: () => void;
   onSecondaryClick?: () => void;
+  activeRegion?: "durban" | "joburg";
 }
 
 export default function HeroSection({
@@ -20,6 +21,7 @@ export default function HeroSection({
   secondaryLabel,
   onPrimaryClick,
   onSecondaryClick,
+  activeRegion,
 }: HeroSectionProps) {
   const images: string[] = [
     "/images/hero1.jpg",
@@ -61,17 +63,27 @@ export default function HeroSection({
           {/* BUTTONS */}
           <div className="flex gap-4 mt-10 flex-wrap justify-center md:justify-start">
             <button
-              onClick={onPrimaryClick}
-              className="px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all bg-[#B80013] text-white shadow-lg hover:scale-105 hover:bg-[#a00010]"
-            >
-              {primaryLabel}
-            </button>
-            <button
-              onClick={onSecondaryClick}
-              className="px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all bg-white text-[#1a1a1a] hover:bg-gray-100 shadow-md hover:scale-105"
-            >
-              {secondaryLabel}
-            </button>
+  onClick={onPrimaryClick}
+  className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
+    activeRegion === "durban"
+      ? "bg-[#B80013] text-white"
+      : "bg-white text-[#1a1a1a] hover:bg-gray-100"
+  }`}
+>
+  {primaryLabel}
+</button>
+
+<button
+  onClick={onSecondaryClick}
+  className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
+    activeRegion === "joburg"
+      ? "bg-[#B80013] text-white"
+      : "bg-white text-[#1a1a1a] hover:bg-gray-100"
+  }`}
+>
+  {secondaryLabel}
+</button>
+
           </div>
 
           {/* MOBILE IMAGES (3-col grid below buttons) */}

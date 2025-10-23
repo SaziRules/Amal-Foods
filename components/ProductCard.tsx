@@ -8,7 +8,11 @@ interface ProductCardProps {
   product?: {
     _id?: string;
     title?: string;
-    price?: number;
+    pricing?: {
+      durban?: number;
+      joburg?: number;
+    };
+    available_in?: string[];
     unit?: string;
     description?: string;
     imageUrl?: string;
@@ -17,50 +21,82 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, index }: ProductCardProps) {
-  const { addToCart, removeFromCart, updateQuantity, cart } = useCart();
+  const { addToCart, removeFromCart, updateQuantity, cart, selectedRegion } = useCart();
   const [quantity, setQuantity] = useState(0);
+  const [region, setRegion] = useState<"durban" | "joburg">("durban");
+  const [added, setAdded] = useState(false); // ✨ visual feedback
 
   if (!product) return null;
 
+  // 🧭 Get region from storage
+  useEffect(() => {
+    const storedRegion = localStorage.getItem("selectedRegion");
+    if (storedRegion === "joburg" || storedRegion === "durban") {
+      setRegion(storedRegion);
+    }
+  }, []);
+
+  // 🏷️ Extract data
   const title = product.title ?? "PARATHA SAMOOSA";
-  const price = product.price ?? 0;
-  const priceText = price ? `R${price}` : "R—";
   const desc =
-    product.description ?? "Discreet protection for moderate incontinence.";
+    product.description ??
+    "Discreet protection for moderate incontinence.";
   const imageSrc = product.imageUrl ?? "/placeholder.png";
   const id = product._id ?? title;
 
+  // 💰 Determine price
+  const price =
+    region === "joburg"
+      ? product.pricing?.joburg ?? 0
+      : product.pricing?.durban ?? 0;
+  const priceText = price ? `R${price}` : "R—";
   const isRed = index % 2 === 0;
 
-  // 🔄 Keep local quantity synced with global cart
+  // 🏬 Hide product if not available in this region
+  const availableRegions = product.available_in ?? ["durban", "joburg"];
+  if (!availableRegions.includes(region)) return null;
+
+  // 🔄 Sync quantity from global cart
   useEffect(() => {
     const existing = cart.find((item: any) => item.id === id);
     setQuantity(existing ? existing.quantity : 0);
   }, [cart, id]);
 
+  // ➕ Add to cart
   const handleAdd = () => {
-    const newQty = quantity + 1;
-    setQuantity(newQty);
-    if (quantity === 0) {
+    const existing = cart.find((item: any) => item.id === id);
+    if (!existing) {
       addToCart({
         id,
         title,
         price,
         image: imageSrc,
         quantity: 1,
-        region: (product as any).region || null,
+        region,
       });
+      setQuantity(1);
+      setAdded(true); // trigger visual glow
+      setTimeout(() => setAdded(false), 600); // reset glow
     } else {
-      updateQuantity(id, newQty);
+      // ✅ Only allow increment if same region
+      if (selectedRegion === region) {
+        const newQty = quantity + 1;
+        setQuantity(newQty);
+        updateQuantity(id, newQty);
+      }
     }
   };
 
+  // ➖ Remove or decrement
   const handleSubtract = () => {
     const newQty = Math.max(quantity - 1, 0);
     setQuantity(newQty);
     if (newQty === 0) removeFromCart(id);
     else updateQuantity(id, newQty);
   };
+
+  // 💄 Add-to-cart animation class
+  const glowClass = added ? "animate-cart-glow" : "";
 
   return (
     <div className="w-[180px] sm:w-[220px] md:w-[240px] lg:w-[260px] text-center select-none flex flex-col h-full">
@@ -105,21 +141,11 @@ export default function ProductCard({ product, index }: ProductCardProps) {
             </p>
 
             {/* ✅ CART / QUANTITY BUTTON */}
-            {quantity === 0 ? (
-              <button
-                onClick={() => handleAdd()}
-                className={`mt-6 mb-3 inline-block cursor-pointer rounded-full px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 md:py-3 font-bold text-[11px] sm:text-[12px] md:text-[14px] uppercase transition ${
-                  isRed
-                    ? "bg-[#1e1e1e] text-white hover:scale-105"
-                    : "bg-[#B80013] text-white hover:scale-105"
-                }`}
-              >
-                Add to Cart
-              </button>
-            ) : (
+            {quantity > 0 && selectedRegion === region ? (
+              // Show quantity controls only for valid region cart
               <div className="mt-6 mb-3 flex items-center justify-center gap-3">
                 <button
-                  onClick={() => handleSubtract()}
+                  onClick={handleSubtract}
                   className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg font-bold transition"
                 >
                   −
@@ -130,12 +156,24 @@ export default function ProductCard({ product, index }: ProductCardProps) {
                 </span>
 
                 <button
-                  onClick={() => handleAdd()}
+                  onClick={handleAdd}
                   className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg font-bold transition"
                 >
                   +
                 </button>
               </div>
+            ) : (
+              // Show Add-to-cart button by default
+              <button
+                onClick={handleAdd}
+                className={`mt-6 mb-3 inline-block cursor-pointer rounded-full px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 md:py-3 font-bold text-[11px] sm:text-[12px] md:text-[14px] uppercase transition ${glowClass} ${
+                  isRed
+                    ? "bg-[#1e1e1e] text-white hover:scale-105"
+                    : "bg-[#B80013] text-white hover:scale-105"
+                }`}
+              >
+                Add to Cart
+              </button>
             )}
           </div>
         </div>

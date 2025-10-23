@@ -21,7 +21,7 @@ export default function ManagerLogin() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/dashboard/manager"); // redirect to manager dashboard
+      router.push("/dashboard/dashboard"); // redirect to manager dashboard
     }
 
     setLoading(false);
