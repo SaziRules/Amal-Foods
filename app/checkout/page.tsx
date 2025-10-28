@@ -5,6 +5,71 @@ import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+
+// 🧾 Generate PDF invoice (returns Blob or base64)
+async function generateInvoicePDF(order: any) {
+  const doc = new jsPDF();
+
+  doc.setFontSize(18);
+  doc.text("Amal Foods — Invoice", 14, 20);
+  doc.setFontSize(10);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 28);
+  doc.text(`Customer: ${order.customer_name}`, 14, 34);
+  if (order.email) doc.text(`Email: ${order.email}`, 14, 40);
+  doc.text(`Branch: ${order.branch}`, 14, 46);
+  doc.text(`Payment: ${order.payment_method}`, 14, 52);
+
+  // Table
+  const rows = order.items.map((i: any) => [
+    i.title,
+    i.quantity,
+    `R${i.price.toFixed(2)}`,
+    `R${(i.price * i.quantity).toFixed(2)}`,
+  ]);
+
+  autoTable(doc, {
+    startY: 60,
+    head: [["Item", "Qty", "Price", "Subtotal"]],
+    body: rows,
+    theme: "grid",
+    styles: { fontSize: 10 },
+    headStyles: { fillColor: [184, 0, 19] },
+  });
+
+  const totalY = ((doc as any).lastAutoTable?.finalY ?? 60) + 10;
+  doc.setFontSize(12);
+  doc.text(`Total: R${order.total.toFixed(2)}`, 14, totalY);
+
+  return doc.output("blob");
+}
+
+// 📧 Send invoice email via backend route
+async function sendInvoiceEmail(order: any) {
+  try {
+    // 1️⃣ Generate the PDF
+    const pdfBlob = await generateInvoicePDF(order);
+
+    // 2️⃣ Build a FormData payload to send to API
+    const formData = new FormData();
+    formData.append("pdf", pdfBlob, `Invoice_${order.customer_name}.pdf`);
+    formData.append("email", order.email);
+    formData.append("name", order.customer_name);
+    formData.append("total", order.total.toString());
+
+    // 3️⃣ POST it to your backend API (we’ll create this later)
+    await fetch("/api/send-invoice", {
+      method: "POST",
+      body: formData,
+    });
+
+    console.log("📨 Invoice email request sent successfully!");
+  } catch (err) {
+    console.error("⚠️ Invoice email failed:", err);
+  }
+}
+
 
 export const runtime = "nodejs";
 
@@ -91,7 +156,7 @@ export default function Checkout() {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
 
-      const { error: insertError } = await supabase
+            const { error: insertError } = await supabase
         .from("orders")
         .insert([orderPayload])
         .abortSignal(controller.signal);
@@ -101,10 +166,15 @@ export default function Checkout() {
       if (insertError) throw insertError;
 
       console.log("✅ Order inserted successfully!");
+
+      // 🧾 Send invoice email (non-blocking)
+      if (email) sendInvoiceEmail(orderPayload);
+
       clearCart();
       setSuccess(true);
       setShowSignup(true);
       setPaymentMethod("");
+
     } catch (err: any) {
       console.error("⚠️ Order insert failed:", err);
       if (err.name === "AbortError") {

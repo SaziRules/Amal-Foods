@@ -58,13 +58,13 @@ export default function Footer() {
           <h4 className="text-[#B80013] font-semibold mb-4">Get in Touch</h4>
           <ul className="space-y-3 text-sm text-white/80">
             <li className="flex items-center gap-2">
-              <Phone size={16} /> <span>031 209 0176</span>
+              <Phone size={16} /> <span>031 303 7786</span>
             </li>
             <li className="flex items-center gap-2">
               <Mail size={16} /> <span>info@amalfoods.co.za</span>
             </li>
             <li className="flex items-center gap-2">
-              <MapPin size={16} /> <span>202 Brickfield Road, Durban</span>
+              <MapPin size={16} /> <span>1277 Umgeni Rd, Stamford Hill, Durban, 4025</span>
             </li>
           </ul>
         </div>

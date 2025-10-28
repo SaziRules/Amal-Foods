@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import Image from "next/image";
 
 interface CartDrawerProps {
   open: boolean;
@@ -61,15 +60,7 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
               {cart.map((item: any) => (
                 <li key={item.id} className="flex items-center justify-between gap-3 px-6 py-4">
                   <div className="flex items-center gap-3">
-                    {item.image && (
-                      <Image
-                        src={item.image}
-                        alt={item.title}
-                        width={60}
-                        height={60}
-                        className="rounded-md object-cover"
-                      />
-                    )}
+                    {/* 🧹 Image removed — everything else untouched */}
                     <div>
                       <h3 className="text-sm font-medium">{item.title}</h3>
                       <p className="text-xs text-gray-400">

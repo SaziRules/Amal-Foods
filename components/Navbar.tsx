@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import CartDrawer from "./CartDrawer";
 import { useCart } from "@/context/CartContext";
@@ -24,6 +25,8 @@ interface SearchResult {
 }
 
 export default function Navbar() {
+  const pathname = usePathname();
+  if (pathname?.startsWith("/studio")) return null;
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);

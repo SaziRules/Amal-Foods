@@ -37,7 +37,6 @@ export const product = defineType({
         ],
         layout: "dropdown",
       },
-      validation: (Rule) => Rule.required(),
     }),
 
     // 🏬 Regional Pricing
@@ -121,7 +120,6 @@ export const product = defineType({
       title: "Product Image",
       type: "image",
       options: { hotspot: true },
-      validation: (Rule) => Rule.required(),
     }),
 
     defineField({
