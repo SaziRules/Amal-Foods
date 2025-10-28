@@ -8,13 +8,13 @@ export default function FloatingButtons() {
   const pathname = usePathname();
 
   // 🧭 Routes where buttons should NOT show
-  const hiddenRoutes = ["/admin", "/checkout", "/customer", "/dashboard"];
+  const hiddenRoutes = ["/admin", "/checkout", "/customer", "/dashboard", "/studio"];
   const shouldHide = hiddenRoutes.some((route) => pathname.startsWith(route));
 
   if (shouldHide) return null;
 
   // Prefilled WhatsApp message
-  const whatsappNumber = "27636769316"; // ✅ Replace with your WhatsApp business number (without +)
+  const whatsappNumber = "27710441562"; // WhatsApp business number (without +)
   const whatsappMessage = encodeURIComponent(
     "Hi! 👋 I’d like to place a Ramadan order from the Amal Foods website."
   );
@@ -23,7 +23,7 @@ export default function FloatingButtons() {
     <div className="fixed right-6 bottom-6 flex flex-col gap-3 z-50">
       {/* 🛍 PRE-ORDER NOW */}
       <motion.a
-        href="/products?filter=ramadan"
+        href="/products"
         className="flex items-center gap-2 bg-[#B80013] text-white px-5 py-2.5 rounded-full shadow-lg font-semibold uppercase text-xs tracking-wide hover:bg-[#a20010] transition"
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}

@@ -8,6 +8,9 @@ import {
   CheckCircle,
   Loader2,
   X,
+  FileDown,
+  FileSpreadsheet,
+  Pen
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -18,6 +21,10 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import ManageOrdersModal from "@/components/ManageOrdersModal";
 
 export default function ManagerDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -29,6 +36,11 @@ export default function ManagerDashboard() {
   const [statusTarget, setStatusTarget] = useState<{ id: string; current: string } | null>(null);
   const [filter, setFilter] = useState("all");
 
+  /* ───────────── Modal for Managing Orders ───────────── */
+  const [showManageOrders, setShowManageOrders] = useState(false);
+
+
+  /* ───────────── Fetch Orders ───────────── */
   useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
@@ -38,7 +50,6 @@ export default function ManagerDashboard() {
       }
       setUser(data.user);
 
-      // Find manager’s branch
       const { data: manager, error: managerError } = await supabase
         .from("managers")
         .select("branch")
@@ -55,13 +66,11 @@ export default function ManagerDashboard() {
       const branchName = manager.branch.trim();
       setBranch(branchName);
 
-      // ✅ Get orders for the manager’s actual branch
-const { data: branchOrders, error } = await supabase
-  .from("orders")
-  .select("*")
-  .eq("branch", branchName)
-  .order("created_at", { ascending: false });
-
+      const { data: branchOrders, error } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("branch", branchName)
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching orders:", error.message);
@@ -76,14 +85,118 @@ const { data: branchOrders, error } = await supabase
     init();
   }, []);
 
-  // ✅ Fixed: Update order status (actually persists to Supabase)
+  /* ───────────── Utilities for items ───────────── */
+  const parseItems = (raw: any) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed.items)) return parsed.items;
+        if (typeof parsed === "object") return Object.values(parsed);
+      } catch {
+        return [];
+      }
+    }
+    if (typeof raw === "object") {
+      if (Array.isArray(raw.items)) return raw.items;
+      return Object.values(raw);
+    }
+    return [];
+  };
+
+  /* ───────────── Prep summary for reports ───────────── */
+  const summarizeItems = () => {
+    const activeOrders = orders.filter((o) =>
+  ["pending", "packed", "unpaid"].includes(o.status)
+);
+
+    const summary: Record<
+      string,
+      { totalQty: number; orders: number; statusBreakdown: Record<string, number> }
+    > = {};
+    activeOrders.forEach((order) => {
+      const items = parseItems(order.items);
+      items.forEach((item: any) => {
+        const name = item.title || item.name || "Unnamed";
+        const qty = Number(item.quantity || 0);
+        if (!summary[name]) {
+          summary[name] = { totalQty: 0, orders: 0, statusBreakdown: {} };
+        }
+        summary[name].totalQty += qty;
+        summary[name].orders++;
+        summary[name].statusBreakdown[order.status] =
+          (summary[name].statusBreakdown[order.status] || 0) + 1;
+      });
+    });
+    return summary;
+  };
+
+  /* ───────────── Generate PDF / Excel ───────────── */
+  const generatePDFReport = () => {
+    const summary = summarizeItems();
+    if (!Object.keys(summary).length) return alert("No active items to report.");
+
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text(`Prep Report — ${branch || "Branch"}`, 14, 15);
+    doc.setFontSize(10);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 22);
+
+    const tableData = Object.entries(summary).map(([name, s]) => [
+      name,
+      s.totalQty,
+      s.orders,
+      Object.entries(s.statusBreakdown)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", "),
+    ]);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [["Product", "Total Units", "Orders", "Status Breakdown"]],
+      body: tableData,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [184, 0, 19] },
+      alternateRowStyles: { fillColor: [30, 30, 30] },
+      tableLineColor: [80, 80, 80],
+      tableLineWidth: 0.1,
+    });
+
+    doc.save(`Prep_Report_${branch || "Branch"}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const generateExcelReport = () => {
+    const summary = summarizeItems();
+    if (!Object.keys(summary).length) return alert("No active items to report.");
+
+    const data = Object.entries(summary).map(([name, s]) => ({
+      Product: name,
+      "Total Units": s.totalQty,
+      "Orders Containing": s.orders,
+      "Status Breakdown": Object.entries(s.statusBreakdown)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", "),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Prep Report");
+    XLSX.writeFile(
+      wb,
+      `Prep_Report_${branch || "Branch"}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
+  /* ───────────── Update order status ───────────── */
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     try {
       const { data, error } = await supabase
         .from("orders")
         .update({ status: newStatus })
         .eq("id", id)
-        .select(); // ensures Supabase returns updated row
+        .select();
 
       if (error) {
         console.error("Error updating status:", error.message);
@@ -94,9 +207,7 @@ const { data: branchOrders, error } = await supabase
       if (data && data.length > 0) {
         const updatedOrder = data[0];
         setOrders((prev) =>
-          prev.map((order) =>
-            order.id === updatedOrder.id ? updatedOrder : order
-          )
+          prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order))
         );
       }
 
@@ -108,39 +219,32 @@ const { data: branchOrders, error } = await supabase
     }
   };
 
-  // 🧠 Logout function
+  /* ───────────── Logout ───────────── */
   const handleLogout = () => {
-  try {
-    // Trigger sign-out but don’t block
-    supabase.auth.signOut();
+    try {
+      supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      document.body.style.opacity = "0.5";
+      document.body.style.pointerEvents = "none";
+      setTimeout(() => window.location.reload(), 200);
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Logout failed — please refresh manually.");
+    }
+  };
 
-    // Clear any cached tokens
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Optional: dim screen for feedback
-    document.body.style.opacity = "0.5";
-    document.body.style.pointerEvents = "none";
-
-    // 🔥 Guaranteed immediate refresh
-    setTimeout(() => {
-      window.location.reload();
-    }, 200);
-  } catch (error) {
-    console.error("Logout error:", error);
-    alert("Logout failed — please refresh manually.");
-  }
-};
-
-
-
-  // 📊 Quick Stats
+  /* ───────────── Stats ───────────── */
   const totalRevenue = orders.reduce((a, b) => a + Number(b.total || 0), 0);
   const pending = orders.filter((o) => o.status === "pending").length;
-  const processing = orders.filter((o) => o.status === "processing").length;
-  const completed = orders.filter((o) => o.status === "completed").length;
+const packed = orders.filter((o) => o.status === "packed").length;
+const collected = orders.filter((o) => o.status === "collected").length;
+const cancelled = orders.filter((o) => o.status === "cancelled").length;
+const paid = orders.filter((o) => o.status === "paid").length;
+const unpaid = orders.filter((o) => o.status === "unpaid").length;
 
-  // 📅 Weekly Chart
+
+  /* ───────────── Weekly Chart Data ───────────── */
   const weeklyData = Array.from({ length: 7 }, (_, i) => {
     const day = new Date();
     day.setDate(day.getDate() - (6 - i));
@@ -152,10 +256,9 @@ const { data: branchOrders, error } = await supabase
     return { day: label, revenue, count: dayOrders.length };
   });
 
+  /* ───────────── Filtering ───────────── */
   const filteredOrders =
-    filter === "all"
-      ? orders
-      : orders.filter((o) => o.status.toLowerCase() === filter);
+    filter === "all" ? orders : orders.filter((o) => o.status.toLowerCase() === filter);
 
   if (loading)
     return (
@@ -164,6 +267,7 @@ const { data: branchOrders, error } = await supabase
       </div>
     );
 
+  /* ───────────── Render ───────────── */
   return (
     <main
       className="min-h-screen bg-cover bg-center bg-no-repeat text-white p-6 md:p-10 relative"
@@ -179,13 +283,31 @@ const { data: branchOrders, error } = await supabase
               Welcome, {user?.email?.split("@")[0]}
             </h1>
             <p className="text-gray-300">
-  Managing <span className="text-[#B80013] font-semibold">{branch}</span> Orders
-</p>
-
+              Managing <span className="text-[#B80013] font-semibold">{branch}</span> Orders
+            </p>
           </div>
 
-          {/* Right-side buttons */}
-          <div className="flex gap-3">
+          {/* Right-side buttons (added two new report buttons) */}
+          <div className="flex gap-3 flex-wrap">
+            <button
+  onClick={() => setShowManageOrders(true)}
+  className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-sm font-semibold"
+>
+ <Pen size={16} /> Manage Orders
+</button>
+
+            <button
+              onClick={generatePDFReport}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-sm font-semibold"
+            >
+              <FileDown size={16} /> PDF Prep Report
+            </button>
+            <button
+              onClick={generateExcelReport}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-sm font-semibold"
+            >
+              <FileSpreadsheet size={16} /> Excel Prep Report
+            </button>
             <button
               onClick={() => window.open("/studio", "_blank")}
               className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-sm font-medium"
@@ -203,13 +325,14 @@ const { data: branchOrders, error } = await supabase
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard title="Total Revenue" value={`R${totalRevenue.toLocaleString()}`} icon={<TrendingUp size={22} />} color="emerald" />
-          <StatCard title="Pending Orders" value={pending} icon={<Clock size={22} />} color="yellow" />
-          <StatCard title="Processing Orders" value={processing} icon={<Loader2 size={22} />} color="blue" />
-          <StatCard title="Completed Orders" value={completed} icon={<CheckCircle size={22} />} color="green" />
-        </div>
+  <StatCard title="Pending Orders" value={pending} icon={<Clock size={22} />} color="yellow" />
+  <StatCard title="Packed Orders" value={packed} icon={<Loader2 size={22} />} color="blue" />
+  <StatCard title="Collected Orders" value={collected} icon={<CheckCircle size={22} />} color="green" />
+  <StatCard title="Cancelled Orders" value={cancelled} icon={<X size={22} />} color="red" />
+</div>
 
-        {/* Weekly Revenue Trend + Branch Performance Side by Side */}
+
+        {/* Weekly Revenue Trend + Branch Performance Analytics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Weekly Revenue Trend */}
           <div className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
@@ -235,26 +358,15 @@ const { data: branchOrders, error } = await supabase
           <div className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
             <h2 className="text-lg font-semibold text-[#B80013] mb-4">Branch Performance Analytics</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Top Products */}
+              {/* Top Products by Sales */}
               <div>
                 <h3 className="text-sm text-gray-400 mb-3">Top Products by Sales</h3>
                 {(() => {
                   const productTotals: Record<string, number> = {};
                   orders.forEach((o) => {
                     try {
-                      let items: any[] = [];
-                      if (typeof o.items === "string") {
-                        const parsed = JSON.parse(o.items);
-                        items = Array.isArray(parsed)
-                          ? parsed
-                          : parsed.items
-                          ? parsed.items
-                          : Object.values(parsed);
-                      } else if (Array.isArray(o.items)) {
-                        items = o.items;
-                      }
-
-                      items.forEach((item) => {
+                      const items = parseItems(o.items);
+                      items.forEach((item: any) => {
                         const name = item.title || item.name || "Unnamed";
                         const subtotal = Number(item.quantity || 1) * Number(item.price || 0);
                         productTotals[name] = (productTotals[name] || 0) + subtotal;
@@ -262,13 +374,13 @@ const { data: branchOrders, error } = await supabase
                     } catch {}
                   });
 
-                  const topProducts = Object.entries(productTotals)
+                  const top = Object.entries(productTotals)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 5);
 
-                  return topProducts.length ? (
+                  return top.length ? (
                     <div className="space-y-3">
-                      {topProducts.map(([name, total], i) => (
+                      {top.map(([name, total], i) => (
                         <div key={i} className="flex justify-between bg-white/5 p-2 rounded-lg border border-white/10 text-sm">
                           <span className="text-gray-300">{name}</span>
                           <span className="text-[#B80013] font-semibold">R{total.toFixed(2)}</span>
@@ -286,8 +398,9 @@ const { data: branchOrders, error } = await supabase
                 {(() => {
                   const totalOrders = orders.length;
                   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-                  const completedOrders = orders.filter((o) => o.status === "completed").length;
-                  const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
+                  const collectedOrders = orders.filter((o) => o.status === "collected").length;
+const completionRate = totalOrders > 0 ? (collectedOrders / totalOrders) * 100 : 0;
+
 
                   return (
                     <>
@@ -313,7 +426,8 @@ const { data: branchOrders, error } = await supabase
 
         {/* Filter Buttons */}
         <div className="flex flex-wrap gap-3 mt-8">
-          {["all", "pending", "processing", "completed", "cancelled"].map((s) => (
+          {["all", "pending", "packed", "collected", "cancelled", "paid", "unpaid"].map((s) => (
+
             <button
               key={s}
               onClick={() => setFilter(s)}
@@ -328,10 +442,7 @@ const { data: branchOrders, error } = await supabase
 
         {/* Orders */}
         <section className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-[#B80013] mb-4">
-  {branch} Orders
-</h2>
-
+          <h2 className="text-lg font-semibold text-[#B80013] mb-4">{branch} Orders</h2>
 
           {filteredOrders.length === 0 ? (
             <p className="text-gray-400 text-sm">No {filter} orders found for {branch} branch.</p>
@@ -350,26 +461,33 @@ const { data: branchOrders, error } = await supabase
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-[#B80013] font-semibold">#{order.id.slice(0, 6)}</span>
                     <span
-                      className={`text-xs px-2 py-1 rounded-full capitalize ${
-                        order.status === "completed"
-                          ? "bg-green-700/50 text-green-300"
-                          : order.status === "processing"
-                          ? "bg-blue-700/50 text-blue-300"
-                          : order.status === "pending"
-                          ? "bg-yellow-700/50 text-yellow-300"
-                          : "bg-red-700/50 text-red-300"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+  className={`text-xs px-2 py-1 rounded-full capitalize ${
+    order.status === "paid"
+      ? "bg-green-700/50 text-green-300"
+      : order.status === "unpaid"
+      ? "bg-orange-700/50 text-orange-300"
+      : order.status === "pending"
+      ? "bg-yellow-700/50 text-yellow-300"
+      : order.status === "packed"
+      ? "bg-blue-700/50 text-blue-300"
+      : order.status === "collected"
+      ? "bg-teal-700/50 text-teal-300"
+      : "bg-red-700/50 text-red-300"
+  }`}
+>
+  {order.status}
+</span>
+
                   </div>
                   <p className="text-sm text-gray-300">
                     <strong>Customer:</strong> {order.customer_name || "N/A"}
                   </p>
                   <p className="text-sm text-gray-400">
-                    <strong>Total:</strong> R{order.total.toFixed(2)}
+                    <strong>Total:</strong> R{Number(order.total || 0).toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">{new Date(order.created_at).toLocaleDateString()}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(order.created_at).toLocaleDateString()}
+                  </p>
                 </div>
               ))}
             </div>
@@ -393,7 +511,8 @@ const { data: branchOrders, error } = await supabase
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              {["pending", "processing", "completed", "cancelled"].map((s) => (
+              {["pending", "packed", "collected", "cancelled", "paid", "unpaid"].map((s) => (
+
                 <button
                   key={s}
                   onClick={() => handleUpdateStatus(statusTarget.id, s)}
@@ -410,6 +529,16 @@ const { data: branchOrders, error } = await supabase
           </div>
         </div>
       )}
+      {/* 🗃️ Manage Orders Modal */}
+      {showManageOrders && (
+  <ManageOrdersModal
+    branch={branch}
+    onClose={() => setShowManageOrders(false)}
+  />
+)}
+
+
+
     </main>
   );
 }
@@ -434,7 +563,7 @@ function StatCard({ title, value, icon, color }: any) {
   };
   return (
     <div className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify_between mb-2">
         <p className="text-sm text-gray-400">{title}</p>
         <div className={`p-2 bg-white/5 rounded-lg ${colorMap[color]}`}>{icon}</div>
       </div>

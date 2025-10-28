@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 
+export const runtime = "nodejs";
+
 export default function Checkout() {
   const { cart, totalItems, totalPrice, clearCart, selectedRegion } = useCart();
 
@@ -20,8 +22,9 @@ export default function Checkout() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSignup, setShowSignup] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "eft" | "">("");
 
-  // 🧭 Detect product region → set branch
+  // 🧭 Auto-detect region → set branch
   useEffect(() => {
     if (cart.length === 0) return;
 
@@ -39,6 +42,7 @@ export default function Checkout() {
       const region = uniqueRegions[0] || selectedRegion;
       if (region === "durban") setBranch("Durban");
       else if (region === "joburg") setBranch("Joburg");
+      else if (region === "capetown") setBranch("Cape Town");
     }
   }, [cart, selectedRegion]);
 
@@ -46,59 +50,76 @@ export default function Checkout() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (mixedRegions) {
-      setError("Your cart has items from multiple regions. Please split orders by branch.");
-      return;
-    }
-    if (totalItems < 10) {
-      setError("Minimum order is 10 items.");
-      return;
-    }
-    if (!branch) {
-      setError("Unable to determine branch. Please check your cart region.");
-      return;
-    }
+    if (mixedRegions)
+      return setError("Your cart has items from multiple regions. Please split orders by branch.");
+    if (totalItems < 10)
+      return setError("Minimum order is 10 items.");
+    if (!branch)
+      return setError("Unable to determine branch. Please check your cart region.");
+    if (!paymentMethod)
+      return setError("Please select a payment method before submitting.");
 
     setLoading(true);
     setError(null);
+    setSuccess(false);
 
     try {
-      const { error: insertError } = await supabase.from("orders").insert([
-        {
-          customer_name: name.trim(),
-          phone_number: phone || cell,
-          email: email || null,
-          branch,
-          items: cart.map((i) => ({
-            id: i.id,
-            title: i.title,
-            quantity: i.quantity,
-            price: i.price,
-            region: (i as any).region,
-          })),
-          total: totalPrice,
-          status: "pending",
-        },
-      ]);
+      const orderPayload = {
+        customer_name: name.trim(),
+        phone_number: phone || cell,
+        email: email || null,
+        branch,
+        payment_method:
+          paymentMethod === "cash"
+            ? "Cash on Collection"
+            : "EFT before Collection",
+        items: cart.map((i) => ({
+          id: i.id,
+          title: i.title,
+          quantity: i.quantity,
+          price: i.price,
+          region: (i as any).region,
+        })),
+        total: totalPrice,
+        status: "pending",
+        address: address || null,
+      };
+
+      console.log("🧾 Submitting order:", orderPayload);
+
+      // 🧠 Timeout-safe Supabase insert
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+
+      const { error: insertError } = await supabase
+        .from("orders")
+        .insert([orderPayload])
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeout);
 
       if (insertError) throw insertError;
+
+      console.log("✅ Order inserted successfully!");
       clearCart();
       setSuccess(true);
       setShowSignup(true);
+      setPaymentMethod("");
     } catch (err: any) {
-      console.error(err);
-      setError("Something went wrong. Please try again.");
+      console.error("⚠️ Order insert failed:", err);
+      if (err.name === "AbortError") {
+        setError("Connection timed out. Please check your internet and try again.");
+      } else {
+        setError(err.message || "Something went wrong. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔑 Optional magic link signup
+  // 🔑 Magic link signup (optional)
   const handleMagicSignup = async () => {
-    if (!email) {
-      setError("Enter your email to receive a signup link.");
-      return;
-    }
+    if (!email) return setError("Enter your email to receive a signup link.");
     const { error: signupError } = await supabase.auth.signInWithOtp({ email });
     if (signupError) setError(signupError.message);
     else alert("A signup link has been sent to your email!");
@@ -107,12 +128,9 @@ export default function Checkout() {
   return (
     <main
       className="min-h-screen text-white px-6 md:px-16 pb-20 pt-40 bg-cover bg-center bg-no-repeat"
-      style={{
-        backgroundImage: "url('/images/checkout.png')",
-      }}
+      style={{ backgroundImage: "url('/images/checkout.png')" }}
     >
       <div className="max-w-7xl mx-auto bg-black/50 backdrop-blur-sm p-10 rounded-2xl border border-white/10 shadow-[0_0_35px_rgba(255,0,0,0.1)]">
-        {/* Outer Heading */}
         <h1 className="text-3xl md:text-4xl font-bold text-center md:text-left text-white mb-12 drop-shadow-md">
           Almost there! Review and Checkout.
         </h1>
@@ -120,63 +138,63 @@ export default function Checkout() {
         <div className="flex flex-col md:flex-row gap-10">
           {/* 🧾 Order Summary */}
           <section className="flex-1 bg-black/60 p-6 rounded-2xl border border-white/10 shadow-inner">
-  <h2 className="text-xl font-semibold mb-6 text-[#B80013]">Review</h2>
+            <h2 className="text-xl font-semibold mb-6 text-[#B80013]">
+              Review
+            </h2>
 
-  {cart.length === 0 ? (
-    <p className="text-gray-400">Your cart is empty.</p>
-  ) : (
-    <>
-      <ul className="divide-y divide-white/10 mb-4">
-        {cart.map((item) => (
-          <li
-            key={item.id}
-            className="flex justify-between items-center py-2 text-sm text-gray-300"
-          >
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium">{item.title}</span>
-              {item.quantity > 1 && (
-                <span className="px-2.5 py-0.5 text-[11px] rounded-full bg-[#B80013] text-white font-semibold tracking-wide uppercase shadow-[0_0_6px_rgba(184,0,19,0.5)]">
-                  {item.quantity} {item.quantity > 1 ? "Units" : "Unit"}
-                </span>
-              )}
+            {cart.length === 0 ? (
+              <p className="text-gray-400">Your cart is empty.</p>
+            ) : (
+              <>
+                <ul className="divide-y divide-white/10 mb-4">
+                  {cart.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex justify-between items-center py-2 text-sm text-gray-300"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{item.title}</span>
+                        {item.quantity > 1 && (
+                          <span className="px-2.5 py-0.5 text-[11px] rounded-full bg-[#B80013] text-white font-semibold tracking-wide uppercase shadow-[0_0_6px_rgba(184,0,19,0.5)]">
+                            {item.quantity} Units
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-semibold text-white">
+                        R{(item.price * item.quantity).toFixed(2)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="border-t border-white/10 pt-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>Items:</span>
+                    <span>{totalItems}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Subtotal:</span>
+                    <span className="font-semibold text-white">
+                      R{totalPrice.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div className="mt-5 text-xs text-gray-400 border border-white/10 rounded-lg p-3 bg-[#111]/70">
+              Minimum order is <strong>10 items</strong>.
             </div>
-            <span className="font-semibold text-white">
-              R{(item.price * item.quantity).toFixed(2)}
-            </span>
-          </li>
-        ))}
-      </ul>
 
-      <div className="border-t border-white/10 pt-3 text-sm">
-        <div className="flex justify-between">
-          <span>Items:</span>
-          <span>{totalItems}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Subtotal:</span>
-          <span className="font-semibold text-white">
-            R{totalPrice.toFixed(2)}
-          </span>
-        </div>
-      </div>
-    </>
-  )}
-
-  <div className="mt-5 text-xs text-gray-400 border border-white/10 rounded-lg p-3 bg-[#111]/70">
-    Minimum order is <strong>10 items</strong>.
-  </div>
-
-  <div className="mt-6">
-    <Link
-      href="/products"
-      className="text-sm text-gray-300 hover:text-white transition"
-    >
-      ← Continue shopping
-    </Link>
-  </div>
-</section>
-
-
+            <div className="mt-6">
+              <Link
+                href="/products"
+                className="text-sm text-gray-300 hover:text-white transition"
+              >
+                ← Continue shopping
+              </Link>
+            </div>
+          </section>
 
           {/* 👤 Customer Details */}
           <form
@@ -223,6 +241,60 @@ export default function Checkout() {
               className="mt-5 w-full rounded-lg px-4 py-2.5 bg-black/50 border border-white/20 focus:border-red-600 outline-none"
             />
 
+            {/* 💳 Payment Method */}
+            <div className="mt-6">
+              <label className="block text-sm font-semibold mb-2 text-gray-200">
+                Payment Method
+              </label>
+              <div className="flex flex-col gap-3 text-sm text-gray-200">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="cash"
+                    checked={paymentMethod === "cash"}
+                    onChange={(e) => setPaymentMethod(e.target.value as "cash")}
+                    className="accent-[#B80013] w-4 h-4"
+                  />
+                  <span>💵 Cash on Collection</span>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="paymentMethod"
+                    value="eft"
+                    checked={paymentMethod === "eft"}
+                    onChange={(e) => setPaymentMethod(e.target.value as "eft")}
+                    className="accent-[#B80013] w-4 h-4"
+                  />
+                  <span>💳 EFT before Collection</span>
+                </label>
+              </div>
+
+              {paymentMethod === "eft" && (
+                <div className="mt-4 bg-[#111]/80 border border-white/20 rounded-lg p-4 text-sm text-gray-200">
+                  <h3 className="text-[#B80013] font-semibold mb-2">
+                    EFT Banking Details
+                  </h3>
+                  <p><strong>Bank:</strong> Albaraka Bank</p>
+                  <p><strong>Account Name:</strong> Amal Holdings</p>
+                  <p><strong>Account Number:</strong> 78600236323</p>
+                  <p>
+                    <strong>Ref:</strong>{" "}
+                    <span className="italic text-white/90">
+                      {name ? name : "Your Full Name"}
+                    </span>
+                  </p>
+                  <p className="mt-2 text-xs text-gray-400">
+                    Please use your full name as reference and send proof of payment
+                    to your nearest branch before collection.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* 🏬 Pickup Branch */}
             <div className="mt-6">
               <label className="block text-sm font-semibold mb-2 text-gray-200">
                 Pickup Branch
@@ -238,7 +310,9 @@ export default function Checkout() {
                     Pickup from {branch}
                   </span>
                 ) : (
-                  <span className="text-gray-400">Auto-selecting branch...</span>
+                  <span className="text-gray-400">
+                    Auto-selecting branch...
+                  </span>
                 )}
               </div>
               <p className="text-xs text-gray-400 mt-2">

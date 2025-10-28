@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
@@ -17,14 +16,15 @@ interface ProductCardProps {
     description?: string;
     imageUrl?: string;
   };
-  index: number; // used to alternate red/black
+  index: number;
 }
 
 export default function ProductCard({ product, index }: ProductCardProps) {
-  const { addToCart, removeFromCart, updateQuantity, cart, selectedRegion } = useCart();
+  const { addToCart, removeFromCart, updateQuantity, cart, selectedRegion } =
+    useCart();
   const [quantity, setQuantity] = useState(0);
   const [region, setRegion] = useState<"durban" | "joburg">("durban");
-  const [added, setAdded] = useState(false); // ✨ visual feedback
+  const [added, setAdded] = useState(false);
 
   if (!product) return null;
 
@@ -38,9 +38,6 @@ export default function ProductCard({ product, index }: ProductCardProps) {
 
   // 🏷️ Extract data
   const title = product.title ?? "PARATHA SAMOOSA";
-  const desc =
-    product.description ??
-    "Discreet protection for moderate incontinence.";
   const imageSrc = product.imageUrl ?? "/placeholder.png";
   const id = product._id ?? title;
 
@@ -75,15 +72,12 @@ export default function ProductCard({ product, index }: ProductCardProps) {
         region,
       });
       setQuantity(1);
-      setAdded(true); // trigger visual glow
-      setTimeout(() => setAdded(false), 600); // reset glow
-    } else {
-      // ✅ Only allow increment if same region
-      if (selectedRegion === region) {
-        const newQty = quantity + 1;
-        setQuantity(newQty);
-        updateQuantity(id, newQty);
-      }
+      setAdded(true);
+      setTimeout(() => setAdded(false), 600);
+    } else if (selectedRegion === region) {
+      const newQty = quantity + 1;
+      setQuantity(newQty);
+      updateQuantity(id, newQty);
     }
   };
 
@@ -95,87 +89,71 @@ export default function ProductCard({ product, index }: ProductCardProps) {
     else updateQuantity(id, newQty);
   };
 
-  // 💄 Add-to-cart animation class
   const glowClass = added ? "animate-cart-glow" : "";
 
   return (
-    <div className="w-[180px] sm:w-[220px] md:w-[240px] lg:w-[260px] text-center select-none flex flex-col h-full">
+    <div className="w-full max-w-[620px] select-none">
       <div
-        className={`relative rounded-[100px] md:rounded-[120px] shadow-lg transition-transform duration-300 hover:scale-[1.02] ${
-          isRed ? "bg-[#B80013]" : "bg-[#1e1e1e]"
+        className={`relative flex justify-between items-center rounded-full px-8 py-5 shadow-md transition-transform duration-300 hover:scale-[1.02] ${
+          isRed ? "bg-[#B80013]" : "bg-[#1E1E1E]"
         }`}
       >
-        {/* Capsule Content */}
-        <div className="pt-8 pb-10 px-4 sm:px-5 md:px-6">
-          {/* IMAGE */}
-          <div className="relative flex justify-center mt-[-80px] sm:mt-[-90px] md:mt-[-100px]">
-            <Image
-              src={imageSrc}
-              alt={title}
-              width={180}
-              height={180}
-              className="object-contain drop-shadow-md"
-              unoptimized
-            />
+        {/* LEFT: Text block */}
+        <div className="flex flex-col items-start text-left">
+          <h3 className="text-[15px] md:text-[17px] font-extrabold uppercase tracking-wide text-white">
+            {title}
+          </h3>
 
-            {/* PRICE CIRCLE */}
-            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2">
-              <div
-                className={`w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 rounded-full shadow-xl flex items-center justify-center font-extrabold text-[18px] sm:text-[20px] md:text-[22px] leading-none text-white ${
-                  isRed ? "bg-[#1e1e1e]" : "bg-[#B80013]"
-                }`}
-              >
-                {priceText}
-              </div>
-            </div>
-          </div>
-
-          {/* TEXT BLOCK */}
-          <div className="pt-8">
-            <h3 className="text-[14px] sm:text-[16px] md:text-[18px] font-extrabold tracking-wide uppercase text-white">
-              {title}
-            </h3>
-
-            <p className="text-[12px] sm:text-[13px] md:text-[14px] leading-snug mt-2 text-white/95 line-clamp-3 overflow-hidden text-ellipsis">
-              {desc}
-            </p>
-
-            {/* ✅ CART / QUANTITY BUTTON */}
+          {/* Add-to-cart or quantity controls */}
+          <div className="mt-2">
             {quantity > 0 && selectedRegion === region ? (
-              // Show quantity controls only for valid region cart
-              <div className="mt-6 mb-3 flex items-center justify-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={handleSubtract}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg font-bold transition"
+                  className={`w-7 h-7 md:w-10 md:h-10 flex items-center justify-center rounded-full text-white text-lg font-bold transition ${
+                    isRed
+                      ? "bg-[#1E1E1E] hover:bg-[#111]"
+                      : "bg-[#B80013] hover:bg-[#a40010]"
+                  }`}
                 >
                   −
                 </button>
-
-                <span className="min-w-[24px] text-white font-bold text-sm select-none">
+                <span className="text-white font-bold text-sm select-none">
                   {quantity}
                 </span>
-
                 <button
                   onClick={handleAdd}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white text-lg font-bold transition"
+                  className={`w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full text-white text-lg font-bold transition ${
+                    isRed
+                      ? "bg-[#1E1E1E] hover:bg-[#111]"
+                      : "bg-[#B80013] hover:bg-[#a40010]"
+                  }`}
                 >
                   +
                 </button>
               </div>
             ) : (
-              // Show Add-to-cart button by default
               <button
                 onClick={handleAdd}
-                className={`mt-6 mb-3 inline-block cursor-pointer rounded-full px-5 sm:px-6 md:px-7 py-2 sm:py-2.5 md:py-3 font-bold text-[11px] sm:text-[12px] md:text-[14px] uppercase transition ${glowClass} ${
+                className={`text-[11px] md:text-[12px] font-bold uppercase px-5 py-2 rounded-full transition ${glowClass} ${
                   isRed
-                    ? "bg-[#1e1e1e] text-white hover:scale-105"
-                    : "bg-[#B80013] text-white hover:scale-105"
+                    ? "bg-[#1E1E1E] text-white hover:bg-[#111]"
+                    : "bg-[#B80013] text-white hover:bg-[#a40010]"
                 }`}
               >
                 Add to Cart
               </button>
             )}
           </div>
+        </div>
+
+        {/* RIGHT: Price circle */}
+        <div
+          className={`w-14 h-14 md:w-24 md:h-24 rounded-full flex items-center justify-center text-white font-extrabold text-[16px] md:text-[30px] mr-[-15px] ${
+            isRed ? "bg-[#1E1E1E]" : "bg-[#B80013]"
+          }`}
+        >
+          {priceText}
         </div>
       </div>
     </div>

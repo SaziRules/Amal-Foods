@@ -18,7 +18,7 @@ export default function HomeHero() {
 
   // 🕰️ Countdown
   useEffect(() => {
-    const target = new Date("2025-12-31T23:59:59").getTime();
+    const target = new Date("2025-12-15T23:59:59").getTime();
     const timer = setInterval(() => {
       const now = new Date().getTime();
       const dist = target - now;
@@ -73,7 +73,7 @@ export default function HomeHero() {
           </h1>
 
           <p className="mt-6 text-white/90 font-medium text-[1rem] md:text-[1.15rem] tracking-wide max-w-2xl">
-            Pre-order your iftar favourites before <strong>31 December 2025</strong>.
+            Pre-order your iftar favourites before <strong>15 December 2025</strong>.
             Once the countdown ends — the ovens close.
           </p>
 
@@ -99,13 +99,13 @@ export default function HomeHero() {
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-5 mt-12">
             <a
-              href="/products?filter=ramadan"
+              href="/products"
               className="px-10 py-3.5 bg-[#B80013] text-white rounded-full font-bold uppercase text-sm md:text-base tracking-wide hover:bg-[#a20010] transition"
             >
               Order Now
             </a>
             <a
-              href="/signup"
+              href="/customer/login"
               className="px-10 py-3.5 bg-white text-[#111] rounded-full font-bold uppercase text-sm md:text-base tracking-wide hover:bg-gray-200 transition"
             >
               Signup

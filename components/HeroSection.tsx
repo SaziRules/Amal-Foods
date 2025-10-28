@@ -8,9 +8,11 @@ interface HeroSectionProps {
   subtitle: string;
   primaryLabel: string;
   secondaryLabel: string;
+  tertiaryLabel?: string;
   onPrimaryClick?: () => void;
   onSecondaryClick?: () => void;
-  activeRegion?: "durban" | "joburg";
+  onTertiaryClick?: () => void;
+  activeRegion?: "durban" | "joburg" | "capetown";
 }
 
 export default function HeroSection({
@@ -19,8 +21,10 @@ export default function HeroSection({
   subtitle,
   primaryLabel,
   secondaryLabel,
+  tertiaryLabel,
   onPrimaryClick,
   onSecondaryClick,
+  onTertiaryClick,
   activeRegion,
 }: HeroSectionProps) {
   const images: string[] = [
@@ -83,6 +87,19 @@ export default function HeroSection({
 >
   {secondaryLabel}
 </button>
+
+{tertiaryLabel && onTertiaryClick && (
+<button
+  onClick={onTertiaryClick}
+  className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
+    activeRegion === "capetown"
+      ? "bg-[#B80013] text-white"
+      : "bg-white text-[#1a1a1a] hover:bg-gray-100"
+  }`}
+>
+  {tertiaryLabel}
+</button>
+)}
 
           </div>
 

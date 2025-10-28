@@ -14,7 +14,7 @@ export default function HomePage() {
   useEffect(() => {
     sanityClient
       .fetch(
-        `*[_type == "product" && active == true][0..4]{
+        `*[_type == "product" && active == true][0..5]{
           _id, title, unit, "imageUrl": image.asset->url, pricing
         }`
       )
@@ -74,7 +74,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8 justify-items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-8 justify-items-center">
           {products.map((p, i) => (
             <ProductCard key={p._id} product={p} index={i} />
           ))}
