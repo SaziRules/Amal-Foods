@@ -120,44 +120,45 @@ export default function HomePage() {
 
       {/* 📖 About CTA */}
       <section className="py-24 px-6 md:px-16 lg:px-24 bg-[#F4F4F4] text-[#111]">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <Image
-              src="/images/about.png"
-              alt="Amal story visual"
-              width={600}
-              height={500}
-              className="rounded-2xl shadow-xl object-cover"
-            />
-          </motion.div>
+  <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+    <motion.div
+      initial={{ opacity: 0, x: -40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.6 }}
+      viewport={{ once: true }}
+    >
+      <Image
+        src="/images/about.png"
+        alt="Amal story visual"
+        width={600}
+        height={500}
+        className="rounded-2xl shadow-xl object-cover"
+      />
+    </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-[#B80013] mb-4">
-              Our Story
-            </h2>
-            <p className="text-gray-800 leading-relaxed text-[15px] md:text-base">
-              From humble beginnings to homes across South Africa — Amal Foods is the story of taste,
-              tradition, and togetherness.
-            </p>
-            <a
-              href="/about"
-              className="mt-6 inline-block bg-[#B80013] text-white font-semibold rounded-full px-8 py-3 hover:bg-[#a20010] transition"
-            >
-              Learn More
-            </a>
-          </motion.div>
-        </div>
-      </section>
+    <motion.div
+      initial={{ opacity: 0, x: 40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.6 }}
+      viewport={{ once: true }}
+    >
+      <h2 className="text-3xl md:text-4xl font-bold text-[#B80013] mb-4">
+        Our Story
+      </h2>
+      <p className="text-gray-800 leading-relaxed text-[15px] md:text-base">
+        From humble beginnings to homes across South Africa — Amal Foods is the story of taste,
+        tradition, and togetherness. What began as a small family venture driven by a passion for
+        quality and authentic flavour has grown into a brand trusted by families, chefs, and
+        retailers alike. Every product we make carries the same promise we started with — to deliver
+        freshness, consistency, and that unmistakable Amal quality in every bite. <br /><br />
+        Today, our range continues to expand, but our values remain rooted in care, community, and
+        craft. From sourcing the finest ingredients to maintaining the highest production standards,
+        Amal Foods stands for reliability and excellence that you can taste. <br /><br />
+        </p>
+    </motion.div>
+  </div>
+</section>
+
 
       {/* ❤️ Red CTA Footer */}
       <section className="bg-[#B80013] text-white text-center py-20 px-6 md:px-16 lg:px-24">

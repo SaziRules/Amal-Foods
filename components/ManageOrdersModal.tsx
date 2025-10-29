@@ -130,60 +130,122 @@ export default function ManageOrdersModal({
     {} as Record<string, number>
   );
 
-  const generateOrderReport = (order: any, format: "pdf" | "xlsx") => {
-    if (!order) return;
-    const items = Array.isArray(order.items) ? order.items : [];
-    const data: { Item: string; Quantity: number; Price: string }[] = items.map(
-      (i: any) => ({
-        Item: i.title || i.name,
-        Quantity: i.quantity,
-        Price: `R${Number(i.price || 0).toFixed(2)}`,
-      })
+  const generateOrderReport = async (order: any, format: "pdf" | "xlsx") => {
+  if (!order) return;
+
+  const items = Array.isArray(order.items) ? order.items : [];
+  const filename = `AmalFoods_Order_${order.id.slice(0, 6)}_${new Date()
+    .toISOString()
+    .slice(0, 10)}.${format}`;
+
+  if (format === "pdf") {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // 🖼️ Add Amal logo (light version for white background PDF)
+    const logoUrl = "/images/logo-light.png";
+    const logo = await fetch(logoUrl)
+      .then((res) => res.blob())
+      .then((blob) => URL.createObjectURL(blob));
+
+    doc.addImage(logo, "PNG", pageWidth / 2 - 25, 10, 50, 20);
+
+    doc.setFontSize(16);
+    doc.text("INVOICE", pageWidth / 2, 40, { align: "center" });
+
+    // 🧾 Order Info
+    doc.setFontSize(10);
+    const infoLines = [
+      `Date: ${new Date(order.created_at).toLocaleDateString()}`,
+      `Order ID: ${order.id}`,
+      `Customer: ${order.customer_name || "—"}`,
+      `Cell: ${order.cell_number || order.phone_number || "—"}`,
+      `Email: ${order.email || "—"}`,
+      `Region: ${order.region || "—"}`,
+      `Branch: ${order.branch || "—"}`,
+      `Payment Method: ${order.payment_method || order.payment_status || "—"}`,
+    ];
+    infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
+
+    // 🧾 Table
+    const rows = items.map((i: any) => [
+      i.title,
+      i.quantity,
+      `R${Number(i.price).toFixed(2)}`,
+      `R${(i.price * i.quantity).toFixed(2)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: 55 + infoLines.length * 6 + 5,
+      head: [["Item", "Qty", "Price", "Subtotal"]],
+      body: rows,
+      theme: "grid",
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [184, 0, 19] },
+    });
+
+    const lastY = (doc as any).lastAutoTable?.finalY ?? 100;
+    doc.setFontSize(11);
+    doc.text(`Total: R${Number(order.total || 0).toFixed(2)}`, 14, lastY + 10);
+
+    // 🏦 Banking details
+    doc.setFontSize(10);
+    const bankY = lastY + 25;
+    doc.text("EFT Banking Details:", 14, bankY);
+    doc.text("Bank: Albaraka Bank", 14, bankY + 6);
+    doc.text("Account Name: Amal Holdings", 14, bankY + 12);
+    doc.text("Account Number: 78600236323", 14, bankY + 18);
+    doc.text("Reference: Your Full Name", 14, bankY + 24);
+    doc.text(
+      "Please send proof of payment to your nearest branch before collection.",
+      14,
+      bankY + 30
     );
 
-    const filename = `Order_${order.id.slice(0, 6)}_${new Date()
-      .toISOString()
-      .slice(0, 10)}.${format}`;
+    doc.save(filename);
+  } else {
+    // 🧮 XLSX Report (mirror fields)
+        type OrderRow = {
+          Item: string;
+          Quantity: number;
+          Price: string;
+          Subtotal: string;
+        };
+    
+        const rows: OrderRow[] = items.map((i: any) => ({
+          Item: i.title || i.name || "—",
+          Quantity: Number(i.quantity) || 0,
+          Price: `R${Number(i.price || 0).toFixed(2)}`,
+          Subtotal: `R${(Number(i.price || 0) * (Number(i.quantity) || 0)).toFixed(2)}`,
+        }));
+    
+        const meta = [
+          ["Order ID", order.id],
+          ["Customer", order.customer_name || "—"],
+          ["Cell", order.cell_number || order.phone_number || "—"],
+          ["Email", order.email || "—"],
+          ["Region", order.region || "—"],
+          ["Branch", order.branch || "—"],
+          ["Payment Method", order.payment_method || order.payment_status || "—"],
+          ["Total", `R${Number(order.total || 0).toFixed(2)}`],
+          [],
+        ];
+    
+        const ws = XLSX.utils.aoa_to_sheet([
+          ["Amal Foods — Order Summary"],
+          [],
+          ...meta,
+          [],
+          ["Item", "Quantity", "Price", "Subtotal"],
+          ...rows.map((r: OrderRow) => Object.values(r)),
+        ]);
 
-    if (format === "pdf") {
-      const doc = new jsPDF();
-      doc.setFontSize(14);
-      doc.text(`Order Summary — ${order.customer_name || "Customer"}`, 14, 15);
-      doc.setFontSize(10);
-      doc.text(`Order ID: ${order.id}`, 14, 22);
-      doc.text(`Cell: ${order.cell_number || "—"}`, 14, 28);
-      doc.text(`Region: ${order.region || "—"}`, 14, 34);
-      doc.text(`Status: ${order.status}`, 14, 40);
-      doc.text(
-        `Payment: ${order.payment_status || order.status}`,
-        14,
-        46
-      );
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Order");
+    XLSX.writeFile(wb, filename);
+  }
+};
 
-      autoTable(doc, {
-        startY: 55,
-        head: [["Item", "Qty", "Price"]],
-        body: data.map((d) => Object.values(d)),
-        styles: { fontSize: 9 },
-        headStyles: { fillColor: [184, 0, 19] },
-      });
-
-      // lastAutoTable is added by jspdf-autotable at runtime but not typed on jsPDF,
-      // so cast to any and provide a safe fallback.
-      const lastTableFinalY = (doc as any).lastAutoTable?.finalY ?? 55;
-      doc.text(
-        `Total: R${Number(order.total || 0).toFixed(2)}`,
-        14,
-        lastTableFinalY + 10
-      );
-      doc.save(filename);
-    } else {
-      const ws = XLSX.utils.json_to_sheet(data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Order");
-      XLSX.writeFile(wb, filename);
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center">

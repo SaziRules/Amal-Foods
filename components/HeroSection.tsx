@@ -34,10 +34,12 @@ export default function HeroSection({
   ];
 
   return (
-    <section className="relative flex flex-col md:flex-row h-auto md:h-[650px] overflow-hidden bg-[#1a1a1a] text-white">
+    <section
+      className="relative flex flex-col md:flex-row h-[100dvh] md:h-[650px] overflow-hidden bg-[#1a1a1a] text-white pt-[var(--navbar-offset,96px)]"
+    >
       {/* LEFT CONTENT */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-10 md:px-16 lg:px-24 py-16 md:py-0 text-center md:text-left">
-        <div className="max-w-[600px] w-full flex flex-col items-center md:items-start">
+        <div className="max-w-[600px] w-full flex flex-col items-center md:items-start mt-4 md:mt-0">
           {/* HEADING */}
           <h1
             className="uppercase font-extrabold leading-[1.1]"
@@ -52,9 +54,9 @@ export default function HeroSection({
             <span className="text-[#B80013] block">{highlight}</span>
           </h1>
 
-          {/* SUBTITLE — left-aligned to CRUNCH on desktop, centered on mobile */}
+          {/* SUBTITLE */}
           <p
-            className="uppercase text-white/90 font-bold  text-[0.85rem] sm:text-[0.9rem] text-center md:text-left md:pl-[8px] tracking-[3px]"
+            className="uppercase text-white/90 font-bold text-[0.85rem] sm:text-[0.9rem] text-center md:text-left md:pl-[8px] tracking-[3px]"
             style={{
               fontFamily: "var(--font-roboto)",
               lineHeight: "35px",
@@ -67,43 +69,42 @@ export default function HeroSection({
           {/* BUTTONS */}
           <div className="flex gap-4 mt-10 flex-wrap justify-center md:justify-start">
             <button
-  onClick={onPrimaryClick}
-  className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
-    activeRegion === "durban"
-      ? "bg-[#B80013] text-white"
-      : "bg-white text-[#1a1a1a] hover:bg-gray-100"
-  }`}
->
-  {primaryLabel}
-</button>
+              onClick={onPrimaryClick}
+              className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
+                activeRegion === "durban"
+                  ? "bg-[#B80013] text-white"
+                  : "bg-white text-[#1a1a1a] hover:bg-gray-100"
+              }`}
+            >
+              {primaryLabel}
+            </button>
 
-<button
-  onClick={onSecondaryClick}
-  className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
-    activeRegion === "joburg"
-      ? "bg-[#B80013] text-white"
-      : "bg-white text-[#1a1a1a] hover:bg-gray-100"
-  }`}
->
-  {secondaryLabel}
-</button>
+            <button
+              onClick={onSecondaryClick}
+              className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
+                activeRegion === "joburg"
+                  ? "bg-[#B80013] text-white"
+                  : "bg-white text-[#1a1a1a] hover:bg-gray-100"
+              }`}
+            >
+              {secondaryLabel}
+            </button>
 
-{tertiaryLabel && onTertiaryClick && (
-<button
-  onClick={onTertiaryClick}
-  className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
-    activeRegion === "capetown"
-      ? "bg-[#B80013] text-white"
-      : "bg-white text-[#1a1a1a] hover:bg-gray-100"
-  }`}
->
-  {tertiaryLabel}
-</button>
-)}
-
+            {tertiaryLabel && onTertiaryClick && (
+              <button
+                onClick={onTertiaryClick}
+                className={`px-8 py-3 md:px-10 md:py-3.5 rounded-full text-sm md:text-base font-bold uppercase tracking-wide transition-all ${
+                  activeRegion === "capetown"
+                    ? "bg-[#B80013] text-white"
+                    : "bg-white text-[#1a1a1a] hover:bg-gray-100"
+                }`}
+              >
+                {tertiaryLabel}
+              </button>
+            )}
           </div>
 
-          {/* MOBILE IMAGES (3-col grid below buttons) */}
+          {/* MOBILE IMAGES */}
           <div className="grid grid-cols-3 gap-[6px] mt-10 w-full md:hidden">
             {images.map((src, i) => (
               <div key={i} className="relative aspect-square rounded-[6px] overflow-hidden">
@@ -122,9 +123,9 @@ export default function HeroSection({
       </div>
 
       {/* DESKTOP IMAGE STRIP */}
-      <div className="hidden md:grid flex-[1.5] grid-cols-3 gap-[4px] h-auto">
+      <div className="hidden md:grid flex-[1.5] grid-cols-3 gap-[4px] h-full">
         {images.map((src, i) => (
-          <div key={i} className="relative h-full overflow-hidden group">
+          <div key={i} className="relative overflow-hidden group">
             <Image
               src={src}
               alt={`Hero image ${i + 1}`}
