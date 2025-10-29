@@ -31,10 +31,10 @@ export default function ContactPage() {
   const branches = [
     {
       title: "Durban Branch",
-      address: "1277 Umgeni Rd, Stamford Hill, Durban, 4025",
+      address: "1271 Umgeni Rd, Stamford Hill, Durban, 4025",
       phone: "031 303 7786",
       email: "info@aminasfoods.co.za",
-      mapUrl: "https://maps.google.com/?q=1277+Umgeni+Rd,+Stamford+Hill,+Durban,+4025",
+      mapUrl: "https://maps.google.com/?q=1271+Umgeni+Rd,+Stamford+Hill,+Durban,+4025",
     },
     {
       title: "Johannesburg Branch",
@@ -77,59 +77,56 @@ export default function ContactPage() {
       />
 
       {/* 📍 CONTACT DETAILS */}
-      <section className="py-24 px-6 md:px-16 lg:px-24 bg-[#f4f4f4] text-[#111]">
-        <h2 className="max-w-7xl mx-auto text-3xl md:text-4xl font-bold text-left mb-12 text-[#B80013]">
-          Pickup Locations & Contact Information
-        </h2>
+<section className="py-24 px-6 md:px-16 lg:px-24 bg-[#f4f4f4] text-[#111]">
+  <h2 className="max-w-7xl mx-auto text-3xl md:text-4xl font-bold text-center mb-16 text-[#B80013]">
+    Pickup Location & Contact Information
+  </h2>
 
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10">
-          {branches.map((branch, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: i * 0.1 }}
-              viewport={{ once: true }}
-              className="bg-[#1a1a1a] text-white rounded-2xl shadow-xl border border-white/10 p-8 flex flex-col md:flex-row items-start md:items-center gap-6 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#B80013]/10 transition-all duration-300"
-            >
-              <div className="flex flex-col items-center">
-                <div className="bg-[#B80013] w-16 h-16 rounded-full flex items-center justify-center mb-2">
-                  <MapPin size={28} color="white" />
-                </div>
-                <div className="hidden md:block h-16 w-[1px] bg-white/20" />
-              </div>
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.6 }}
+    viewport={{ once: true }}
+    className="max-w-3xl mx-auto bg-[#1a1a1a] text-white rounded-2xl shadow-xl border border-white/10 p-10 flex flex-col md:flex-row items-start md:items-center gap-8 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#B80013]/10 transition-all duration-300"
+  >
+    <div className="flex flex-col items-center">
+      <div className="bg-[#B80013] w-20 h-20 rounded-full flex items-center justify-center mb-2">
+        <MapPin size={32} color="white" />
+      </div>
+    </div>
 
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold">{branch.title}</h3>
-                <p className="text-sm text-gray-200 mt-1">{branch.address}</p>
-                <p className="text-sm text-gray-200 flex items-center gap-2 mt-2">
-                  <Phone size={16} /> {branch.phone}
-                </p>
-                <p className="text-sm text-gray-200 flex items-center gap-2 mt-1">
-                  <Mail size={16} /> {branch.email}
-                </p>
+    <div className="flex-1 text-center md:text-left">
+      <h3 className="text-2xl font-semibold mb-2">Durban Branch</h3>
+      <p className="text-sm text-gray-200">
+        1277 Umgeni Rd, Stamford Hill, Durban, 4025
+      </p>
+      <p className="text-sm text-gray-200 flex justify-center md:justify-start items-center gap-2 mt-3">
+        <Phone size={16} /> 031 303 7786
+      </p>
+      <p className="text-sm text-gray-200 flex justify-center md:justify-start items-center gap-2 mt-1">
+        <Mail size={16} /> info@aminasfoods.co.za
+      </p>
 
-                <div className="flex gap-3 mt-5 flex-wrap">
-                  <a
-                    href={branch.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-[#B80013] text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-[#a00010] transition"
-                  >
-                    Open in Google Maps
-                  </a>
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="border border-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-white hover:text-[#111] transition"
-                  >
-                    Get In Touch
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
+      <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-4 mt-8">
+        <a
+          href="https://maps.google.com/?q=1277+Umgeni+Rd,+Stamford+Hill,+Durban,+4025"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-[#B80013] text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-[#a00010] transition"
+        >
+          Open in Google Maps
+        </a>
+        <button
+          onClick={() => setShowModal(true)}
+          className="border border-white px-6 py-3 rounded-full text-sm font-medium hover:bg-white hover:text-[#111] transition"
+        >
+          Get In Touch
+        </button>
+      </div>
+    </div>
+  </motion.div>
+</section>
+
 
       {/* 🌐 SOCIAL MEDIA SECTION */}
       <section className="bg-[#111] py-16 border-t border-white/10 text-center">
@@ -155,56 +152,7 @@ export default function ContactPage() {
       </section>
 
       {/* ❓ FAQ SECTION */}
-      <section className="py-20 px-6 md:px-16 lg:px-24 bg-[#f4f4f4] text-[#111]">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-center text-[#B80013] mb-12">
-            Frequently Asked Questions
-          </h2>
-
-          <div className="space-y-6">
-            {faqs.map((faq, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden"
-              >
-                <button
-                  onClick={() => setOpenFAQ(openFAQ === i ? null : i)}
-                  className="w-full text-left px-6 py-5 flex justify-between items-center hover:bg-gray-50 transition"
-                >
-                  <span
-                    className={`font-semibold text-base md:text-lg ${
-                      openFAQ === i ? "text-[#B80013]" : "text-[#111]"
-                    }`}
-                  >
-                    {faq.q}
-                  </span>
-                  <span
-                    className={`transition-transform duration-300 ${
-                      openFAQ === i ? "rotate-45 text-[#B80013]" : "rotate-0"
-                    } text-xl`}
-                  >
-                    +
-                  </span>
-                </button>
-
-                <AnimatePresence>
-                  {openFAQ === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="px-6 pb-5 text-gray-700 text-sm md:text-base leading-relaxed bg-gray-50"
-                    >
-                      {faq.a}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      
 
       {/* 💌 CONTACT MODAL */}
       <AnimatePresence>

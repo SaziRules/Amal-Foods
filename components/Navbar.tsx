@@ -415,9 +415,7 @@ const getDashboardRoute = () => {
           <nav className="min-w-[190px] rounded-xl bg-[#111] text-white border border-white/10 shadow-xl px-6 py-4">
             {[
               { href: "/", label: "Home" },
-              { href: "/about", label: "About" },
               { href: "/products", label: "Products" },
-              { href: "/seasons", label: "Seasons" },
               { href: "/contact", label: "Contact" },
             ].map((l) => (
               <Link

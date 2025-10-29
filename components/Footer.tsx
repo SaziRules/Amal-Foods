@@ -36,18 +36,8 @@ export default function Footer() {
               </Link>
             </li>
             <li>
-              <Link href="/about" className="hover:text-[#B80013] transition">
-                About Us
-              </Link>
-            </li>
-            <li>
               <Link href="/contact" className="hover:text-[#B80013] transition">
                 Contact
-              </Link>
-            </li>
-            <li>
-              <Link href="/faq" className="hover:text-[#B80013] transition">
-                FAQs
               </Link>
             </li>
           </ul>
@@ -64,7 +54,7 @@ export default function Footer() {
               <Mail size={16} /> <span>info@amalfoods.co.za</span>
             </li>
             <li className="flex items-center gap-2">
-              <MapPin size={16} /> <span>1277 Umgeni Rd, Stamford Hill, Durban, 4025</span>
+              <MapPin size={16} /> <span>1271 Umgeni Rd, Stamford Hill, Durban, 4025</span>
             </li>
           </ul>
         </div>
@@ -81,7 +71,7 @@ export default function Footer() {
               <Facebook size={18} />
             </a>
             <a
-              href="https://instagram.com"
+              href="https://www.instagram.com/amalfoods_?igsh=ZG50eW9odzJvcWly"
               target="_blank"
               className="bg-[#B80013]/10 hover:bg-[#B80013] text-[#B80013] hover:text-white w-10 h-10 rounded-full flex items-center justify-center transition"
             >

@@ -2,18 +2,32 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { X, Search, ChevronDown } from "lucide-react";
+import {
+  X,
+  Search,
+  ChevronDown,
+  FileDown,
+  FileSpreadsheet,
+} from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 interface ManageOrdersModalProps {
   branch: string | null;
   onClose: () => void;
 }
 
-export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModalProps) {
+export default function ManageOrdersModal({
+  branch,
+  onClose,
+}: ManageOrdersModalProps) {
   const [orders, setOrders] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [dateFilter, setDateFilter] = useState<"today" | "week" | "month" | "lastMonth" | "all">("today");
+  const [dateFilter, setDateFilter] = useState<
+    "today" | "week" | "month" | "lastMonth" | "all"
+  >("today");
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
 
   useEffect(() => {
@@ -33,46 +47,67 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
   };
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
-    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", id);
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", id);
     if (error) {
       alert("Failed to update status: " + error.message);
     } else {
-      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o)));
+      setOrders((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
+      );
     }
   };
 
-  /* ───────────── Date Filter Logic ───────────── */
+  const handleUpdatePaymentStatus = async (
+    id: string,
+    newPaymentStatus: string
+  ) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ payment_status: newPaymentStatus })
+      .eq("id", id);
+
+    if (error) {
+      alert("Failed to update payment status: " + error.message);
+    } else {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === id ? { ...o, payment_status: newPaymentStatus } : o
+        )
+      );
+    }
+  };
+
   const applyDateFilter = (orders: any[]) => {
     if (dateFilter === "all") return orders;
-
     const now = new Date();
+
     return orders.filter((o) => {
       const orderDate = new Date(o.created_at);
       const sameDay = orderDate.toDateString() === now.toDateString();
 
       if (dateFilter === "today") return sameDay;
-
       if (dateFilter === "week") {
         const weekAgo = new Date();
         weekAgo.setDate(now.getDate() - 7);
         return orderDate >= weekAgo && orderDate <= now;
       }
-
-      if (dateFilter === "month") {
-        return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-      }
-
+      if (dateFilter === "month")
+        return (
+          orderDate.getMonth() === now.getMonth() &&
+          orderDate.getFullYear() === now.getFullYear()
+        );
       if (dateFilter === "lastMonth") {
         const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const monthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
         return orderDate >= lastMonth && orderDate <= monthEnd;
       }
-
       return true;
     });
   };
 
-  /* ───────────── Combined Filters ───────────── */
   const filteredOrders = applyDateFilter(
     orders.filter((o) => {
       const q = search.toLowerCase();
@@ -80,7 +115,6 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
         o.customer_name?.toLowerCase().includes(q) ||
         o.id?.toLowerCase().includes(q) ||
         o.created_at?.toLowerCase().includes(q);
-
       const matchesStatus = statusFilter === "all" || o.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
@@ -88,14 +122,68 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
 
   const totalOrders = filteredOrders.length;
 
-  /* ───────────── Status Counts ───────────── */
-  const statusCounts = ["pending", "packed", "collected", "cancelled", "paid", "unpaid"].reduce(
+  const statusCounts = ["pending", "packed", "collected", "cancelled"].reduce(
     (acc, s) => {
       acc[s] = orders.filter((o) => o.status === s).length;
       return acc;
     },
     {} as Record<string, number>
   );
+
+  const generateOrderReport = (order: any, format: "pdf" | "xlsx") => {
+    if (!order) return;
+    const items = Array.isArray(order.items) ? order.items : [];
+    const data: { Item: string; Quantity: number; Price: string }[] = items.map(
+      (i: any) => ({
+        Item: i.title || i.name,
+        Quantity: i.quantity,
+        Price: `R${Number(i.price || 0).toFixed(2)}`,
+      })
+    );
+
+    const filename = `Order_${order.id.slice(0, 6)}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.${format}`;
+
+    if (format === "pdf") {
+      const doc = new jsPDF();
+      doc.setFontSize(14);
+      doc.text(`Order Summary — ${order.customer_name || "Customer"}`, 14, 15);
+      doc.setFontSize(10);
+      doc.text(`Order ID: ${order.id}`, 14, 22);
+      doc.text(`Cell: ${order.cell_number || "—"}`, 14, 28);
+      doc.text(`Region: ${order.region || "—"}`, 14, 34);
+      doc.text(`Status: ${order.status}`, 14, 40);
+      doc.text(
+        `Payment: ${order.payment_status || order.status}`,
+        14,
+        46
+      );
+
+      autoTable(doc, {
+        startY: 55,
+        head: [["Item", "Qty", "Price"]],
+        body: data.map((d) => Object.values(d)),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [184, 0, 19] },
+      });
+
+      // lastAutoTable is added by jspdf-autotable at runtime but not typed on jsPDF,
+      // so cast to any and provide a safe fallback.
+      const lastTableFinalY = (doc as any).lastAutoTable?.finalY ?? 55;
+      doc.text(
+        `Total: R${Number(order.total || 0).toFixed(2)}`,
+        14,
+        lastTableFinalY + 10
+      );
+      doc.save(filename);
+    } else {
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Order");
+      XLSX.writeFile(wb, filename);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex justify-center items-center">
@@ -112,7 +200,6 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
 
         {/* Search + Filters */}
         <div className="p-4 flex flex-col gap-4 bg-[#0b0b0b]/40">
-          {/* Search Bar */}
           <div className="flex items-center gap-3 w-full">
             <Search size={18} className="text-gray-400" />
             <input
@@ -124,7 +211,6 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
             />
           </div>
 
-          {/* Date Filter Buttons */}
           <div className="flex flex-wrap gap-2 justify-center md:justify-start">
             {[
               { key: "today", label: "Today" },
@@ -147,9 +233,8 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
             ))}
           </div>
 
-          {/* Status Filter Buttons */}
           <div className="flex flex-wrap gap-2 justify-center md:justify-start border-t border-white/10 pt-3">
-            {["all", "pending", "packed", "collected", "cancelled", "paid", "unpaid"].map((s) => (
+            {["all", "pending", "packed", "collected", "cancelled"].map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -161,13 +246,14 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
               >
                 {s === "all"
                   ? `All (${orders.length})`
-                  : `${s.charAt(0).toUpperCase() + s.slice(1)} (${statusCounts[s] || 0})`}
+                  : `${s.charAt(0).toUpperCase() + s.slice(1)} (${
+                      statusCounts[s] || 0
+                    })`}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Total Orders Count */}
         <div className="text-center py-2 text-sm text-gray-400 bg-black/30 border-t border-white/10">
           Showing <span className="text-[#B80013] font-semibold">{totalOrders}</span> orders
         </div>
@@ -184,22 +270,35 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
                 key={order.id}
                 className="bg-white/5 p-4 rounded-2xl border border-white/10 hover:bg-white/10 transition"
               >
+                {/* TOP: ID + Status + Payment */}
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[#B80013] font-semibold text-sm">
                     #{order.id.slice(0, 6)}
                   </span>
-                  <StatusBadge status={order.status} />
+                  <div className="flex gap-2">
+                    <StatusBadge status={order.status} />
+                    <PaymentBadge paid={order.payment_status === "paid"} />
+                  </div>
                 </div>
+
+                {/* BASIC INFO */}
                 <p className="text-gray-300 text-sm">
-                  <strong>Customer:</strong> {order.customer_name}
+                  <strong>Customer:</strong> {order.customer_name || "N/A"}
+                </p>
+                <p className="text-gray-300 text-sm">
+                  <strong>Cell:</strong> {order.cell_number || "—"}
+                </p>
+                <p className="text-gray-300 text-sm">
+                  <strong>Region:</strong> {order.region || "—"}
                 </p>
                 <p className="text-gray-400 text-sm">
-                  <strong>Total:</strong> R{order.total.toFixed(2)}
+                  <strong>Total:</strong> R{Number(order.total || 0).toFixed(2)}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   {new Date(order.created_at).toLocaleDateString()}
                 </p>
 
+                {/* ITEMS */}
                 <details className="mt-3 bg-white/5 rounded-lg p-2">
                   <summary className="text-xs text-gray-400 flex items-center justify-between cursor-pointer">
                     View Items <ChevronDown size={14} />
@@ -217,24 +316,49 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
                   </ul>
                 </details>
 
-                {/* Status Update Buttons */}
-                <div className="mt-3">
-                  <p className="text-xs text-gray-400 mb-1">Update Status:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {["pending", "packed", "collected", "cancelled", "paid", "unpaid"].map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => handleUpdateStatus(order.id, s)}
-                        className={`text-xs px-2 py-1.5 rounded-lg transition-all ${
-                          s === order.status
-                            ? "bg-[#B80013] text-white"
-                            : "bg-white/10 text-gray-300 hover:bg-white/20"
-                        }`}
-                      >
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+                {/* BUTTON ROWS */}
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {["pending", "packed", "collected", "cancelled"].map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => handleUpdateStatus(order.id, s)}
+                      className={`text-xs px-2 py-1.5 rounded-lg transition-all ${
+                        s === order.status
+                          ? "bg-[#B80013] text-white"
+                          : "bg-white/10 text-gray-300 hover:bg-white/20"
+                      }`}
+                    >
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-2 flex flex-wrap gap-2 items-center">
+                  {["paid", "unpaid"].map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => handleUpdatePaymentStatus(order.id, p)}
+                      className={`text-xs px-2 py-1.5 rounded-lg transition-all ${
+                        order.payment_status === p
+                          ? "bg-[#B80013] text-white"
+                          : "bg-white/10 text-gray-300 hover:bg-white/20"
+                      }`}
+                    >
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => generateOrderReport(order, "pdf")}
+                    className="text-xs px-2 py-1.5 bg-white/10 rounded-lg hover:bg-white/20 text-gray-300 flex items-center gap-1"
+                  >
+                    <FileDown size={12} /> PDF
+                  </button>
+                  <button
+                    onClick={() => generateOrderReport(order, "xlsx")}
+                    className="text-xs px-2 py-1.5 bg-white/10 rounded-lg hover:bg-white/20 text-gray-300 flex items-center gap-1"
+                  >
+                    <FileSpreadsheet size={12} /> XLSX
+                  </button>
                 </div>
               </div>
             ))
@@ -248,14 +372,11 @@ export default function ManageOrdersModal({ branch, onClose }: ManageOrdersModal
 /* ───────────── Status Badge ───────────── */
 function StatusBadge({ status }: { status: string }) {
   const colorMap: Record<string, string> = {
-    paid: "bg-green-700/50 text-green-300",
-    unpaid: "bg-orange-700/50 text-orange-300",
     pending: "bg-yellow-700/50 text-yellow-300",
     packed: "bg-blue-700/50 text-blue-300",
     collected: "bg-teal-700/50 text-teal-300",
     cancelled: "bg-red-700/50 text-red-300",
   };
-
   return (
     <span
       className={`text-xs px-2 py-1 rounded-full capitalize ${
@@ -263,6 +384,19 @@ function StatusBadge({ status }: { status: string }) {
       }`}
     >
       {status}
+    </span>
+  );
+}
+
+/* ───────────── Payment Badge ───────────── */
+function PaymentBadge({ paid }: { paid: boolean }) {
+  return (
+    <span
+      className={`text-xs px-2 py-1 rounded-full capitalize ${
+        paid ? "bg-green-700/50 text-green-300" : "bg-orange-700/50 text-orange-300"
+      }`}
+    >
+      {paid ? "Paid" : "Unpaid"}
     </span>
   );
 }

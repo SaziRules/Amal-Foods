@@ -29,11 +29,13 @@ export const product = defineType({
         list: [
           { title: "Samoosas", value: "samoosas" },
           { title: "Spring Rolls", value: "spring-rolls" },
-          { title: "Pastries & Pies", value: "pastries" },
-          { title: "Roti & Paratha", value: "roti" },
-          { title: "Snacks", value: "snacks" },
-          { title: "Desserts", value: "desserts" },
-          { title: "Other", value: "other" },
+          { title: "Pies", value: "pies" },
+          { title: "Rockets & Pillows", value: "rockets-and-pillows" },
+          { title: "Ready To Heat", value: "ready-to-heat" },
+          { title: "Frozen Meals", value: "frozen-meals" },
+          { title: "Parathas", value: "parathas" },
+          { title: "Vegetarian", value: "vegetarian" },
+          { title: "Vegan", value: "vegan" },
         ],
         layout: "dropdown",
       },
@@ -138,7 +140,8 @@ export const product = defineType({
       options: {
         list: [
           { title: "New", value: "new" },
-          { title: "Best Seller", value: "bestseller" },
+          { title: "Crumbed", value: "crumbed" },
+          { title: "Ready To Heat", value: "ready-to-heat" },
           { title: "Limited Edition", value: "limited" },
           { title: "Seasonal", value: "seasonal" },
         ],
