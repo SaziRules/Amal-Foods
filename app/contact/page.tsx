@@ -31,10 +31,10 @@ export default function ContactPage() {
   const branches = [
     {
       title: "Durban Branch",
-      address: "1271 Umgeni Rd, Stamford Hill, Durban, 4025",
+      address: "1271 Umgeni Rd, Umgeni, Durban, 4001",
       phone: "031 303 7786",
       email: "info@aminasfoods.co.za",
-      mapUrl: "https://maps.google.com/?q=1271+Umgeni+Rd,+Stamford+Hill,+Durban,+4025",
+      mapUrl: "https://maps.google.com/?q=1271+Umgeni+Rd,+Umgeni,+Durban,+4001",
     },
     {
       title: "Johannesburg Branch",
@@ -98,7 +98,7 @@ export default function ContactPage() {
     <div className="flex-1 text-center md:text-left">
       <h3 className="text-2xl font-semibold mb-2">Durban Branch</h3>
       <p className="text-sm text-gray-200">
-        1277 Umgeni Rd, Stamford Hill, Durban, 4025
+        1271 Umgeni Rd, Umgeni, Durban, 4001
       </p>
       <p className="text-sm text-gray-200 flex justify-center md:justify-start items-center gap-2 mt-3">
         <Phone size={16} /> 031 303 7786
