@@ -31,20 +31,37 @@ export default function ManageOrdersModal({
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
 
   useEffect(() => {
-    if (!branch) return;
-    fetchOrders();
-  }, [branch]);
+  // Always fetch — admin passes null to load all branches
+  fetchOrders();
+}, [branch]);
+
 
   const fetchOrders = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
+  setLoading(true);
+
+  try {
+    let query = supabase
       .from("orders")
       .select("*")
-      .eq("branch", branch)
       .order("created_at", { ascending: false });
-    if (!error && data) setOrders(data);
+
+    // 🧠 Only filter by branch if one is provided
+    if (branch) {
+      query = query.eq("branch", branch);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    setOrders(data || []);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    setOrders([]);
+  } finally {
     setLoading(false);
-  };
+  }
+};
+
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     const { error } = await supabase
@@ -109,16 +126,21 @@ export default function ManageOrdersModal({
   };
 
   const filteredOrders = applyDateFilter(
-    orders.filter((o) => {
-      const q = search.toLowerCase();
-      const matchesSearch =
-        o.customer_name?.toLowerCase().includes(q) ||
-        o.id?.toLowerCase().includes(q) ||
-        o.created_at?.toLowerCase().includes(q);
-      const matchesStatus = statusFilter === "all" || o.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-  );
+  orders.filter((o) => {
+    const q = search.toLowerCase();
+
+    const matchesSearch =
+      o.customer_name?.toLowerCase().includes(q) ||
+      o.order_number?.toLowerCase().includes(q) || // ✅ new friendly order number
+      o.id?.toLowerCase().includes(q) || // still supports old UUID searches
+      o.created_at?.toLowerCase().includes(q);
+
+    const matchesStatus = statusFilter === "all" || o.status === statusFilter;
+
+    return matchesSearch && matchesStatus;
+  })
+);
+
 
   const totalOrders = filteredOrders.length;
 
@@ -134,7 +156,8 @@ export default function ManageOrdersModal({
   if (!order) return;
 
   const items = Array.isArray(order.items) ? order.items : [];
-  const filename = `AmalFoods_Order_${order.id.slice(0, 6)}_${new Date()
+  const filename = `AmalFoods_${order.order_number || order.id}_${new Date()
+
     .toISOString()
     .slice(0, 10)}.${format}`;
 
@@ -157,7 +180,7 @@ export default function ManageOrdersModal({
     doc.setFontSize(10);
     const infoLines = [
       `Date: ${new Date(order.created_at).toLocaleDateString()}`,
-      `Order ID: ${order.id}`,
+      `Order Number: ${order.order_number || order.id}`,
       `Customer: ${order.customer_name || "—"}`,
       `Cell: ${order.cell_number || order.phone_number || "—"}`,
       `Email: ${order.email || "—"}`,
@@ -220,7 +243,8 @@ export default function ManageOrdersModal({
         }));
     
         const meta = [
-          ["Order ID", order.id],
+          ["Order Number", order.order_number || order.id],
+          ["Date", new Date(order.created_at).toLocaleDateString()],
           ["Customer", order.customer_name || "—"],
           ["Cell", order.cell_number || order.phone_number || "—"],
           ["Email", order.email || "—"],
@@ -253,7 +277,7 @@ export default function ManageOrdersModal({
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-white/10 bg-[#0b0b0b]/60">
           <h2 className="text-xl font-semibold text-[#B80013]">
-            Manage / Process Orders — {branch}
+            Manage / Process Orders — {branch || "All Branches"}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X size={22} />
@@ -335,8 +359,9 @@ export default function ManageOrdersModal({
                 {/* TOP: ID + Status + Payment */}
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-[#B80013] font-semibold text-sm">
-                    #{order.id.slice(0, 6)}
-                  </span>
+  {order.order_number || `#${order.id.slice(0, 6)}`}
+</span>
+
                   <div className="flex gap-2">
                     <StatusBadge status={order.status} />
                     <PaymentBadge paid={order.payment_status === "paid"} />

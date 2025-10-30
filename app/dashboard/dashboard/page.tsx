@@ -134,60 +134,215 @@ export default function ManagerDashboard() {
   };
 
   /* ───────────── Generate PDF / Excel ───────────── */
-  const generatePDFReport = () => {
-    const summary = summarizeItems();
-    if (!Object.keys(summary).length) return alert("No active items to report.");
+ const generatePDFReport = () => {
+  if (!orders.length) return alert("No orders available to report.");
 
-    const doc = new jsPDF();
-    doc.setFontSize(14);
-    doc.text(`Prep Report — ${branch || "Branch"}`, 14, 15);
-    doc.setFontSize(10);
-    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, 22);
+  const doc = new jsPDF("p", "mm", "a4"); // Portrait layout
+  let y = 15;
 
-    const tableData = Object.entries(summary).map(([name, s]) => [
-      name,
-      s.totalQty,
-      s.orders,
-      Object.entries(s.statusBreakdown)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(", "),
+  doc.setFontSize(14);
+  doc.text(`Prep Report — ${branch || "Branch"}`, 14, y);
+  y += 6;
+  doc.setFontSize(10);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, y);
+  y += 10;
+
+  // 🔍 Collect all unique item names (for totals only)
+  const allItems = new Set<string>();
+  orders.forEach((order) => {
+    parseItems(order.items).forEach((item: any) => {
+      allItems.add(item.title || item.name || "Unnamed");
+    });
+  });
+  const itemList = Array.from(allItems);
+
+  // 🧮 Totals
+  const totals: Record<string, number> = {};
+  let totalValue = 0;
+  let paidCount = 0;
+  let unpaidCount = 0;
+  const statusCount: Record<string, number> = {};
+
+  // 🧾 Iterate orders as mini-tables
+  orders.forEach((order, index) => {
+    const items = parseItems(order.items);
+    const rowData = items.map((i: any) => [
+      i.title || i.name || "Unnamed",
+      i.quantity || 0,
+      `R${Number(i.price || 0).toFixed(2)}`,
+      `R${(Number(i.price || 0) * Number(i.quantity || 0)).toFixed(2)}`,
     ]);
 
-    autoTable(doc, {
-      startY: 30,
-      head: [["Product", "Total Units", "Orders", "Status Breakdown"]],
-      body: tableData,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [184, 0, 19] },
-      alternateRowStyles: { fillColor: [30, 30, 30] },
-      tableLineColor: [80, 80, 80],
-      tableLineWidth: 0.1,
+    // Totals collection
+    totalValue += Number(order.total || 0);
+    if (order.payment_status === "paid") paidCount++;
+    if (order.payment_status === "unpaid") unpaidCount++;
+    statusCount[order.status] = (statusCount[order.status] || 0) + 1;
+    items.forEach((i: any) => {
+      const name = i.title || i.name || "Unnamed";
+      totals[name] = (totals[name] || 0) + Number(i.quantity || 0);
     });
 
-    doc.save(`Prep_Report_${branch || "Branch"}_${new Date().toISOString().slice(0, 10)}.pdf`);
-  };
+    // 📦 Page break logic
+    if (y > 250) {
+      doc.addPage();
+      y = 15;
+    }
+
+    // Header for this order
+    doc.setFontSize(11);
+    doc.setTextColor(184, 0, 19);
+    doc.text(`Order ${index + 1}: ${order.order_number || order.id}`, 14, y);
+    doc.setTextColor(0);
+    y += 5;
+    doc.setFontSize(9);
+    doc.text(`Customer: ${order.customer_name || "—"}`, 14, y);
+    doc.text(`Cell: ${order.cell_number || order.phone_number || "—"}`, 80, y);
+    doc.text(`Status: ${order.status || "—"}`, 140, y);
+    y += 5;
+    doc.text(`Payment: ${order.payment_status || "—"}`, 14, y);
+    doc.text(`Total: R${Number(order.total || 0).toFixed(2)}`, 80, y);
+    y += 6;
+
+    // 🧾 Items mini-table
+    autoTable(doc, {
+      startY: y,
+      head: [["Item", "Qty", "Price", "Subtotal"]],
+      body: rowData,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [184, 0, 19], textColor: 255 },
+      theme: "grid",
+      margin: { left: 14 },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 8;
+  });
+
+  // 🧾 Final Totals Summary
+  doc.addPage();
+  doc.setFontSize(13);
+  doc.setTextColor(184, 0, 19);
+  doc.text("Summary Totals", 14, 20);
+  doc.setTextColor(0);
+  doc.setFontSize(9);
+
+  // Totals table
+  const totalsTable = Object.entries(totals).map(([name, qty]) => [name, qty]);
+  autoTable(doc, {
+    startY: 28,
+    head: [["Product", "Total Quantity"]],
+    body: totalsTable,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [184, 0, 19], textColor: 255 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    margin: { left: 14 },
+  });
+
+  // 📊 Grand totals footer
+  let footerY = (doc as any).lastAutoTable.finalY + 10;
+  doc.setFontSize(10);
+  doc.text(`Total Order Value: R${totalValue.toFixed(2)}`, 14, footerY);
+  footerY += 5;
+  doc.text(
+    `Statuses: ${Object.entries(statusCount)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(", ")}`,
+    14,
+    footerY
+  );
+  footerY += 5;
+  doc.text(`Paid: ${paidCount} | Unpaid: ${unpaidCount}`, 14, footerY);
+
+  doc.save(
+    `Readable_Prep_Report_${branch || "Branch"}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.pdf`
+  );
+};
+
+
 
   const generateExcelReport = () => {
-    const summary = summarizeItems();
-    if (!Object.keys(summary).length) return alert("No active items to report.");
+  if (!orders.length) return alert("No orders available to report.");
 
-    const data = Object.entries(summary).map(([name, s]) => ({
-      Product: name,
-      "Total Units": s.totalQty,
-      "Orders Containing": s.orders,
-      "Status Breakdown": Object.entries(s.statusBreakdown)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(", "),
-    }));
+  // 🔍 Collect all unique item names
+  const allItems = new Set<string>();
+  orders.forEach((order) => {
+    parseItems(order.items).forEach((item: any) => {
+      allItems.add(item.title || item.name || "Unnamed");
+    });
+  });
+  const itemColumns = Array.from(allItems);
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Prep Report");
-    XLSX.writeFile(
-      wb,
-      `Prep_Report_${branch || "Branch"}_${new Date().toISOString().slice(0, 10)}.xlsx`
-    );
+  // 🧾 Build rows
+  const data = orders.map((order) => {
+    const items = parseItems(order.items);
+    const itemMap: Record<string, number> = {};
+    items.forEach((i: any) => {
+      const name = i.title || i.name || "Unnamed";
+      itemMap[name] = (itemMap[name] || 0) + Number(i.quantity || 0);
+    });
+
+    const row: Record<string, any> = {
+      "Order Number": order.order_number || order.id,
+      "Customer Name": order.customer_name || "—",
+      "Cell Number": order.cell_number || order.phone_number || "—",
+    };
+
+    itemColumns.forEach((col) => (row[col] = itemMap[col] || 0));
+    row["Total Value"] = `R${Number(order.total || 0).toFixed(2)}`;
+    row["Status"] = order.status || "—";
+    row["Payment"] = order.payment_status || "—";
+    return row;
+  });
+
+  // 🧮 Totals
+  const totals: Record<string, number> = {};
+  itemColumns.forEach((col) => (totals[col] = 0));
+  let totalValue = 0;
+  let paidCount = 0;
+  let unpaidCount = 0;
+  const statusCount: Record<string, number> = {};
+
+  orders.forEach((order) => {
+    const items = parseItems(order.items);
+    items.forEach((i: any) => {
+      const name = i.title || i.name || "Unnamed";
+      totals[name] = (totals[name] || 0) + Number(i.quantity || 0);
+    });
+    totalValue += Number(order.total || 0);
+    statusCount[order.status] = (statusCount[order.status] || 0) + 1;
+    if (order.payment_status === "paid") paidCount++;
+    if (order.payment_status === "unpaid") unpaidCount++;
+  });
+
+  const totalRow: Record<string, any> = {
+    "Order Number": "Totals",
+    "Customer Name": "",
+    "Cell Number": "",
   };
+  itemColumns.forEach((col) => (totalRow[col] = totals[col] || 0));
+  totalRow["Total Value"] = `R${totalValue.toFixed(2)}`;
+  totalRow["Status"] = Object.entries(statusCount)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(", ");
+  totalRow["Payment"] = `Paid: ${paidCount}, Unpaid: ${unpaidCount}`;
+
+  data.push(totalRow);
+
+  // 📦 Export
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Detailed Prep Report");
+  XLSX.writeFile(
+    wb,
+    `Detailed_Prep_Report_${branch || "Branch"}_${new Date()
+      .toISOString()
+      .slice(0, 10)}.xlsx`
+  );
+};
+
+
 
   /* ───────────── Update order status ───────────── */
   const handleUpdateStatus = async (id: string, newStatus: string) => {

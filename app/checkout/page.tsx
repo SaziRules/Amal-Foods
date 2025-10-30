@@ -28,7 +28,7 @@ async function generateFullInvoice(order: any) {
   doc.setFontSize(10);
   const infoLines = [
     `Date: ${new Date().toLocaleDateString()}`,
-    `Order ID: ${order.id || "—"}`,
+    `Order Number: ${order.order_number || order.id}`,
     `Customer: ${order.customer_name}`,
     `Cell: ${order.cell_number || order.phone_number || "—"}`,
     `Email: ${order.email || "—"}`,
@@ -128,6 +128,34 @@ export default function Checkout() {
     }
   };
 
+  /* ───────────── Generate Order Number ───────────── */
+const generateOrderNumber = async () => {
+  try {
+    const { data: latest, error } = await supabase
+      .from("orders")
+      .select("order_number, created_at")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== "PGRST116") throw error;
+
+    const currentYear = new Date().getFullYear().toString().slice(-2);
+    let nextSeq = 1;
+
+    if (latest?.order_number) {
+      const match = latest.order_number.match(/#(\d+)$/);
+      if (match && match[1]) nextSeq = parseInt(match[1]) + 1;
+    }
+
+    return `Amal${currentYear}#${nextSeq.toString().padStart(4, "0")}`;
+  } catch (err) {
+    console.error("Error generating order number:", err);
+    return `Amal${new Date().getFullYear().toString().slice(-2)}#0001`;
+  }
+};
+
+
   /* ───────────── Submit order ───────────── */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,8 +175,12 @@ export default function Checkout() {
     setLoading(true);
     setError(null);
 
+    const orderNumber = await generateOrderNumber();
+
+
     try {
       const orderPayload = {
+        order_number: orderNumber,
         customer_name: name.trim(),
         phone_number: phone || cell,
         cell_number: cell || phone,
@@ -445,13 +477,14 @@ export default function Checkout() {
               Your order has been submitted successfully.
             </p>
             <div className="text-sm text-gray-400 mb-6">
-              <p><strong>Order ID:</strong> {orderData.id}</p>
+              <p><strong>Order Number:</strong> {orderData.order_number || orderData.id}</p>
               <p><strong>Total:</strong> R{Number(orderData.total).toFixed(2)}</p>
               <p><strong>Branch:</strong> {orderData.branch}</p>
               <p><strong>Region:</strong> {orderData.region}</p>
             </div>
             <button
-              onClick={() => generateFullInvoice(orderData)}
+              type="button"
+              onClick={() => { void generateFullInvoice(orderData); }}
               className="inline-flex items-center gap-2 bg-[#B80013] hover:bg-[#a20010] text-white px-6 py-2.5 rounded-full font-semibold transition"
             >
               <FileDown size={16} /> Download Invoice (PDF)

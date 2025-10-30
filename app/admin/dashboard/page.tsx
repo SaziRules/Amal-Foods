@@ -28,6 +28,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import ManageOrdersModal from "@/components/ManageOrdersModal";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -37,8 +38,15 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("All");
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [showReportModal, setShowReportModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);  
+  // 🗑️ Local state for delete confirmation
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [managerToDelete, setManagerToDelete] = useState<any>(null);
 
+  const [showOrderModal, setShowOrderModal] = useState(false);
+
+  // Manage Orders modal visibility
+  const [showManageOrders, setShowManageOrders] = useState(false);
 
   const [showManagerModal, setShowManagerModal] = useState(false);
   const [managerForm, setManagerForm] = useState({
@@ -398,6 +406,15 @@ const handleDeleteManager = async (id: string) => {
         <Settings size={16} /> Edit Profile
       </button>
 
+      {/* Manage Orders Button */}
+<button
+  onClick={() => setShowManageOrders(true)}
+  className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
+>
+  <ShoppingBag size={16} /> Manage Orders
+</button>
+
+
       <button
         onClick={() => setShowReportModal(true)}
         className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
@@ -518,44 +535,115 @@ const handleDeleteManager = async (id: string) => {
             }
             className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013]"
           />
-          <input
-            type="password"
-            placeholder="New Password (optional)"
-            value={selectedManager.password || ""}
-            onChange={(e) =>
-              setSelectedManager({
-                ...selectedManager,
-                password: e.target.value,
-              })
-            }
-            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013]"
-          />
-          <select
-            value={selectedManager.branch}
-            onChange={(e) =>
-              setSelectedManager({ ...selectedManager, branch: e.target.value })
-            }
-            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#B80013]"
-          >
-            <option value="Durban">Durban</option>
-            <option value="Joburg">Joburg</option>
-          </select>
+          {/* Password Input with Show/Hide Toggle */}
+<div className="relative">
+  <input
+    type={selectedManager.showPassword ? "text" : "password"}
+    placeholder="New Password (optional)"
+    value={selectedManager.password || ""}
+    onChange={(e) =>
+      setSelectedManager({
+        ...selectedManager,
+        password: e.target.value,
+      })
+    }
+    className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013] pr-10"
+  />
+
+  {/* 👁️ Eye Toggle */}
+  <button
+    type="button"
+    onClick={() =>
+      setSelectedManager({
+        ...selectedManager,
+        showPassword: !selectedManager.showPassword,
+      })
+    }
+    className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
+  >
+    {selectedManager.showPassword ? (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={1.8}
+        stroke="currentColor"
+        className="w-5 h-5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.008 9.962 7.182.07.204.07.433 0 .637C20.573 16.49 16.638 19.5 12 19.5c-4.64 0-8.577-3.01-9.964-7.178z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+        />
+      </svg>
+    ) : (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        strokeWidth={1.8}
+        stroke="currentColor"
+        className="w-5 h-5"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c1.757 0 3.414-.416 4.879-1.155M21 21L3 3"
+        />
+      </svg>
+    )}
+  </button>
+</div>
+
+          {/* Branch Toggle Buttons */}
+<div className="flex gap-3 mt-2">
+  {["Durban", "Joburg"].map((b) => (
+    <button
+      key={b}
+      type="button"
+      onClick={() =>
+        setSelectedManager({ ...selectedManager, branch: b })
+      }
+      className={`flex-1 py-2 rounded-lg text-sm font-medium transition border border-white/10 ${
+        selectedManager.branch === b
+          ? "bg-[#B80013] text-white"
+          : "bg-white/10 text-gray-300 hover:bg-white/20"
+      }`}
+    >
+      {b}
+    </button>
+  ))}
+</div>
+
         </div>
 
-        <div className="flex justify-between mt-6">
-          <button
-            onClick={() => handleUpdateManager(selectedManager)}
-            className="py-2 px-4 bg-[#B80013] hover:bg-red-800 rounded-lg font-medium transition text-sm"
-          >
-            Save Changes
-          </button>
-          <button
-            onClick={() => handleDeleteManager(selectedManager.id)}
-            className="py-2 px-4 bg-red-700/70 hover:bg-red-800 rounded-lg font-medium transition text-sm"
-          >
-            Delete
-          </button>
-        </div>
+        {/* Action Buttons */}
+{/* Action Buttons */}
+<div className="flex gap-3 mt-8">
+  <button
+    onClick={() => handleUpdateManager(selectedManager)}
+    className="flex-1 py-2.5 bg-[#B80013] hover:bg-red-800 rounded-lg font-medium transition text-sm text-white"
+  >
+    Save Changes
+  </button>
+
+  <button
+    onClick={() => {
+      setManagerToDelete(selectedManager);
+      setShowDeleteConfirm(true);
+    }}
+    className="flex-1 py-2.5 bg-red-700/70 hover:bg-red-800 rounded-lg font-medium transition text-sm text-white"
+  >
+    Delete This Manager
+  </button>
+</div>
+
+
       </div>
     </div>
   )}
@@ -596,6 +684,63 @@ const handleDeleteManager = async (id: string) => {
       </div>
     </div>
   )}
+
+  {/* 🗑️ Delete Confirmation Modal */}
+{showDeleteConfirm && managerToDelete && (
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[999]">
+    <div className="bg-[#141414]/95 border border-white/10 rounded-3xl w-[90%] max-w-sm p-8 text-center shadow-2xl">
+      <h2 className="text-xl font-semibold text-[#B80013] mb-4">
+        Confirm Deletion
+      </h2>
+      <p className="text-gray-300 text-sm mb-6">
+        Are you sure you want to permanently delete{" "}
+        <span className="font-semibold text-white">
+          {managerToDelete.name}
+        </span>
+        ? This action cannot be undone.
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setShowDeleteConfirm(false)}
+          className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition text-gray-200"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={() => {
+            handleDeleteManager(managerToDelete.id);
+            setShowDeleteConfirm(false);
+          }}
+          className="flex-1 py-2 bg-red-700 hover:bg-red-800 rounded-lg text-sm font-medium transition text-white"
+        >
+          Yes, Delete
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* 🗃️ Manage Orders Modal (All Branches) */}
+{showManageOrders && (
+  <ManageOrdersModal
+    branch={null}
+    onClose={async () => {
+      setShowManageOrders(false);
+
+      // ✅ Re-fetch orders so stats stay up-to-date
+      const { data: refreshedOrders } = await supabase
+        .from("orders")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (refreshedOrders) setOrders(refreshedOrders);
+    }}
+  />
+)}
+
+
 </aside>
 
 
