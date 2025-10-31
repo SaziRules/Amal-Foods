@@ -1,8 +1,10 @@
+'use client'; // ✅ must be here so it's always client-side
+
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * ✅ Universal Supabase client for browser-side use (frontend).
- * Works seamlessly inside Next.js 15+ App Router with no hanging fetches.
+ * ✅ Universal Supabase client for browser-side use.
+ * Works seamlessly inside Next.js 15+ App Router.
  * Uses environment variables for security and portability.
  */
 export const supabase = createClient(
@@ -12,16 +14,15 @@ export const supabase = createClient(
     db: { schema: "public" },
 
     auth: {
-      persistSession: true,        // ✅ keeps magic link sessions alive
-      autoRefreshToken: true,      // ✅ revalidates auth tokens automatically
+      persistSession: true,        // keeps magic link sessions alive
+      autoRefreshToken: true,      // revalidates auth tokens automatically
     },
 
     global: {
-      headers: { "Content-Type": "application/json" },
       fetch: async (url, options) => {
-        // ✅ critical fix for "stuck" inserts in Next.js App Router
+        // ✅ Fixes hanging fetches in Next.js App Router
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+        const timeout = setTimeout(() => controller.abort(), 10000);
         try {
           return await fetch(url, { ...options, cache: "no-store", signal: controller.signal });
         } finally {

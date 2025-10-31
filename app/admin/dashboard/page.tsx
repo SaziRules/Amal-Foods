@@ -29,6 +29,7 @@ import {
   Legend,
 } from "recharts";
 import ManageOrdersModal from "@/components/ManageOrdersModal";
+import CustomerAnalytics from "@/components/CustomerAnalytics";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -384,7 +385,8 @@ const handleDeleteManager = async (id: string) => {
 
 
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-4 gap-8 mt-[25%] md:mt-[8%]">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-4 gap-8 mt-[25%] md:mt-[8%] items-start">
+
        {/* 🧑‍💼 Left Sidebar */}
 <aside className="col-span-1 bg-[#141414]/90 rounded-3xl border border-white/10 p-6 shadow-2xl flex flex-col text-center relative">
   {/* Top Section */}
@@ -808,68 +810,7 @@ const handleDeleteManager = async (id: string) => {
           </div>
 
           {/* Orders Section */}
-          <div className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-            <h2 className="text-lg font-semibold text-[#B80013] mb-4">
-              Recent Orders
-            </h2>
-
-            {/* Filter Buttons */}
-            <div className="flex flex-wrap gap-2 mb-5">
-              {["All", "Durban", "Joburg", "Completed", "Pending", "Cancelled"].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border border-white/10 transition ${
-                    filter === f
-                      ? "bg-[#B80013] text-white"
-                      : "bg-white/5 text-gray-300 hover:bg-white/10"
-                  }`}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayedOrders.length === 0 && (
-                <p className="text-gray-400 text-sm">No orders found.</p>
-              )}
-              {displayedOrders.slice(0, 9).map((order) => (
-                <div
-                  key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className="cursor-pointer bg-white/5 hover:bg-white/10 transition rounded-xl p-4 border border-white/10"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[#B80013] font-semibold">
-                      #{order.id.slice(0, 6)}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        order.status === "completed"
-                          ? "bg-green-700/50 text-green-300"
-                          : order.status === "cancelled"
-                          ? "bg-red-700/50 text-red-300"
-                          : "bg-yellow-700/50 text-yellow-300"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-300">
-                    <strong>Customer:</strong> {order.customer_name || "N/A"}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    <strong>Total:</strong> R{order.total.toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(order.created_at).toLocaleDateString()} |{" "}
-                    {order.branch}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <CustomerAnalytics />
         </section>
       </div>
     </main>

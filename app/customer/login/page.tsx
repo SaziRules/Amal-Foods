@@ -25,7 +25,8 @@ export default function CustomerLogin() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/customer/dashboard`,
+        emailRedirectTo: "https://amalfoods.co.za/customer/dashboard",
+
       },
     });
 

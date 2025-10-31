@@ -29,6 +29,9 @@ export default function ManageOrdersModal({
     "today" | "week" | "month" | "lastMonth" | "all"
   >("today");
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
+  const [viewingOrder, setViewingOrder] = useState<any | null>(null);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+
 
   useEffect(() => {
   // Always fetch — admin passes null to load all branches
@@ -385,23 +388,22 @@ export default function ManageOrdersModal({
                   {new Date(order.created_at).toLocaleDateString()}
                 </p>
 
-                {/* ITEMS */}
-                <details className="mt-3 bg-white/5 rounded-lg p-2">
-                  <summary className="text-xs text-gray-400 flex items-center justify-between cursor-pointer">
-                    View Items <ChevronDown size={14} />
-                  </summary>
-                  <ul className="mt-2 space-y-1">
-                    {Array.isArray(order.items) ? (
-                      order.items.map((item: any, i: number) => (
-                        <li key={i} className="text-xs text-gray-300">
-                          {item.title || item.name} × {item.quantity}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="text-gray-500 text-xs">No item data</li>
-                    )}
-                  </ul>
-                </details>
+                {/* ITEMS ACTIONS */}
+<div className="mt-3 flex gap-2">
+  <button
+    onClick={() => setViewingOrder(order)}
+    className="flex-1 text-xs px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 font-medium transition"
+  >
+    View Items
+  </button>
+  <button
+    onClick={() => setEditingOrder(order)}
+    className="flex-1 text-xs px-3 py-2 rounded-lg bg-[#B80013]/80 hover:bg-[#B80013] text-white font-medium transition"
+  >
+    Edit Order
+  </button>
+</div>
+
 
                 {/* BUTTON ROWS */}
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -452,7 +454,252 @@ export default function ManageOrdersModal({
           )}
         </div>
       </div>
+   {/* View Items Modal */}
+{viewingOrder && (
+  <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+    <div className="bg-[#141414]/95 border border-white/10 rounded-3xl shadow-2xl w-[90%] md:w-[80%] lg:w-[70%] xl:w-[60%] max-h-[85vh] overflow-y-auto p-10 relative">
+      <button
+        onClick={() => setViewingOrder(null)}
+        className="absolute top-5 right-5 text-gray-400 hover:text-white transition"
+      >
+        <X size={24} />
+      </button>
+
+      <h3 className="text-2xl font-semibold text-[#B80013] mb-6">
+        {viewingOrder.order_number || `Order #${viewingOrder.id.slice(0, 6)}`}
+      </h3>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        <div>
+          <p className="text-sm text-gray-400">Customer</p>
+          <p className="font-medium text-white">
+            {viewingOrder.customer_name || "N/A"}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">Branch</p>
+          <p className="font-medium text-white">{viewingOrder.branch}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">Status</p>
+          <p className="font-medium capitalize text-white">
+            {viewingOrder.status}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">Total</p>
+          <p className="font-semibold text-[#B80013]">
+            R{Number(viewingOrder.total || 0).toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      <div className="border-t border-white/10 pt-6">
+        <h4 className="text-lg font-semibold text-white mb-4">Items Ordered</h4>
+        {Array.isArray(viewingOrder.items) && viewingOrder.items.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-gray-300 border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-gray-400 uppercase text-xs">
+                  <th className="py-2 px-3">Item</th>
+                  <th className="py-2 px-3 text-center">Qty</th>
+                  <th className="py-2 px-3 text-right">Price</th>
+                  <th className="py-2 px-3 text-right">Subtotal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {viewingOrder.items.map((i: any, idx: number) => (
+                  <tr
+                    key={idx}
+                    className="border-b border-white/5 hover:bg-white/5 transition"
+                  >
+                    <td className="py-2 px-3">{i.title || i.name}</td>
+                    <td className="py-2 px-3 text-center">{i.quantity}</td>
+                    <td className="py-2 px-3 text-right">
+                      R{Number(i.price || 0).toFixed(2)}
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      R{(i.price * i.quantity).toFixed(2)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">No items found for this order.</p>
+        )}
+      </div>
     </div>
+  </div>
+)}
+
+{/* Edit Order Modal */}
+{editingOrder && (
+  <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+    <div className="bg-[#141414]/95 border border-white/10 rounded-3xl shadow-2xl w-[90%] md:w-[80%] lg:w-[70%] xl:w-[60%] max-h-[85vh] overflow-y-auto p-10 relative">
+      <button
+        onClick={() => setEditingOrder(null)}
+        className="absolute top-5 right-5 text-gray-400 hover:text-white transition"
+      >
+        <X size={24} />
+      </button>
+
+      <h3 className="text-2xl font-semibold text-[#B80013] mb-6">
+        Edit {editingOrder.order_number || `Order #${editingOrder.id.slice(0, 6)}`}
+      </h3>
+
+      {/* Order Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+        <div>
+          <p className="text-sm text-gray-400">Customer</p>
+          <p className="font-medium text-white">
+            {editingOrder.customer_name || "N/A"}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">Branch</p>
+          <p className="font-medium text-white">{editingOrder.branch}</p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">Payment</p>
+          <p className="font-medium capitalize text-white">
+            {editingOrder.payment_status || "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-sm text-gray-400">Total</p>
+          <p className="font-semibold text-[#B80013]">
+            R{Number(editingOrder.total || 0).toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {/* Editable Items Table */}
+      <div className="border-t border-white/10 pt-6">
+        <h4 className="text-lg font-semibold text-white mb-4">Edit Order Items</h4>
+
+        {Array.isArray(editingOrder.items) && editingOrder.items.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-gray-300 border-collapse">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-gray-400 uppercase text-xs">
+                  <th className="py-2 px-3">Item</th>
+                  <th className="py-2 px-3 text-center">Qty</th>
+                  <th className="py-2 px-3 text-right">Price</th>
+                  <th className="py-2 px-3 text-right">Subtotal</th>
+                  <th className="py-2 px-3 text-center">Remove</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editingOrder.items.map((item: any, idx: number) => (
+                  <tr
+                    key={idx}
+                    className="border-b border-white/5 hover:bg-white/5 transition"
+                  >
+                    <td className="py-2 px-3">{item.title || item.name}</td>
+
+                    {/* Quantity input */}
+                    <td className="py-2 px-3 text-center">
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => {
+                          const newQty = Number(e.target.value);
+                          setEditingOrder((prev: any) => {
+                            const updatedItems = [...prev.items];
+                            updatedItems[idx].quantity = newQty;
+                            const newTotal = updatedItems.reduce(
+                              (acc: number, i: any) => acc + Number(i.price || 0) * Number(i.quantity || 0),
+                              0
+                            );
+                            return { ...prev, items: updatedItems, total: newTotal };
+                          });
+                        }}
+                        className="w-16 text-center bg-black/40 border border-white/10 rounded-md text-gray-200 focus:border-[#B80013] outline-none"
+                      />
+                    </td>
+
+                    {/* Price */}
+                    <td className="py-2 px-3 text-right">
+                      R{Number(item.price || 0).toFixed(2)}
+                    </td>
+
+                    {/* Subtotal */}
+                    <td className="py-2 px-3 text-right">
+                      R{(item.price * item.quantity).toFixed(2)}
+                    </td>
+
+                    {/* Remove item */}
+                    <td className="py-2 px-3 text-center">
+                      <button
+                        onClick={() => {
+                          setEditingOrder((prev: any) => {
+                            const updatedItems = prev.items.filter(
+                              (_: any, i: number) => i !== idx
+                            );
+                            const newTotal = updatedItems.reduce(
+                              (acc: number, i: any) => acc + Number(i.price || 0) * Number(i.quantity || 0),
+                              0
+                            );
+                            return { ...prev, items: updatedItems, total: newTotal };
+                          });
+                        }}
+                        className="text-red-500 hover:text-red-400 text-xs font-semibold"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-gray-500 text-sm">No items available to edit.</p>
+        )}
+      </div>
+
+      {/* Total + Save Button */}
+      <div className="border-t border-white/10 mt-6 pt-6 flex justify-between items-center">
+        <p className="text-lg font-semibold text-[#B80013]">
+          Total: R{Number(editingOrder.total || 0).toFixed(2)}
+        </p>
+
+        <button
+          onClick={async () => {
+            try {
+              const { error } = await supabase
+  .from("orders")
+  .update({
+    items: editingOrder.items,
+    total: editingOrder.total,
+  })
+  .eq("id", editingOrder.id);
+
+
+              if (error) throw error;
+
+              alert("✅ Order updated successfully!");
+              setEditingOrder(null);
+              fetchOrders();
+            } catch (err: any) {
+              console.error("Update failed:", err.message);
+              alert("❌ Failed to update order: " + err.message);
+            }
+          }}
+          className="px-6 py-3 rounded-full bg-[#B80013] hover:bg-[#a20010] text-white font-semibold text-sm transition"
+        >
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+  </div>
   );
 }
 

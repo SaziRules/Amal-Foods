@@ -15,12 +15,15 @@ import {
   X,
   Info,
 } from "lucide-react";
+import CustomerSidebar from "@/components/CustomerSidebar";
 
 interface Order {
   id: string;
   branch: string;
   total: number;
   status: string;
+  payment_status?: string;
+  order_number?: string;
   created_at: string;
   items?: any[];
 }
@@ -61,7 +64,7 @@ export default function CustomerDashboard() {
 
     // Fetch profile data
     const { data: profileData } = await supabase
-      .from("profiles")
+      .from("customers")
       .select("*")
       .eq("id", user.id)
       .single();
@@ -163,10 +166,19 @@ export default function CustomerDashboard() {
     router.push("/");
   };
 
-  const filteredOrders =
-    activeFilter === "all"
-      ? orders
-      : orders.filter((o) => o.status === activeFilter);
+  /* ───────────── Unified Filtering Logic (matches ManageOrdersModal) ───────────── */
+  const filteredOrders = orders.filter((o) => {
+    const normalizedStatus = o.status?.toLowerCase?.() || "";
+    const normalizedPayment = o.payment_status?.toLowerCase?.() || "";
+    const filter = activeFilter.toLowerCase();
+
+    if (filter === "all") return true;
+    if (normalizedStatus === filter) return true;
+    if (normalizedPayment === filter) return true;
+    if (o.order_number?.toLowerCase?.().includes(filter)) return true;
+
+    return false;
+  });
 
   if (loading)
     return (
@@ -184,8 +196,8 @@ export default function CustomerDashboard() {
 
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Welcome */}
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-[#B80013]">
+        <div className="text-left mb-12">
+          <h1 className="text-6xl font-bold text-[#B80013]">
             Welcome, {profile.name || "User"}
           </h1>
           <p className="text-gray-400 text-sm mt-1">
@@ -196,142 +208,27 @@ export default function CustomerDashboard() {
         {/* GRID LAYOUT */}
         <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-10">
           {/* SIDEBAR */}
-          <aside className="bg-[#111]/90 p-6 rounded-2xl border border-white/10 shadow-[0_0_30px_rgba(255,0,0,0.1)]">
-            <div className="flex flex-col items-center mb-6">
-              <div className="relative w-28 h-28 rounded-full overflow-hidden border border-white/20 mb-3">
-                {profile.avatar_url ? (
-                  <Image
-                    src={profile.avatar_url}
-                    alt="Profile"
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="bg-gray-700 w-full h-full flex items-center justify-center text-xs text-gray-300">
-                    No Image
-                  </div>
-                )}
-              </div>
-
-              {editing && (
-                <label className="cursor-pointer text-xs bg-red-700 hover:bg-red-800 px-3 py-1 rounded-full font-medium transition mb-2">
-                  Upload
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={handleUpload}
-                  />
-                </label>
-              )}
-
-              <h2 className="font-semibold text-lg">
-                {profile.name} {profile.surname}
-              </h2>
-              <p className="text-xs text-gray-400">{profile.email}</p>
-            </div>
-
-            {!editing ? (
-              <>
-                <ul className="text-sm text-gray-300 space-y-3 mb-6">
-                  <li className="flex items-center gap-2">
-                    <Phone size={16} className="text-red-600" />{" "}
-                    {profile.phone || "—"}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Home size={16} className="text-red-600" />{" "}
-                    {profile.street || "—"}
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <MapPin size={16} className="text-red-600" />{" "}
-                    {profile.city || "—"}
-                  </li>
-                </ul>
-
-                <button
-                  onClick={() => setEditing(true)}
-                  className="flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 px-4 py-2 w-full rounded-full text-sm font-semibold"
-                >
-                  <Edit3 size={14} /> Edit Profile
-                </button>
-              </>
-            ) : (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleSaveProfile();
-                }}
-                className="flex flex-col gap-3"
-              >
-                {["name", "surname", "phone", "street", "city"].map((field) => (
-                  <input
-                    key={field}
-                    type="text"
-                    placeholder={
-                      field.charAt(0).toUpperCase() + field.slice(1)
-                    }
-                    value={profile[field] || ""}
-                    onChange={(e) =>
-                      setProfile((p: any) => ({
-                        ...p,
-                        [field]: e.target.value,
-                      }))
-                    }
-                    className="rounded-md bg-black/40 border border-white/20 px-3 py-2 text-sm focus:border-red-600 outline-none"
-                  />
-                ))}
-
-                <div className="flex gap-2 mt-2">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className={`flex-1 py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition ${
-                      saving
-                        ? "bg-gray-700 cursor-not-allowed"
-                        : "bg-red-700 hover:bg-red-800"
-                    }`}
-                  >
-                    <Save size={14} /> {saving ? "Saving..." : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(false)}
-                    className="flex-1 py-2.5 rounded-full text-sm font-semibold bg-gray-700 hover:bg-gray-800 transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {savedMessage && (
-                  <p className="text-green-500 text-xs text-center mt-2">
-                    {savedMessage}
-                  </p>
-                )}
-              </form>
-            )}
-
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 mt-6 px-4 py-2 w-full rounded-full text-sm"
-            >
-              <LogOut size={14} /> Logout
-            </button>
-
-            <button
-              onClick={handleDeleteAccount}
-              disabled={deleting}
-              className="flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 mt-3 px-4 py-2 w-full rounded-full text-sm text-red-400 border border-red-800"
-            >
-              <Trash2 size={14} />{" "}
-              {deleting ? "Deleting..." : "Delete Account"}
-            </button>
-          </aside>
+          <CustomerSidebar 
+            user={user}
+            profile={profile}
+            editing={editing}
+            saving={saving}
+            deleting={deleting}
+            savedMessage={savedMessage}
+            setEditing={setEditing}
+            handleSaveProfile={handleSaveProfile}
+            handleUpload={handleUpload}
+            handleLogout={handleLogout}
+            handleDeleteAccount={handleDeleteAccount}
+            setProfile={setProfile}
+          />
 
           {/* ORDERS SECTION */}
           <section className="bg-[#111]/85 p-8 rounded-2xl border border-white/10 shadow-[0_0_25px_rgba(255,0,0,0.1)] relative">
             <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
               <h2 className="text-2xl font-bold text-[#B80013]">Your Orders</h2>
               <div className="flex gap-2 flex-wrap justify-center">
-                {["all", "pending", "processing", "completed", "cancelled"].map(
+                {["all", "pending", "packed", "collected", "cancelled", "paid", "unpaid"].map(
                   (f) => (
                     <button
                       key={f}
@@ -342,7 +239,7 @@ export default function CustomerDashboard() {
                           : "bg-black/40 hover:bg-black/60 text-gray-300"
                       }`}
                     >
-                      {f}
+                      {f.charAt(0).toUpperCase() + f.slice(1)}
                     </button>
                   )
                 )}
@@ -363,8 +260,8 @@ export default function CustomerDashboard() {
                   >
                     <div>
                       <p className="font-semibold text-sm flex items-center gap-1">
-                        <Info size={14} className="text-red-600" /> Order #
-                        {order.id.slice(0, 8)}
+                        <Info size={14} className="text-red-600" />{" "}
+                        {order.order_number || `Order #${order.id.slice(0, 8)}`}
                       </p>
                       <p className="text-xs text-gray-400">
                         {new Date(order.created_at).toLocaleDateString()} •{" "}
@@ -376,8 +273,10 @@ export default function CustomerDashboard() {
                         className={`px-3 py-1 text-xs rounded-full font-semibold ${
                           order.status === "completed"
                             ? "bg-green-700/80 text-white"
-                            : order.status === "processing"
-                            ? "bg-yellow-600/70 text-black"
+                            : order.status === "packed"
+                            ? "bg-blue-700/70 text-white"
+                            : order.status === "collected"
+                            ? "bg-teal-700/70 text-white"
                             : order.status === "cancelled"
                             ? "bg-gray-600/80 text-white"
                             : "bg-red-700/80 text-white"
@@ -416,13 +315,12 @@ export default function CustomerDashboard() {
 
                     <div className="space-y-1 mb-4">
                       <p>
-                        <strong>Order ID:</strong> {selectedOrder.id}
+                        <strong>Order ID:</strong>{" "}
+                        {selectedOrder.order_number || selectedOrder.id}
                       </p>
                       <p>
                         <strong>Date:</strong>{" "}
-                        {new Date(
-                          selectedOrder.created_at
-                        ).toLocaleString()}
+                        {new Date(selectedOrder.created_at).toLocaleString()}
                       </p>
                       <p>
                         <strong>Branch:</strong> {selectedOrder.branch}
@@ -436,9 +334,7 @@ export default function CustomerDashboard() {
                     </div>
 
                     <div className="border-t border-white/10 pt-3 mt-3">
-                      <h4 className="font-semibold text-white mb-2">
-                        Items
-                      </h4>
+                      <h4 className="font-semibold text-white mb-2">Items</h4>
                       {Array.isArray(selectedOrder.items) &&
                       selectedOrder.items.length > 0 ? (
                         <ul className="divide-y divide-white/10">
@@ -460,9 +356,7 @@ export default function CustomerDashboard() {
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-gray-400">
-                          Item details unavailable
-                        </p>
+                        <p className="text-gray-400">Item details unavailable</p>
                       )}
                     </div>
 
