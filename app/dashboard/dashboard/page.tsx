@@ -25,6 +25,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import ManageOrdersModal from "@/components/ManageOrdersModal";
+import OrderPrepDisplay from "@/components/OrderPrepDisplay";
 
 export default function ManagerDashboard() {
   const [user, setUser] = useState<any>(null);
@@ -554,7 +555,7 @@ const unpaid = orders.filter((o) => o.status === "unpaid").length;
                   const totalOrders = orders.length;
                   const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
                   const collectedOrders = orders.filter((o) => o.status === "collected").length;
-const completionRate = totalOrders > 0 ? (collectedOrders / totalOrders) * 100 : 0;
+                  const completionRate = totalOrders > 0 ? (collectedOrders / totalOrders) * 100 : 0;
 
 
                   return (
@@ -580,74 +581,10 @@ const completionRate = totalOrders > 0 ? (collectedOrders / totalOrders) * 100 :
         </div>
 
         {/* Filter Buttons */}
-        <div className="flex flex-wrap gap-3 mt-8">
-          {["all", "pending", "packed", "collected", "cancelled", "paid", "unpaid"].map((s) => (
-
-            <button
-              key={s}
-              onClick={() => setFilter(s)}
-              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
-                filter === s ? "bg-[#B80013] text-white" : "bg-white/10 text-gray-300 hover:bg-white/20"
-              }`}
-            >
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-
+       
         {/* Orders */}
-        <section className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-          <h2 className="text-lg font-semibold text-[#B80013] mb-4">{branch} Orders</h2>
-
-          {filteredOrders.length === 0 ? (
-            <p className="text-gray-400 text-sm">No {filter} orders found for {branch} branch.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filteredOrders.map((order) => (
-                <div
-                  key={order.id}
-                  onClick={() => {
-                    setSelectedOrder(order);
-                    setStatusTarget({ id: order.id, current: order.status });
-                    setShowStatusModal(true);
-                  }}
-                  className="cursor-pointer bg-white/5 hover:bg-white/10 transition rounded-xl p-4 border border-white/10"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[#B80013] font-semibold">#{order.id.slice(0, 6)}</span>
-                    <span
-  className={`text-xs px-2 py-1 rounded-full capitalize ${
-    order.status === "paid"
-      ? "bg-green-700/50 text-green-300"
-      : order.status === "unpaid"
-      ? "bg-orange-700/50 text-orange-300"
-      : order.status === "pending"
-      ? "bg-yellow-700/50 text-yellow-300"
-      : order.status === "packed"
-      ? "bg-blue-700/50 text-blue-300"
-      : order.status === "collected"
-      ? "bg-teal-700/50 text-teal-300"
-      : "bg-red-700/50 text-red-300"
-  }`}
->
-  {order.status}
-</span>
-
-                  </div>
-                  <p className="text-sm text-gray-300">
-                    <strong>Customer:</strong> {order.customer_name || "N/A"}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    <strong>Total:</strong> R{Number(order.total || 0).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(order.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <OrderPrepDisplay orders={orders} parseItems={parseItems} />
+        
       </div>
 
       {/* 🔄 Status Modal */}
