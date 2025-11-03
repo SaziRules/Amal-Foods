@@ -177,7 +177,7 @@ export default function ManageOrdersModal({
     doc.addImage(logo, "PNG", pageWidth / 2 - 25, 10, 50, 20);
 
     doc.setFontSize(16);
-    doc.text("INVOICE", pageWidth / 2, 40, { align: "center" });
+    doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
 
     // 🧾 Order Info
     doc.setFontSize(10);
@@ -218,9 +218,9 @@ export default function ManageOrdersModal({
     doc.setFontSize(10);
     const bankY = lastY + 25;
     doc.text("EFT Banking Details:", 14, bankY);
-    doc.text("Bank: Albaraka Bank", 14, bankY + 6);
+    doc.text("Bank: Nedbank", 14, bankY + 6);
     doc.text("Account Name: Amal Holdings", 14, bankY + 12);
-    doc.text("Account Number: 78600236323", 14, bankY + 18);
+    doc.text("Account Number: 1169327818", 14, bankY + 18);
     doc.text("Reference: Your Full Name", 14, bankY + 24);
     doc.text(
       "Please send proof of payment to your nearest branch before collection.",
