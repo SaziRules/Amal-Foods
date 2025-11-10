@@ -36,11 +36,11 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
           transform transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
           ${open ? "translate-x-0" : "translate-x-full"}
           flex flex-col
-          pb-[env(safe-area-inset-bottom)]  /* ✅ prevents checkout button from being cut off on iPhones */
+          pb-[max(env(safe-area-inset-bottom),36px)] /* ✅ keeps footer above bottom bars */
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+        <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 flex-shrink-0">
           <h2 className="text-xl font-semibold">Your Cart</h2>
           <button
             onClick={onClose}
@@ -51,8 +51,8 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex flex-col h-[calc(100%-130px)] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
           {cart.length === 0 ? (
             <p className="text-gray-400 text-center mt-16">Your cart is empty</p>
           ) : (
@@ -96,8 +96,8 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
           )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-white/10 px-6 py-5 flex flex-col gap-3 mb-8">
+        {/* ✅ Sticky Footer - Always visible */}
+        <div className="border-t border-white/10 px-6 py-5 flex flex-col gap-3 sticky bottom-0 bg-[#111]">
           <div className="flex items-center justify-between text-sm">
             <span>Total items:</span>
             <span>{totalItems}</span>
