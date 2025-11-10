@@ -14,12 +14,11 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
   const { cart, totalItems, totalPrice, removeFromCart, updateQuantity } = useCart();
   const [mounted, setMounted] = useState(false);
 
-  // ✅ Ensure component only renders after hydration
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null; // 🚫 Skip SSR render entirely
+  if (!mounted) return null;
 
   return (
     <>
@@ -37,6 +36,7 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
           transform transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
           ${open ? "translate-x-0" : "translate-x-full"}
           flex flex-col
+          pb-[env(safe-area-inset-bottom)]  /* ✅ prevents checkout button from being cut off on iPhones */
         `}
       >
         {/* Header */}
@@ -60,7 +60,6 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
               {cart.map((item: any) => (
                 <li key={item.id} className="flex items-center justify-between gap-3 px-6 py-4">
                   <div className="flex items-center gap-3">
-                    {/* 🧹 Image removed — everything else untouched */}
                     <div>
                       <h3 className="text-sm font-medium">{item.title}</h3>
                       <p className="text-xs text-gray-400">
