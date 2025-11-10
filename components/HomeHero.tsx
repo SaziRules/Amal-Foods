@@ -58,19 +58,20 @@ export default function HomeHero() {
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1 }}
-          className="max-w-[900px]"
+          className="max-w-[900px] pt-10"
         >
           <h1
-            className="uppercase font-extrabold leading-[1.1]"
-            style={{
-              fontFamily: "var(--font-roboto-condensed)",
-              fontSize: "clamp(3rem, 7vw, 6rem)",
-              letterSpacing: "1.5px",
-            }}
-          >
-            Ramadan Orders
-            <span className="block text-[#B80013]">Now Open</span>
-          </h1>
+  className="uppercase font-extrabold leading-[1.1]
+             text-[2.25rem] sm:text-[3rem] md:text-[2.75rem] lg:text-[4.5rem] xl:text-[3.83rem]"
+  style={{
+    fontFamily: "var(--font-roboto-condensed)",
+    letterSpacing: "1.5px",
+  }}
+>
+  Ramadan Orders
+  <span className="block text-[#B80013]">Now Open</span>
+</h1>
+
 
           <p className="mt-6 text-white/90 font-medium text-[1rem] md:text-[1.15rem] tracking-wide max-w-2xl">
             Pre-order your iftar favourites before <strong>15 December 2025</strong>.
