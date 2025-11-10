@@ -90,6 +90,7 @@ export default function ProductsPage() {
     { title: "Pies", value: "pies" },
     { title: "Rockets & Pillows", value: "rockets-and-pillows" },
     { title: "Ready to Heat", value: "ready-to-heat" },
+    { title: "Haleem", value: "haleem" },
   ];
 
   return (

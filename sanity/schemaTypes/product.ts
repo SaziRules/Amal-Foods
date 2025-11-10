@@ -32,6 +32,7 @@ export const product = defineType({
           { title: "Pies", value: "pies" },
           { title: "Rockets & Pillows", value: "rockets-and-pillows" },
           { title: "Ready To Heat", value: "ready-to-heat" },
+          { title: "Haleem", value: "haleem" },
           { title: "Frozen Meals", value: "frozen-meals" },
           { title: "Parathas", value: "parathas" },
           { title: "Vegetarian", value: "vegetarian" },

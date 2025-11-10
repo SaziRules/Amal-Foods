@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import AddItemsModal from "./AddItemsModal";
 import {
   X,
   Search,
@@ -64,6 +65,9 @@ export default function ManageOrdersModal({
     setLoading(false);
   }
 };
+
+const [showAddItems, setShowAddItems] = useState(false);
+
 
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
@@ -147,7 +151,8 @@ export default function ManageOrdersModal({
 
   const totalOrders = filteredOrders.length;
 
-  const statusCounts = ["pending", "packed", "collected", "cancelled"].reduce(
+  const statusCounts = ["pending", "processed", "packed", "collected", "cancelled"].reduce(
+
     (acc, s) => {
       acc[s] = orders.filter((o) => o.status === s).length;
       return acc;
@@ -323,7 +328,8 @@ export default function ManageOrdersModal({
           </div>
 
           <div className="flex flex-wrap gap-2 justify-center md:justify-start border-t border-white/10 pt-3">
-            {["all", "pending", "packed", "collected", "cancelled"].map((s) => (
+            {["all", "pending", "processed", "packed", "collected", "cancelled"].map((s) => (
+
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -407,7 +413,8 @@ export default function ManageOrdersModal({
 
                 {/* BUTTON ROWS */}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {["pending", "packed", "collected", "cancelled"].map((s) => (
+                  {["pending", "processed", "packed", "collected", "cancelled"].map((s) => (
+
                     <button
                       key={s}
                       onClick={() => handleUpdateStatus(order.id, s)}
@@ -662,40 +669,84 @@ export default function ManageOrdersModal({
       </div>
 
       {/* Total + Save Button */}
-      <div className="border-t border-white/10 mt-6 pt-6 flex justify-between items-center">
-        <p className="text-lg font-semibold text-[#B80013]">
-          Total: R{Number(editingOrder.total || 0).toFixed(2)}
-        </p>
+      {/* Bottom Bar */}
+<div className="border-t border-white/10 mt-6 pt-6 flex justify-end gap-3 items-center">
+  <p className="mr-auto text-lg font-semibold text-[#B80013]">
+    Total: R{Number(editingOrder.total || 0).toFixed(2)}
+  </p>
 
-        <button
-          onClick={async () => {
-            try {
-              const { error } = await supabase
-  .from("orders")
-  .update({
-    items: editingOrder.items,
-    total: editingOrder.total,
-  })
-  .eq("id", editingOrder.id);
+  {editingOrder.status === "pending" ? (
+  <button
+    onClick={() => setShowAddItems(true)}
+    className="px-6 py-3 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 font-semibold text-sm transition"
+  >
+    Add Items
+  </button>
+) : (
+  <button
+    disabled
+    title="Items can only be added to pending orders"
+    className="px-6 py-3 rounded-full bg-gray-700/50 text-gray-500 font-semibold text-sm cursor-not-allowed"
+  >
+    Add Items
+  </button>
+)}
 
 
-              if (error) throw error;
+  <button
+    onClick={async () => {
+      try {
+        const { error } = await supabase
+          .from("orders")
+          .update({
+            items: editingOrder.items,
+            total: editingOrder.total,
+          })
+          .eq("id", editingOrder.id);
 
-              alert("✅ Order updated successfully!");
-              setEditingOrder(null);
-              fetchOrders();
-            } catch (err: any) {
-              console.error("Update failed:", err.message);
-              alert("❌ Failed to update order: " + err.message);
-            }
-          }}
-          className="px-6 py-3 rounded-full bg-[#B80013] hover:bg-[#a20010] text-white font-semibold text-sm transition"
-        >
-          Save Changes
-        </button>
-      </div>
+        if (error) throw error;
+
+        alert("✅ Order updated successfully!");
+        setEditingOrder(null);
+        fetchOrders();
+      } catch (err: any) {
+        console.error("Update failed:", err.message);
+        alert("❌ Failed to update order: " + err.message);
+      }
+    }}
+    className="px-6 py-3 rounded-full bg-[#B80013] hover:bg-[#90000f] text-white font-semibold text-sm transition"
+  >
+    Save Changes
+  </button>
+</div>
+
     </div>
   </div>
+)}
+{/* ───────────── Add Items Modal ───────────── */}
+{showAddItems && editingOrder && (
+  <AddItemsModal
+    orderId={editingOrder.id}
+    currentItems={Array.isArray(editingOrder.items)
+      ? editingOrder.items.map(
+          (i: any) => i.product_id || i._id || i.id || i.title
+        )
+      : []}
+    region={editingOrder.region || "durban"}
+    onClose={() => setShowAddItems(false)}
+    onItemAdded={async () => {
+      setShowAddItems(false);
+      await fetchOrders();
+      // Refresh this specific order view
+      const { data: updatedOrder } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("id", editingOrder.id)
+        .single();
+
+      if (updatedOrder) setEditingOrder(updatedOrder);
+    }}
+  />
 )}
 
 
@@ -706,11 +757,13 @@ export default function ManageOrdersModal({
 /* ───────────── Status Badge ───────────── */
 function StatusBadge({ status }: { status: string }) {
   const colorMap: Record<string, string> = {
-    pending: "bg-yellow-700/50 text-yellow-300",
-    packed: "bg-blue-700/50 text-blue-300",
-    collected: "bg-teal-700/50 text-teal-300",
-    cancelled: "bg-red-700/50 text-red-300",
-  };
+  pending: "bg-yellow-700/50 text-yellow-300",
+  processed: "bg-purple-700/50 text-purple-300",
+  packed: "bg-blue-700/50 text-blue-300",
+  collected: "bg-teal-700/50 text-teal-300",
+  cancelled: "bg-red-700/50 text-red-300",
+};
+
   return (
     <span
       className={`text-xs px-2 py-1 rounded-full capitalize ${

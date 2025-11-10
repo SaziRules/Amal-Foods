@@ -239,18 +239,24 @@ const generateOrderNumber = async () => {
             ) : (
               <>
                 <ul className="divide-y divide-white/10 mb-4">
-                  {cart.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex justify-between items-center py-2 text-sm text-gray-300"
-                    >
-                      <span>{item.title}</span>
-                      <span className="text-white font-semibold">
-                        R{(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+  {cart.map((item) => (
+    <li
+      key={item.id}
+      className="flex justify-between items-center py-2 text-sm text-gray-300"
+    >
+      <div className="flex flex-col">
+        <span className="font-medium text-white">{item.title}</span>
+        <span className="text-xs text-[#B80013]">
+          Qty: {item.quantity} × R{item.price.toFixed(2)}
+        </span>
+      </div>
+      <span className="text-white font-semibold">
+        R{(item.price * item.quantity).toFixed(2)}
+      </span>
+    </li>
+  ))}
+</ul>
+
 
                 <div className="border-t border-white/10 pt-3 text-sm">
                   <div className="flex justify-between">
@@ -299,6 +305,7 @@ const generateOrderNumber = async () => {
                 className="rounded-lg px-4 py-2.5 bg-black/50 border border-white/20 focus:border-red-600 outline-none"
               />
               <input
+              required
                 placeholder="Email Address"
                 type="email"
                 value={email}
