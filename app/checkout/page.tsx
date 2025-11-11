@@ -208,9 +208,91 @@ const generateOrderNumber = async () => {
 
       if (insertError) throw insertError;
 
-      setOrderData(data);
+            setOrderData(data);
       clearCart();
+
+      // 🧾 Generate the same PDF in memory for email
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Reuse your same invoice logic, but instead of saving, export to blob
+      const logoUrl = "/images/logo-light.png";
+      const logo = await fetch(logoUrl)
+        .then((res) => res.blob())
+        .then((blob) => URL.createObjectURL(blob));
+
+      doc.addImage(logo, "PNG", pageWidth / 2 - 25, 10, 50, 20);
+      doc.setFontSize(16);
+      doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
+
+      doc.setFontSize(10);
+      const infoLines = [
+        `Date: ${new Date().toLocaleDateString()}`,
+        `Order Number: ${data.order_number || data.id}`,
+        `Customer: ${data.customer_name}`,
+        `Cell: ${data.cell_number || data.phone_number || "—"}`,
+        `Email: ${data.email || "—"}`,
+        `Region: ${data.region || "—"}`,
+        `Branch: ${data.branch || "—"}`,
+        `Payment Method: ${data.payment_method || "—"}`,
+      ];
+      infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
+
+      const rows = data.items.map((i: any) => [
+        i.title,
+        i.quantity,
+        `R${i.price.toFixed(2)}`,
+        `R${(i.price * i.quantity).toFixed(2)}`,
+      ]);
+
+      autoTable(doc, {
+        startY: 55 + infoLines.length * 6 + 5,
+        head: [["Item", "Qty", "Price", "Subtotal"]],
+        body: rows,
+        theme: "grid",
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [184, 0, 19] },
+      });
+
+      const lastY = (doc as any).lastAutoTable?.finalY ?? 100;
+      doc.setFontSize(11);
+      doc.text(`Total: R${data.total.toFixed(2)}`, 14, lastY + 10);
+
+      doc.setFontSize(10);
+      const bankY = lastY + 25;
+      doc.text("EFT Banking Details:", 14, bankY);
+      doc.text("Bank: Nedbank", 14, bankY + 6);
+      doc.text("Account Name: Amal Holdings", 14, bankY + 12);
+      doc.text("Account Number: 1169327818", 14, bankY + 18);
+      doc.text("Reference: Your Full Name", 14, bankY + 24);
+      doc.text(
+        "Please send proof of payment to your nearest branch before collection.",
+        14,
+        bankY + 30
+      );
+
+      // Convert to blob for email attachment
+      const pdfBlob = doc.output("blob");
+
+      const form = new FormData();
+      form.append("order-number",data.order_number);
+      form.append("total", String(data.total));
+      form.append("branch", data.branch);
+      form.append("region", data.region);
+      form.append("payment-method", data.payment_method || "");
+      form.append("email", data.email);
+      form.append("name", data.customer_name);
+      form.append("pdf", new File([pdfBlob], `${data.order_number}.pdf`, { type: "application/pdf" }));
+
+      // 📧 Send invoice email silently
+      await fetch("/api/send-invoice", {
+        method: "POST",
+        body: form,
+      }).catch((err) => console.error("Email send failed:", err));
+
+      // Then show your existing thank-you popup
       setShowThankYouModal(true);
+
     } catch (err: any) {
       console.error("⚠️ Order insert failed:", err);
       setError(err.message || "Something went wrong. Please try again.");
