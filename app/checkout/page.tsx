@@ -128,32 +128,40 @@ export default function Checkout() {
     }
   };
 
-  /* ───────────── Generate Order Number ───────────── */
+  /* ───────────── Generate Order Number (Fixed Version) ───────────── */
 const generateOrderNumber = async () => {
   try {
-    const { data: latest, error } = await supabase
+    // Fetch ALL order numbers (no date sort)
+    const { data, error } = await supabase
       .from("orders")
-      .select("order_number, created_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+      .select("order_number");
 
-    if (error && error.code !== "PGRST116") throw error;
+    if (error) throw error;
 
     const currentYear = new Date().getFullYear().toString().slice(-2);
-    let nextSeq = 1;
 
-    if (latest?.order_number) {
-      const match = latest.order_number.match(/#(\d+)$/);
-      if (match && match[1]) nextSeq = parseInt(match[1]) + 1;
-    }
+    // Extract numeric part of all valid AmalXX#YYYY numbers
+    const numbers = (data || [])
+      .map((row) => row.order_number)
+      .filter((num): num is string => !!num && num.startsWith(`Amal${currentYear}#`))
+      .map((num) => {
+        const match = num.match(/#(\d+)$/);
+        return match ? parseInt(match[1], 10) : 0;
+      });
 
-    return `Amal${currentYear}#${nextSeq.toString().padStart(4, "0")}`;
+    // Find highest number
+    const maxSeq = numbers.length ? Math.max(...numbers) : 0;
+    const nextSeq = maxSeq + 1;
+
+    // Return next sequential number (e.g. Amal25#0141)
+    return `Amal${currentYear}#${String(nextSeq).padStart(4, "0")}`;
   } catch (err) {
     console.error("Error generating order number:", err);
-    return `Amal${new Date().getFullYear().toString().slice(-2)}#0001`;
+    const fallbackYear = new Date().getFullYear().toString().slice(-2);
+    return `Amal${fallbackYear}#0001`;
   }
 };
+
 
 
   /* ───────────── Submit order ───────────── */
