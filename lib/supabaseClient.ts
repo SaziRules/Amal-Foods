@@ -22,7 +22,7 @@ export const supabase = createClient(
       fetch: async (url, options) => {
         // ✅ Fixes hanging fetches in Next.js App Router
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 30000);
         try {
           return await fetch(url, { ...options, cache: "no-store", signal: controller.signal });
         } finally {

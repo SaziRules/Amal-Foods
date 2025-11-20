@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
@@ -8,6 +9,25 @@ import Image from "next/image";
 import { MapPin, X, FileDown } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import SendingInvoiceModal from "@/components/SendingInvoiceModal";
+
+// Supabase insert timeout wrapper
+function withSupabaseTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Supabase insert timeout")), ms);
+
+    promise
+      .then((v) => {
+        clearTimeout(timer);
+        resolve(v);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 
 /* ───────────── PDF Invoice Generator ───────────── */
 async function generateFullInvoice(order: any) {
@@ -82,6 +102,7 @@ async function generateFullInvoice(order: any) {
 export const runtime = "nodejs";
 
 export default function Checkout() {
+  const router = useRouter();
   const { cart, totalItems, totalPrice, clearCart, selectedRegion } = useCart();
 
   const [name, setName] = useState("");
@@ -98,6 +119,8 @@ export default function Checkout() {
   const [orderData, setOrderData] = useState<any>(null);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "eft" | "">("");
   const [cellError, setCellError] = useState<string | null>(null);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
+
 
   /* ───────────── Auto-Detect Branch ───────────── */
   useEffect(() => {
@@ -131,36 +154,38 @@ export default function Checkout() {
   /* ───────────── Generate Order Number (Fixed Version) ───────────── */
 const generateOrderNumber = async () => {
   try {
-    // Fetch ALL order numbers (no date sort)
+    const currentYear = new Date().getFullYear().toString().slice(-2);
+
+    // Query ONLY the latest order for CURRENT YEAR
     const { data, error } = await supabase
       .from("orders")
-      .select("order_number");
+      .select("order_number")
+      .like("order_number", `Amal${currentYear}#%`)
+      .order("order_number", { ascending: false })
+      .limit(1);
 
     if (error) throw error;
 
-    const currentYear = new Date().getFullYear().toString().slice(-2);
+    let nextSeq = 1;
 
-    // Extract numeric part of all valid AmalXX#YYYY numbers
-    const numbers = (data || [])
-      .map((row) => row.order_number)
-      .filter((num): num is string => !!num && num.startsWith(`Amal${currentYear}#`))
-      .map((num) => {
-        const match = num.match(/#(\d+)$/);
-        return match ? parseInt(match[1], 10) : 0;
-      });
+    if (data && data.length > 0) {
+      const last = data[0].order_number;
+      const match = last?.match(/#(\d+)$/);
+      if (match) {
+        nextSeq = parseInt(match[1], 10) + 1;
+      }
+    }
 
-    // Find highest number
-    const maxSeq = numbers.length ? Math.max(...numbers) : 0;
-    const nextSeq = maxSeq + 1;
-
-    // Return next sequential number (e.g. Amal25#0141)
     return `Amal${currentYear}#${String(nextSeq).padStart(4, "0")}`;
+
   } catch (err) {
-    console.error("Error generating order number:", err);
+    console.error("Order number generation failed:", err);
+    // Safe fallback
     const fallbackYear = new Date().getFullYear().toString().slice(-2);
     return `Amal${fallbackYear}#0001`;
   }
 };
+
 
 
 
@@ -208,11 +233,17 @@ const generateOrderNumber = async () => {
         status: "pending",
       };
 
-      const { data, error: insertError } = await supabase
-        .from("orders")
-        .insert([orderPayload])
-        .select()
-        .single();
+      const { data, error: insertError } = await withSupabaseTimeout(
+  (async () => {
+    return await supabase
+      .from("orders")
+      .insert([orderPayload])
+      .select()
+      .single();
+  })(),
+  8000
+);
+
 
       if (insertError) throw insertError;
 
@@ -283,20 +314,30 @@ const generateOrderNumber = async () => {
       const pdfBlob = doc.output("blob");
 
       const form = new FormData();
-      form.append("order-number",data.order_number);
-      form.append("total", String(data.total));
-      form.append("branch", data.branch);
-      form.append("region", data.region);
-      form.append("payment-method", data.payment_method || "");
-      form.append("email", data.email);
-      form.append("name", data.customer_name);
-      form.append("pdf", new File([pdfBlob], `${data.order_number}.pdf`, { type: "application/pdf" }));
+      form.append("order-number", data.order_number);
+form.append("total", String(data.total));
+form.append("branch", data.branch);
+form.append("region", data.region);
+form.append("payment-method", data.payment_method || "");
+form.append("email", data.email);
+form.append("name", data.customer_name);
+form.append("items", JSON.stringify(data.items)); // ✅ NEW
+form.append(
+  "pdf",
+  new File([pdfBlob], `${data.order_number}.pdf`, { type: "application/pdf" })
+);
+      
 
       // 📧 Send invoice email silently
-      await fetch("/api/send-invoice", {
-        method: "POST",
-        body: form,
-      }).catch((err) => console.error("Email send failed:", err));
+      setSendingInvoice(true); // show modal
+
+await fetch("/api/send-invoice", {
+  method: "POST",
+  body: form,
+})
+  .catch((err) => console.error("Email send failed:", err))
+  .finally(() => setSendingInvoice(false)); // hide modal
+
 
       // Then show your existing thank-you popup
       setShowThankYouModal(true);
@@ -581,14 +622,18 @@ const generateOrderNumber = async () => {
             </div>
             <button
               type="button"
-              onClick={() => { void generateFullInvoice(orderData); }}
+              onClick={() => {
+  void generateFullInvoice(orderData);
+  setTimeout(() => router.push("/thank-you"), 800);
+}}
+
               className="inline-flex items-center gap-2 bg-[#B80013] hover:bg-[#a20010] text-white px-6 py-2.5 rounded-full font-semibold transition"
             >
               <FileDown size={16} /> Download Invoice (PDF)
             </button>
             <div className="mt-5">
               <button
-                onClick={() => setShowThankYouModal(false)}
+                onClick={() => router.push("/thank-you")}
                 className="text-gray-400 text-sm hover:text-white"
               >
                 Close
@@ -597,6 +642,8 @@ const generateOrderNumber = async () => {
           </div>
         </div>
       )}
+      <SendingInvoiceModal open={sendingInvoice} />
+
     </main>
   );
 }

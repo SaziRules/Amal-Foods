@@ -1,39 +1,149 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import fs from "fs";
+import path from "path";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
+/* -------------------------------------------------
+   TIMEOUT WRAPPER
+-------------------------------------------------- */
+function withTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Email timeout")), ms);
+
+    promise
+      .then((v) => {
+        clearTimeout(timer);
+        resolve(v);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+/* -------------------------------------------------
+   MAIN ROUTE — SERVER-SIDE PDF + ORIGINAL EMAIL
+-------------------------------------------------- */
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
+
+    // Required fields
     const email = (formData.get("email") as string)?.trim();
     const name = (formData.get("name") as string)?.trim() || "Customer";
-    const pdfFile = formData.get("pdf") as File | null;
 
-    // ✅ order data from checkout
+    if (!email) {
+      return NextResponse.json({ error: "Missing email" }, { status: 400 });
+    }
+
+    // Extract order details
     const order = {
       order_number: formData.get("order-number") as string,
       total: Number(formData.get("total")),
       branch: formData.get("branch") as string,
       region: formData.get("region") as string,
       payment_method: formData.get("payment-method") as string,
+      items: JSON.parse(formData.get("items") as string),
     };
 
-    if (!email || !pdfFile) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-    }
+    /* -------------------------------------------------
+       GENERATE PDF — EXACT REPLICA OF CLIENT VERSION
+    -------------------------------------------------- */
 
-    // Convert PDF to base64
-    const pdfArray = await pdfFile.arrayBuffer();
-    const pdfBase64 = Buffer.from(pdfArray).toString("base64");
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
 
-    // ✅ Send email via Resend
-    const { error } = await resend.emails.send({
-      from: "Amal Foods <invoices@amalfoods.co.za>",
-      replyTo: "orders@amalfoods.co.za",
-      to: [email, "orders@amalfoods.co.za"], // customer + internal
-      subject: `Proforma Invoice — Amal Foods`,
-      html: `
+    // Load the Amal white PNG logo from public folder
+    const logoPath = path.join(process.cwd(), "public/images/logo-light.png");
+    const logoBase64 = fs.readFileSync(logoPath).toString("base64");
+
+    // Logo (centered)
+    doc.addImage(
+      `data:image/png;base64,${logoBase64}`,
+      "PNG",
+      pageWidth / 2 - 25,
+      10,
+      50,
+      20
+    );
+
+    // Title
+    doc.setFontSize(16);
+    doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
+
+    // Info block (identical to original)
+    doc.setFontSize(10);
+    const infoLines = [
+      `Date: ${new Date().toLocaleDateString()}`,
+      `Order Number: ${order.order_number}`,
+      `Customer: ${name}`,
+      `Region: ${order.region || "—"}`,
+      `Branch: ${order.branch || "—"}`,
+      `Payment Method: ${order.payment_method || "—"}`,
+      `Email: ${email || "—"}`,
+    ];
+    infoLines.forEach((line, i) => {
+      doc.text(line, 14, 55 + i * 6);
+    });
+
+    // Convert items for table
+    const rows = order.items.map((i: any) => [
+      i.title,
+      i.quantity,
+      `R${i.price.toFixed(2)}`,
+      `R${(i.price * i.quantity).toFixed(2)}`,
+    ]);
+
+    // Table (identical configuration)
+    autoTable(doc, {
+      startY: 55 + infoLines.length * 6 + 5,
+      head: [["Item", "Qty", "Price", "Subtotal"]],
+      body: rows,
+      theme: "grid",
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [184, 0, 19], textColor: 255 },
+    });
+
+    // Total
+    const lastY = (doc as any).lastAutoTable.finalY ?? 100;
+    doc.setFontSize(11);
+    doc.text(`Total: R${order.total.toFixed(2)}`, 14, lastY + 10);
+
+    // EFT block (same as original)
+    doc.setFontSize(10);
+    const bankY = lastY + 25;
+    doc.text("EFT Banking Details:", 14, bankY);
+    doc.text("Bank: Nedbank", 14, bankY + 6);
+    doc.text("Account Name: Amal Holdings", 14, bankY + 12);
+    doc.text("Account Number: 1169327818", 14, bankY + 18);
+    doc.text("Reference: Your Full Name", 14, bankY + 24);
+    doc.text(
+      "Please send proof of payment to your nearest branch before collection.",
+      14,
+      bankY + 30
+    );
+
+    // Export PDF to base64
+    const pdfBase64 = Buffer.from(doc.output("arraybuffer")).toString("base64");
+
+    /* -------------------------------------------------
+       EMAIL — EXACT TEMPLATE YOU PROVIDED
+    -------------------------------------------------- */
+    let emailError = null;
+
+    try {
+      const { error } = await withTimeout(
+        resend.emails.send({
+          from: "Amal Foods <invoices@amalfoods.co.za>",
+          replyTo: "orders@amalfoods.co.za",
+          to: [email, "orders@amalfoods.co.za"],
+          subject: `Proforma Invoice — Amal Foods`,
+          html: `
   <div style="font-family: Arial, Helvetica, sans-serif; background-color: #f5f5f5; padding: 30px 0; color: #333;">
     <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 0px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.08);">
       
@@ -44,7 +154,7 @@ export async function POST(req: Request) {
 
       <!-- BODY -->
       <div style="padding: 35px 30px; color: #333;">
-        <h2 style="margin: 0 0 15px; color: #B80013;">Thank You for Your Order!</h2>
+        <h2 style="margin: 0 0 15px; color: #B80013;">THANK YOU FOR YOUR ORDER!</h2>
 
         <p style="margin: 0 0 15px; line-height: 1.6;">
           Dear <strong>${name}</strong>,
@@ -92,7 +202,7 @@ export async function POST(req: Request) {
         </a>
       </div>
 
-      <!-- FOOTER (Standardized for all clients) -->
+      <!-- FOOTER -->
       <div style="background: #000; color: #ccc; font-size: 12px; text-align: center; padding: 25px; line-height: 1.6;">
         <p style="margin: 0 0 6px;">1271 Umgeni Rd, Stamford Hill, Durban, 4025</p>
         <p style="margin: 0 0 6px;">031 303 7786</p>
@@ -107,19 +217,29 @@ export async function POST(req: Request) {
     </div>
   </div>
 `,
-      attachments: [
-        {
-          filename: pdfFile.name || "invoice.pdf",
-          content: pdfBase64,
-        },
-      ],
+          attachments: [
+            {
+              filename: `${order.order_number}.pdf`,
+              content: pdfBase64,
+            },
+          ],
+        }),
+        8000
+      );
+
+      if (error) emailError = error;
+    } catch (err) {
+      console.error("⚠ Email timeout/failure:", err);
+      emailError = err;
+    }
+
+    return NextResponse.json({
+      success: true,
+      emailDelivered: !emailError,
+      emailError: emailError ? String(emailError) : null,
     });
-
-    if (error) throw error;
-
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    console.error("⚠️ Email send failed:", err);
-    return NextResponse.json({ error: "Email send failed" }, { status: 500 });
+  } catch (err) {
+    console.error("⚠ Route failed:", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
