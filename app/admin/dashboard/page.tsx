@@ -385,7 +385,7 @@ const handleDeleteManager = async (id: string) => {
 
 
 
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-4 gap-8 mt-[25%] md:mt-[8%] items-start">
+      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-4 gap-8 mt-[5%] md:mt-[2%] items-start">
 
        {/* 🧑‍💼 Left Sidebar */}
 <aside className="col-span-1 bg-[#141414]/90 rounded-3xl border border-white/10 p-6 shadow-2xl flex flex-col text-center relative">

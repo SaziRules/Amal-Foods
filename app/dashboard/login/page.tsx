@@ -71,6 +71,13 @@ export default function ManagerLogin() {
             <p className="text-red-400 text-sm font-medium mt-3">{error}</p>
           )}
         </form>
+        <button
+  onClick={() => router.push("/")}
+  className="mt-6 w-full rounded-full bg-white/10 hover:bg-white/20 text-gray-200 py-3 font-medium text-sm transition"
+>
+  ← Back to Shopping
+</button>
+
       </div>
     </main>
   );

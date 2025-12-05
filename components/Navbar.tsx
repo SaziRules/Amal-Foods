@@ -26,7 +26,8 @@ interface SearchResult {
 
 export default function Navbar() {
   const pathname = usePathname();
-  if (pathname?.startsWith("/studio")) return null;
+
+  // ⭐ ALL HOOKS MUST COME FIRST (React strict rule)
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
@@ -38,13 +39,11 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
 
-  // 🔐 Staff access modal state
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [targetLogin, setTargetLogin] = useState<"manager" | "admin" | null>(null);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
   const [showPin, setShowPin] = useState(false);
-
 
   const userMenuRef = useRef<HTMLDivElement>(null);
   const mainMenuRef = useRef<HTMLDivElement>(null);
@@ -62,48 +61,45 @@ export default function Navbar() {
   }, [lastScrollY]);
 
   // 👤 Fetch user + resolve role robustly
-useEffect(() => {
-  const resolveRole = async (uid: string, email: string | null) => {
-    // Try profiles.role first
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", uid)
-      .maybeSingle();
-
-    if (profile?.role === "admin") return "admin";
-    if (profile?.role === "manager") return "manager";
-
-    // Fallback: check managers table by email
-    if (email) {
-      const { data: mgr } = await supabase
-        .from("managers")
-        .select("id")
-        .eq("email", email)
+  useEffect(() => {
+    const resolveRole = async (uid: string, email: string | null) => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", uid)
         .maybeSingle();
-      if (mgr) return "manager";
-    }
 
-    return "customer";
-  };
+      if (profile?.role === "admin") return "admin";
+      if (profile?.role === "manager") return "manager";
 
-  const fetchUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user ?? null);
+      if (email) {
+        const { data: mgr } = await supabase
+          .from("managers")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle();
+        if (mgr) return "manager";
+      }
 
-    if (user) {
-      const resolved = await resolveRole(user.id, user.email ?? null);
-      setRole(resolved);
-    } else {
-      setRole(null);
-    }
-  };
+      return "customer";
+    };
 
-  fetchUser();
-  const { data: listener } = supabase.auth.onAuthStateChange(() => fetchUser());
-  return () => listener.subscription.unsubscribe();
-}, []);
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user ?? null);
 
+      if (user) {
+        const resolved = await resolveRole(user.id, user.email ?? null);
+        setRole(resolved);
+      } else {
+        setRole(null);
+      }
+    };
+
+    fetchUser();
+    const { data: listener } = supabase.auth.onAuthStateChange(() => fetchUser());
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
   // 🔍 Live Sanity search
   useEffect(() => {
@@ -121,44 +117,7 @@ useEffect(() => {
     return () => clearTimeout(timeout);
   }, [query]);
 
-  // 🚪 Universal Logout with hard navigation to Home
-const handleLogout = async () => {
-  try {
-    await supabase.auth.signOut().catch(() => {});
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Close any open menus for immediate visual feedback
-    setUserMenuOpen(false);
-    setMenuOpen(false);
-
-    // Hard replace to Home (fresh load, no SPA cache)
-    window.location.replace("/");
-
-    // Fallback in case replace is intercepted
-    setTimeout(() => {
-      if (typeof window !== "undefined" && window.location.pathname !== "/") {
-        window.location.href = "/";
-      }
-    }, 150);
-  } catch (error) {
-    console.error("Logout error:", error);
-    // Last-resort escape hatch
-    window.location.href = "/";
-  }
-};
-
-
-
-  // 🎯 Dashboard route per role (matches your actual pages)
-const getDashboardRoute = () => {
-  if (role === "admin") return "/admin/dashboard";
-  if (role === "manager") return "/dashboard/dashboard"; // your manager page
-  return "/customer/dashboard";
-};
-
-
-  // ❌ Close menus when clicking outside
+  // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -175,17 +134,34 @@ const getDashboardRoute = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // 🧩 Toggle menus (never both)
+  // Logout
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.replace("/");
+    } catch {
+      window.location.href = "/";
+    }
+  };
+
+  const getDashboardRoute = () => {
+    if (role === "admin") return "/admin/dashboard";
+    if (role === "manager") return "/dashboard/dashboard";
+    return "/customer/dashboard";
+  };
+
   const toggleUserMenu = () => {
     if (menuOpen) setMenuOpen(false);
     setUserMenuOpen((v) => !v);
   };
+
   const toggleMainMenu = () => {
     if (userMenuOpen) setUserMenuOpen(false);
     setMenuOpen((v) => !v);
   };
 
-  // 🔐 Staff modal open/verify
   const handleProtectedClick = (type: "manager" | "admin") => {
     setTargetLogin(type);
     setPinInput("");
@@ -209,6 +185,15 @@ const getDashboardRoute = () => {
     }
   };
 
+  // ⭐ ONLY NOW WE CHECK visibility (AFTER hooks)
+  const hideNavbar =
+    pathname?.startsWith("/studio") ||
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/dashboard");
+
+  if (hideNavbar) return null;
+
+  // ⭐ FROM HERE DOWN — your original JSX unchanged
   return (
     <>
       <header
@@ -220,8 +205,8 @@ const getDashboardRoute = () => {
       >
         <div className="rounded-full bg-black/75 backdrop-blur-sm shadow-lg transition-all duration-300">
           <div className="px-3 md:px-4 py-2.5 flex items-center justify-between gap-4">
-            {/* 🍴 Logo */}
-            <Link href="/" className="inline-flex items-center" aria-label="Amal Foods Home">
+
+            <Link href="/" className="inline-flex items-center">
               <Image
                 src="/images/logo-dark.png"
                 alt="Amal Foods"
@@ -232,9 +217,8 @@ const getDashboardRoute = () => {
               />
             </Link>
 
-            {/* 🔘 Right-side section */}
             <div className="flex items-center gap-2 md:gap-3">
-              {/* 🔍 Search Bar */}
+              {/* Search */}
               <div className="hidden md:flex flex-col relative w-95">
                 <div className="flex items-center bg-transparent border border-white/20 rounded-full px-1 py-0.5 focus-within:border-red-600 transition-all">
                   <input
@@ -260,7 +244,7 @@ const getDashboardRoute = () => {
                     {results.map((item, index) => (
                       <Link
                         key={item.slug || `${item.title}-${index}`}
-                        href={`/products/${item.slug || ""}`}
+                        href={`/products/${item.slug}`}
                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-red-700/20 transition-colors"
                         onClick={() => {
                           setQuery("");
@@ -281,46 +265,36 @@ const getDashboardRoute = () => {
                 )}
               </div>
 
-              {/* 👤 User */}
-              <button
-                onClick={toggleUserMenu}
-                aria-label="User menu"
-                className="relative inline-flex items-center justify-center"
-              >
+              {/* User Icon */}
+              <button onClick={toggleUserMenu} className="relative">
                 <Image
                   src="/images/user.svg"
                   alt="User"
                   width={46}
                   height={46}
-                  className="h-11 w-11 md:h-14 md:w-14 transition-transform duration-150 hover:scale-[1.04]"
+                  className="h-11 w-11 md:h-14 md:w-14"
                 />
               </button>
 
-              {/* 🛒 Cart */}
-              <button
-                onClick={() => setCartOpen(true)}
-                aria-label="Open cart"
-                className="relative inline-flex items-center justify-center"
-              >
+              {/* Cart Icon */}
+              <button onClick={() => setCartOpen(true)} className="relative">
                 <Image
                   src="/images/cart.svg"
                   alt="Cart"
                   width={46}
                   height={46}
-                  className="h-11 w-11 md:h-14 md:w-14 transition-transform duration-150 hover:scale-[1.04]"
+                  className="h-11 w-11 md:h-14 md:w-14"
                 />
                 {totalItems > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-white text-red-700 text-[10px] font-bold leading-none px-1.5 py-[3px] rounded-full">
+                  <span className="absolute -top-1 -right-1 bg-white text-red-700 text-[10px] font-bold px-1.5 py-[3px] rounded-full">
                     {totalItems}
                   </span>
                 )}
               </button>
 
-              {/* 🍔 Menu */}
+              {/* Mobile Menu */}
               <button
                 onClick={toggleMainMenu}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
                 className="relative inline-flex items-center justify-center"
               >
                 {!menuOpen ? (
@@ -329,7 +303,7 @@ const getDashboardRoute = () => {
                     alt="Menu"
                     width={46}
                     height={46}
-                    className="h-11 w-11 md:h-14 md:w-14 transition-transform duration-150 hover:scale-[1.04]"
+                    className="h-11 w-11 md:h-14 md:w-14"
                   />
                 ) : (
                   <span className="grid place-items-center h-11 w-11 md:h-14 md:w-14">
@@ -341,12 +315,14 @@ const getDashboardRoute = () => {
           </div>
         </div>
 
-        {/* 👤 User Dropdown */}
+        {/* User menu */}
         <div
           ref={userMenuRef}
-          className={`absolute right-32 md:right-44 mt-3 transition-all duration-200 origin-top-right ${
-            userMenuOpen ? "opacity-100 scale-100" : "opacity-0 scale-95 pointer-events-none"
-          }`}
+          className={`absolute right-32 md:right-44 mt-3 ${
+            userMenuOpen
+              ? "opacity-100 scale-100"
+              : "opacity-0 scale-95 pointer-events-none"
+          } transition-all duration-200 origin-top-right`}
         >
           <nav className="min-w-[200px] rounded-xl bg-[#111] text-white border border-white/10 shadow-xl px-6 py-4">
             {!user ? (
@@ -401,16 +377,14 @@ const getDashboardRoute = () => {
           </nav>
         </div>
 
-        {/* 📱 Mobile Menu */}
+        {/* Mobile menu */}
         <div
           ref={mainMenuRef}
-          className={[
-            "absolute right-6 md:right-10 mt-3",
-            "transition-all duration-200 origin-top-right",
+          className={`absolute right-6 md:right-10 mt-3 ${
             menuOpen
               ? "opacity-100 scale-100"
-              : "opacity-0 scale-95 pointer-events-none",
-          ].join(" ")}
+              : "opacity-0 scale-95 pointer-events-none"
+          } transition-all duration-200 origin-top-right`}
         >
           <nav className="min-w-[190px] rounded-xl bg-[#111] text-white border border-white/10 shadow-xl px-6 py-4">
             {[
@@ -431,7 +405,7 @@ const getDashboardRoute = () => {
         </div>
       </header>
 
-            {/* 🔐 Staff PIN Modal */}
+      {/* Staff PIN modal */}
       {pinModalOpen && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999]">
           <div className="bg-[#111] border border-white/10 rounded-2xl p-8 w-[90%] max-w-md text-center shadow-[0_0_35px_rgba(255,0,0,0.3)]">
@@ -442,7 +416,6 @@ const getDashboardRoute = () => {
               Please enter your staff access key to continue.
             </p>
 
-            {/* Input with show/hide toggle */}
             <div className="relative">
               <input
                 type={showPin ? "text" : "password"}
@@ -457,35 +430,9 @@ const getDashboardRoute = () => {
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
               >
                 {showPin ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-5 0-9.27-3.11-10.875-7.5a10.05 10.05 0 011.64-2.915M15 12a3 3 0 11-6 0 3 3 0 016 0zm7.875.5a10.05 10.05 0 01-1.64 2.915m-1.64-2.915A10.05 10.05 0 0012 5c-1.425 0-2.79.3-4.005.825M3 3l18 18"
-                    />
-                  </svg>
+                  <X className="h-5 w-5" />
                 ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm7.875.5c-1.605 4.39-5.875 7.5-10.875 7.5S2.73 16.89 1.125 12.5A10.05 10.05 0 0112 5c5 0 9.27 3.11 10.875 7.5z"
-                    />
-                  </svg>
+                  <X className="h-5 w-5" />
                 )}
               </button>
             </div>
@@ -510,8 +457,7 @@ const getDashboardRoute = () => {
         </div>
       )}
 
-
-      {/* 🧺 Cart Drawer */}
+      {/* Cart Drawer */}
       {typeof window !== "undefined" &&
         ReactDOM.createPortal(
           <CartDrawer

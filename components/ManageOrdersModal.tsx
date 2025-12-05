@@ -32,6 +32,9 @@ export default function ManageOrdersModal({
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
   const [viewingOrder, setViewingOrder] = useState<any | null>(null);
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+const [deleting, setDeleting] = useState(false);
+
 
 
   useEffect(() => {
@@ -67,6 +70,30 @@ export default function ManageOrdersModal({
 };
 
 const [showAddItems, setShowAddItems] = useState(false);
+
+const handleDeleteOrder = async () => {
+  if (!deleteTarget) return;
+
+  setDeleting(true);
+
+  const { error } = await supabase
+    .from("orders")
+    .delete()
+    .eq("id", deleteTarget.id);
+
+  setDeleting(false);
+
+  if (error) {
+    alert("Failed to delete order: " + error.message);
+    return;
+  }
+
+  // Remove from UI
+  setOrders((prev) => prev.filter((o) => o.id !== deleteTarget.id));
+
+  setDeleteTarget(null);
+};
+
 
 
 
@@ -402,13 +429,24 @@ const [showAddItems, setShowAddItems] = useState(false);
   >
     View Items
   </button>
+
   <button
     onClick={() => setEditingOrder(order)}
     className="flex-1 text-xs px-3 py-2 rounded-lg bg-[#B80013]/80 hover:bg-[#B80013] text-white font-medium transition"
   >
     Edit Order
   </button>
+
+  {order.status === "cancelled" && (
+    <button
+      onClick={() => setDeleteTarget(order)}
+      className="flex-1 text-xs px-3 py-2 rounded-lg bg-red-700/80 hover:bg-red-800 text-white font-medium transition"
+    >
+      Delete Order
+    </button>
+  )}
 </div>
+
 
 
                 {/* BUTTON ROWS */}
@@ -430,6 +468,8 @@ const [showAddItems, setShowAddItems] = useState(false);
                 </div>
 
                 <div className="mt-2 flex flex-wrap gap-2 items-center">
+                  
+
                   {["paid", "unpaid"].map((p) => (
                     <button
                       key={p}
@@ -748,6 +788,45 @@ const [showAddItems, setShowAddItems] = useState(false);
     }}
   />
 )}
+
+{deleteTarget && (
+  <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+    <div className="bg-[#141414]/95 border border-white/10 rounded-3xl shadow-2xl w-[90%] max-w-md p-8 relative">
+      <button
+        onClick={() => setDeleteTarget(null)}
+        className="absolute top-4 right-4 text-gray-400 hover:text-white"
+      >
+        <X size={20} />
+      </button>
+
+      <h3 className="text-2xl font-semibold text-[#B80013] mb-4">
+        Delete Order?
+      </h3>
+
+      <p className="text-gray-300 text-sm mb-6">
+        This action is permanent. You cannot recover deleted orders.
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setDeleteTarget(null)}
+          className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-gray-300 transition"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleDeleteOrder}
+          disabled={deleting}
+          className="flex-1 py-2 bg-red-700 hover:bg-red-800 rounded-lg text-sm font-semibold text-white transition disabled:bg-gray-600"
+        >
+          {deleting ? "Deleting..." : "Delete"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
 
   </div>
