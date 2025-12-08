@@ -23,8 +23,10 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
+
 import ManageOrdersModal from "@/components/ManageOrdersModal";
 import OrderPrepDisplay from "@/components/OrderPrepDisplay";
+import useOrderPrepExport from "@/components/OrderPrepExport";
 
 /* ⭐ Toast Component */
 function FeatureToast({ message, onClose }: { message: string; onClose: () => void }) {
@@ -47,9 +49,24 @@ export default function ManagerDashboard() {
   const [branch, setBranch] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showManageOrders, setShowManageOrders] = useState(false);
-
-  /* ⭐ Toast visibility */
   const [showFeatureToast, setShowFeatureToast] = useState(true);
+
+  /* ------------------ Utilities ------------------ */
+  const parseItems = (raw: any) => {
+    try {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed.items)) return parsed.items;
+      if (typeof parsed === "object") return Object.values(parsed);
+    } catch {}
+    return [];
+  };
+
+  /* ------------------ Order Prep Export Hook ------------------ */
+  const { generateOrderPrepPDF, generateOrderPrepExcel } =
+    useOrderPrepExport(orders, parseItems, branch || "");
 
   /* ------------------ Fetch Orders ------------------ */
   useEffect(() => {
@@ -86,21 +103,7 @@ export default function ManagerDashboard() {
     init();
   }, []);
 
-  /* ------------------ Utilities ------------------ */
-  const parseItems = (raw: any) => {
-    try {
-      if (!raw) return [];
-      if (Array.isArray(raw)) return raw;
-      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-      if (Array.isArray(parsed)) return parsed;
-      if (Array.isArray(parsed.items)) return parsed.items;
-      if (typeof parsed === "object") return Object.values(parsed);
-    } catch {}
-    return [];
-  };
-
-  /* ------------------ Report Generators ------------------ */
-
+  /* ------------------ Existing Small PDF Report ------------------ */
   const generatePDFReport = () => {
     if (!orders.length) return alert("No orders available.");
 
@@ -131,6 +134,7 @@ export default function ManagerDashboard() {
     doc.save(`Prep_Report_${branch}.pdf`);
   };
 
+  /* ------------------ Existing Small Excel Report ------------------ */
   const generateExcelReport = () => {
     const data = orders.map((order) => ({
       "Order Number": order.order_number || order.id,
@@ -146,17 +150,17 @@ export default function ManagerDashboard() {
     XLSX.writeFile(wb, "Orders.xlsx");
   };
 
-  /* ------------------ RESTORED PERFECT LOGOUT LOGIC ------------------ */
+  /* ------------------ Logout ------------------ */
   const handleLogout = () => {
     try {
-      supabase.auth.signOut();              // logout supabase
-      localStorage.clear();                 // clear storage
-      sessionStorage.clear();               // clear session
-      document.body.style.opacity = "0.5";  // fade out for UX polish
-      document.body.style.pointerEvents = "none"; 
+      supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      document.body.style.opacity = "0.5";
+      document.body.style.pointerEvents = "none";
 
       setTimeout(() => {
-        window.location.reload();           // hard reload to guarantee clean session
+        window.location.reload();
       }, 200);
     } catch (error) {
       console.error("Logout error:", error);
@@ -165,7 +169,6 @@ export default function ManagerDashboard() {
   };
 
   /* ------------------ Stats & Analytics ------------------ */
-
   const totalRevenue = orders.reduce((a, b) => a + Number(b.total || 0), 0);
   const pending = orders.filter((o) => o.status === "pending").length;
   const processed = orders.filter((o) => o.status === "processed").length;
@@ -195,7 +198,6 @@ export default function ManagerDashboard() {
     );
 
   /* ------------------ Render ------------------ */
-
   return (
     <main
       className="min-h-screen bg-cover bg-center text-white p-6 md:p-10 relative"
@@ -224,6 +226,22 @@ export default function ManagerDashboard() {
               <Pen size={16} /> Manage Orders
             </button>
 
+            {/* NEW DETAILED EXPORTS */}
+            <button
+              onClick={generateOrderPrepPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg"
+            >
+              <FileDown size={16} /> Order Prep PDF
+            </button>
+
+            <button
+              onClick={generateOrderPrepExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg"
+            >
+              <FileSpreadsheet size={16} /> Order Prep Excel
+            </button>
+
+            {/* OLD SUMMARY EXPORTS */}
             <button
               onClick={generatePDFReport}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg"
@@ -274,7 +292,7 @@ export default function ManagerDashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* ⭐ FULL BRANCH PERFORMANCE ANALYTICS (RESTORED) */}
+          {/* Branch Performance Analytics */}
           <div className="bg-[#141414]/80 rounded-3xl p-6 border border-white/10">
             <h2 className="text-lg text-[#B80013] font-semibold mb-4">
               Branch Performance Analytics
@@ -365,7 +383,7 @@ export default function ManagerDashboard() {
 
       </div>
 
-      {/* ⭐ Toast */}
+      {/* Toast */}
       {showFeatureToast && (
         <FeatureToast
           message="✨ New! You can now delete cancelled orders in Manage Orders."

@@ -19,12 +19,15 @@ interface OrderPrepDisplayProps {
   parseItems: (raw: any) => any[];
 }
 
-export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDisplayProps) {
+export default function OrderPrepDisplay({
+  orders,
+  parseItems,
+}: OrderPrepDisplayProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  /* ───────────── Fetch Sanity products for mapping ───────────── */
+  /* ───────────── Fetch Sanity products ───────────── */
   useEffect(() => {
     const fetchSanityProducts = async () => {
       try {
@@ -45,7 +48,7 @@ export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDispla
     fetchSanityProducts();
   }, []);
 
-  /* ───────────── Build category mapping ───────────── */
+  /* ───────────── Category map ───────────── */
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
     products.forEach((p) => {
@@ -54,14 +57,20 @@ export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDispla
     return map;
   }, [products]);
 
-  /* ───────────── Compute totals per item ───────────── */
+  /* ───────────── Totals per item ───────────── */
   const itemTotals = useMemo(() => {
     const activeOrders = orders.filter((o) =>
-      ["pending", "packed", "unpaid"].includes(o.status)
+      ["pending", "processed", "packed"].includes(o.status)
     );
+
     const totals: Record<
       string,
-      { qty: number; orders: number; statuses: Record<string, number> }
+      {
+        qty: number;
+        orders: number;
+        statuses: Record<string, number>;
+        payments: Record<string, number>;
+      }
     > = {};
 
     activeOrders.forEach((order) => {
@@ -69,18 +78,33 @@ export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDispla
       items.forEach((item: any) => {
         const name = item.title || item.name || "Unnamed";
         const quantity = Number(item.quantity || 0);
-        if (!totals[name])
-          totals[name] = { qty: 0, orders: 0, statuses: {} };
+
+        if (!totals[name]) {
+          totals[name] = {
+            qty: 0,
+            orders: 0,
+            statuses: {},
+            payments: {},
+          };
+        }
+
         totals[name].qty += quantity;
         totals[name].orders++;
+
+        // Count statuses
         totals[name].statuses[order.status] =
           (totals[name].statuses[order.status] || 0) + 1;
+
+        // Count payment statuses
+        const p = order.payment_status || "unknown";
+        totals[name].payments[p] = (totals[name].payments[p] || 0) + 1;
       });
     });
+
     return totals;
   }, [orders]);
 
-  /* ───────────── Group totals by category ───────────── */
+  /* ───────────── Group per category ───────────── */
   const groupedByCategory = useMemo(() => {
     const grouped: Record<string, any[]> = {};
     Object.entries(itemTotals).forEach(([itemName, data]) => {
@@ -89,50 +113,92 @@ export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDispla
       if (!grouped[category]) grouped[category] = [];
       grouped[category].push({ name: itemName, ...data });
     });
+
     Object.keys(grouped).forEach((cat) =>
       grouped[cat].sort((a, b) => b.qty - a.qty)
     );
+
     return grouped;
   }, [itemTotals, categoryMap]);
 
-  /* ───────────── PDF + Excel Generators ───────────── */
+  /* ───────────── PDF Export (Statuses + Payments) ───────────── */
   const generatePDF = (category: string, items: any[]) => {
     const doc = new jsPDF("p", "mm", "a4");
     let y = 15;
+
     doc.setFontSize(14);
     doc.text(`Prep Report — ${category.replace(/-/g, " ")}`, 14, y);
     y += 6;
+
     doc.setFontSize(10);
     doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, y);
     y += 8;
 
-    const tableData = items.map((i: any) => [i.name, i.qty, i.orders]);
+    const tableData = items.map((i: any) => {
+      const statusSummary = Object.entries(i.statuses)
+        .map(([s, v]) => `${s}: ${v}`)
+        .join(", ");
+
+      const paymentSummary = Object.entries(i.payments)
+        .map(([s, v]) => `${s}: ${v}`)
+        .join(", ");
+
+      return [
+        i.name,
+        i.qty,
+        i.orders,
+        statusSummary || "-",
+        paymentSummary || "-",
+      ];
+    });
+
     autoTable(doc, {
       startY: y,
-      head: [["Item", "Total Qty", "Orders"]],
+      head: [["Item", "Qty", "Orders", "Statuses", "Payments"]],
       body: tableData,
-      styles: { fontSize: 9 },
+      styles: { fontSize: 8 },
       headStyles: { fillColor: [184, 0, 19], textColor: 255 },
-      alternateRowStyles: { fillColor: [250, 250, 250] },
       theme: "grid",
-      margin: { left: 14 },
+      margin: { left: 14, right: 14 },
     });
-    doc.save(`Prep_Report_${category}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+    doc.save(
+      `Prep_Report_${category}_${new Date().toISOString().slice(0, 10)}.pdf`
+    );
   };
 
+  /* ───────────── Excel Export (Statuses + Payments) ───────────── */
   const generateExcel = (category: string, items: any[]) => {
-    const data = items.map((i) => ({
-      Item: i.name,
-      "Total Qty": i.qty,
-      Orders: i.orders,
-    }));
+    const data = items.map((i: any) => {
+      const statusSummary = Object.entries(i.statuses)
+        .map(([s, v]) => `${s}: ${v}`)
+        .join(", ");
+
+      const paymentSummary = Object.entries(i.payments)
+        .map(([s, v]) => `${s}: ${v}`)
+        .join(", ");
+
+      return {
+        Item: i.name,
+        "Total Qty": i.qty,
+        Orders: i.orders,
+        Statuses: statusSummary,
+        Payments: paymentSummary,
+      };
+    });
+
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(wb, ws, category);
-    XLSX.writeFile(wb, `Prep_Report_${category}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(
+      wb,
+      `Prep_Report_${category}_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
   };
 
   /* ───────────── UI ───────────── */
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-16 text-gray-400">
@@ -204,23 +270,39 @@ export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDispla
                 {/* Status Summary */}
                 <div className="mt-3 pt-3 border-t border-white/10 text-[11px] text-gray-400">
                   {items.length > 0 && (
-                    <p>
-                      <span className="text-gray-500">Statuses:</span>{" "}
-                      {Object.entries(
-                        items.reduce((acc: any, i: any) => {
-                          Object.entries(i.statuses).forEach(([s, v]) => {
-                            acc[s] = (acc[s] || 0) + v;
-                          });
-                          return acc;
-                        }, {})
-                      )
-                        .map(([s, v]) => `${s}: ${v}`)
-                        .join(", ")}
-                    </p>
+                    <>
+                      <p>
+                        <span className="text-gray-500">Statuses:</span>{" "}
+                        {Object.entries(
+                          items.reduce((acc: any, i: any) => {
+                            Object.entries(i.statuses).forEach(([s, v]) => {
+                              acc[s] = (acc[s] || 0) + v;
+                            });
+                            return acc;
+                          }, {})
+                        )
+                          .map(([s, v]) => `${s}: ${v}`)
+                          .join(", ")}
+                      </p>
+
+                      <p className="mt-1">
+                        <span className="text-gray-500">Payment:</span>{" "}
+                        {Object.entries(
+                          items.reduce((acc: any, i: any) => {
+                            Object.entries(i.payments).forEach(([s, v]) => {
+                              acc[s] = (acc[s] || 0) + v;
+                            });
+                            return acc;
+                          }, {})
+                        )
+                          .map(([s, v]) => `${s}: ${v}`)
+                          .join(", ")}
+                      </p>
+                    </>
                   )}
                 </div>
 
-                {/* View All + Download Buttons Row */}
+                {/* Buttons */}
                 <div className="flex justify-between items-center gap-2 mt-5 border-t border-white/10 pt-4">
                   <button
                     onClick={() =>
@@ -233,12 +315,14 @@ export default function OrderPrepDisplay({ orders, parseItems }: OrderPrepDispla
                   >
                     {isExpanded ? "Collapse" : "View All"}
                   </button>
+
                   <button
                     onClick={() => generatePDF(category, items)}
                     className="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-xs bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-gray-200"
                   >
                     <FileDown size={14} /> PDF
                   </button>
+
                   <button
                     onClick={() => generateExcel(category, items)}
                     className="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-xs bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-gray-200"

@@ -29,6 +29,7 @@ export default function ManageOrdersModal({
   const [dateFilter, setDateFilter] = useState<
     "today" | "week" | "month" | "lastMonth" | "all"
   >("today");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
   const [viewingOrder, setViewingOrder] = useState<any | null>(null);
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
@@ -169,9 +170,11 @@ const handleDeleteOrder = async () => {
       o.id?.toLowerCase().includes(q) || // still supports old UUID searches
       o.created_at?.toLowerCase().includes(q);
 
-    const matchesStatus = statusFilter === "all" || o.status === statusFilter;
+   const matchesStatus = statusFilter === "all" || o.status === statusFilter;
+const matchesPayment = paymentFilter === "all" || o.payment_status === paymentFilter;
 
-    return matchesSearch && matchesStatus;
+return matchesSearch && matchesStatus && matchesPayment;
+
   })
 );
 
@@ -353,6 +356,27 @@ const handleDeleteOrder = async () => {
               </button>
             ))}
           </div>
+          {/* Payment Filter */}
+<div className="flex flex-wrap gap-2 justify-center md:justify-start border-t border-white/10 pt-3">
+  {["all", "paid", "unpaid"].map((p) => (
+    <button
+      key={p}
+      onClick={() => setPaymentFilter(p as any)}
+      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+        paymentFilter === p
+          ? "bg-[#B80013] text-white"
+          : "bg-white/10 text-gray-300 hover:bg-white/20"
+      }`}
+    >
+      {p === "all"
+        ? `All Payments (${orders.length})`
+        : `${p.charAt(0).toUpperCase() + p.slice(1)} (${
+            orders.filter((o) => o.payment_status === p).length
+          })`}
+    </button>
+  ))}
+</div>
+
 
           <div className="flex flex-wrap gap-2 justify-center md:justify-start border-t border-white/10 pt-3">
             {["all", "pending", "processed", "packed", "collected", "cancelled"].map((s) => (
