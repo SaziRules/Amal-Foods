@@ -144,9 +144,9 @@ export default function AddItemsModal({
 
   // ───────────── UI ─────────────
   return (
-    <div className="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-md flex flex-col">
+    <div className="fixed inset-0 z-2000 bg-black/80 backdrop-blur-md flex flex-col">
       {/* Sticky Header */}
-      <div className="sticky top-0 z-[2001]">
+      <div className="sticky top-0 z-2001">
         <div className="flex justify-between items-center px-6 py-4 bg-[#B80013] text-white shadow-lg">
           <h2 className="text-lg font-semibold tracking-wide uppercase">
             Add Items
@@ -170,7 +170,7 @@ export default function AddItemsModal({
       </div>
 
       {/* Product Grid */}
-      <div className="flex-1 overflow-y-auto bg-gradient-to-b from-[#0b0b0b]/95 to-[#151515]/95 p-8 pb-24">
+      <div className="flex-1 overflow-y-auto bg-linear-to-b from-[#0b0b0b]/95 to-[#151515]/95 p-8 pb-24">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="animate-spin w-8 h-8 text-[#B80013]" />
@@ -270,7 +270,7 @@ export default function AddItemsModal({
       </div>
 
       {/* Sticky Footer (buttons closer together) */}
-      <div className="sticky bottom-0 z-[2001] bg-[#0b0b0b]/90 backdrop-blur-md border-t border-white/10 px-6 py-4 flex justify-end items-center gap-3">
+      <div className="sticky bottom-0 z-2001 bg-[#0b0b0b]/90 backdrop-blur-md border-t border-white/10 px-6 py-4 flex justify-end items-center gap-3">
         <button
           onClick={onClose}
           className="px-5 py-2.5 rounded-full bg-white/10 hover:bg-white/20 text-gray-300 font-medium text-sm transition"

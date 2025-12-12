@@ -31,7 +31,7 @@ import useOrderPrepExport from "@/components/OrderPrepExport";
 /* ⭐ Toast Component */
 function FeatureToast({ message, onClose }: { message: string; onClose: () => void }) {
   return (
-    <div className="fixed bottom-6 right-6 bg-[#111]/90 border border-white/10 text-white px-5 py-3 rounded-xl shadow-lg z-[9999] animate-slideIn">
+    <div className="fixed bottom-6 right-6 bg-[#111]/90 border border-white/10 text-white px-5 py-3 rounded-xl shadow-lg z-9999 animate-slideIn">
       <div className="flex items-center gap-3">
         <span className="text-lg">✨</span>
         <p className="text-sm">{message}</p>
@@ -103,52 +103,219 @@ export default function ManagerDashboard() {
     init();
   }, []);
 
-  /* ------------------ Existing Small PDF Report ------------------ */
   const generatePDFReport = () => {
-    if (!orders.length) return alert("No orders available.");
+  if (!orders.length) return alert("No orders available.");
 
-    const doc = new jsPDF("p", "mm", "a4");
-    let y = 15;
+  const doc = new jsPDF("p", "mm", "a4");
+  let y = 20;
 
-    doc.setFontSize(14);
-    doc.text(`Prep Report — ${branch}`, 14, y);
-    y += 10;
+  // Header
+  doc.setFontSize(18);
+  doc.setTextColor(184, 0, 19);
+  doc.text(`Order Prep Report — ${branch}`, 14, y);
+  y += 8;
 
-    orders.forEach((order) => {
-      const rows = parseItems(order.items).map((i: any) => [
-        i.title,
-        i.quantity,
-        `R${i.price}`,
-        `R${i.quantity * i.price}`,
-      ]);
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, y);
+  y += 12;
 
-      autoTable(doc, {
-        startY: y,
-        head: [["Item", "Qty", "Price", "Subtotal"]],
-        body: rows,
-      });
+  // --------------------------------------------------
+  // BUILD ITEM SUMMARY TABLE
+  // --------------------------------------------------
 
-      y = (doc as any).lastAutoTable.finalY + 10;
+  const summary: Record<
+    string,
+    {
+      quantity: number;
+      orders: number;
+      statuses: Record<string, number>;
+      payments: Record<string, number>;
+    }
+  > = {};
+
+  // Loop all orders
+  orders.forEach((order) => {
+    const items = parseItems(order.items);
+    const seenInOrder = new Set<string>(); // Prevent duplicate order counts per item
+
+    items.forEach((item: any) => {
+      const name = item.title || item.name || "Unnamed";
+      const qty = Number(item.quantity) || 0;
+
+      if (!summary[name]) {
+        summary[name] = {
+          quantity: 0,
+          orders: 0,
+          statuses: {},
+          payments: {},
+        };
+      }
+
+      // Total quantity
+      summary[name].quantity += qty;
+
+      // Count orders only once per item
+      if (!seenInOrder.has(name)) {
+        summary[name].orders += 1;
+        seenInOrder.add(name);
+      }
+
+      // Status count
+      const status = order.status || "pending";
+      summary[name].statuses[status] =
+        (summary[name].statuses[status] || 0) + 1;
+
+      // Payment count
+      const payment = order.payment_status || "unpaid";
+      summary[name].payments[payment] =
+        (summary[name].payments[payment] || 0) + 1;
+    });
+  });
+
+  // Convert summary → table rows
+  const tableRows = Object.entries(summary).map(([name, data]) => {
+    const statusString = Object.entries(data.statuses)
+      .map(([s, count]) => `${s}: ${count}`)
+      .join(", ");
+
+    const paymentString = Object.entries(data.payments)
+      .map(([p, count]) => `${p}: ${count}`)
+      .join(", ");
+
+    return [
+      name,
+      data.quantity,
+      data.orders,
+      statusString,
+      paymentString,
+    ];
+  });
+
+  // Sort alphabetically
+  tableRows.sort((a, b) => (a[0] as string).localeCompare(b[0] as string));
+
+  // --------------------------------------------------
+  // PDF TABLE
+  // --------------------------------------------------
+  autoTable(doc, {
+    startY: y,
+    head: [["Item", "Qty", "Orders", "Statuses", "Payments"]],
+    body: tableRows,
+    theme: "grid",
+    headStyles: {
+      fillColor: [184, 0, 19],
+      textColor: 255,
+      fontSize: 11,
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 2,
+    },
+    margin: { left: 14, right: 14 },
+  });
+
+  // Save PDF
+  doc.save(
+    `Order_Prep_Report_${branch}_${new Date().toISOString().slice(0, 10)}.pdf`
+  );
+};
+
+
+  /* ------------------ NEW EXCEL ORDER REPORT (matches PDF) ------------------ */
+const generateExcelReport = () => {
+  if (!orders.length) return alert("No orders available.");
+
+  // --------------------------------------------------
+  // BUILD SUMMARY (same as PDF)
+  // --------------------------------------------------
+
+  const summary: Record<
+    string,
+    {
+      quantity: number;
+      orders: number;
+      statuses: Record<string, number>;
+      payments: Record<string, number>;
+    }
+  > = {};
+
+  orders.forEach((order) => {
+    const items = parseItems(order.items);
+    const seenInOrder = new Set<string>();
+
+    items.forEach((item: any) => {
+      const name = item.title || item.name || "Unnamed";
+      const qty = Number(item.quantity) || 0;
+
+      if (!summary[name]) {
+        summary[name] = {
+          quantity: 0,
+          orders: 0,
+          statuses: {},
+          payments: {},
+        };
+      }
+
+      // Quantity
+      summary[name].quantity += qty;
+
+      // Orders count (unique per order)
+      if (!seenInOrder.has(name)) {
+        summary[name].orders += 1;
+        seenInOrder.add(name);
+      }
+
+      // Status count
+      const status = order.status || "pending";
+      summary[name].statuses[status] =
+        (summary[name].statuses[status] || 0) + 1;
+
+      // Payment count
+      const payment = order.payment_status || "unpaid";
+      summary[name].payments[payment] =
+        (summary[name].payments[payment] || 0) + 1;
+    });
+  });
+
+  // --------------------------------------------------
+  // FORMAT ROWS FOR EXCEL
+  // --------------------------------------------------
+
+  const rows = Object.entries(summary)
+    .sort((a, b) => a[0].localeCompare(b[0])) // alphabetical sort
+    .map(([name, data]) => {
+      const statusString = Object.entries(data.statuses)
+        .map(([s, count]) => `${s}: ${count}`)
+        .join(", ");
+
+      const paymentString = Object.entries(data.payments)
+        .map(([p, count]) => `${p}: ${count}`)
+        .join(", ");
+
+      return {
+        Item: name,
+        Qty: data.quantity,
+        Orders: data.orders,
+        Statuses: statusString,
+        Payments: paymentString,
+      };
     });
 
-    doc.save(`Prep_Report_${branch}.pdf`);
-  };
+  // --------------------------------------------------
+  // EXPORT TO EXCEL
+  // --------------------------------------------------
 
-  /* ------------------ Existing Small Excel Report ------------------ */
-  const generateExcelReport = () => {
-    const data = orders.map((order) => ({
-      "Order Number": order.order_number || order.id,
-      Total: order.total,
-      Status: order.status,
-      Payment: order.payment_status,
-    }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Order Prep Summary");
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
+  XLSX.writeFile(
+    wb,
+    `Order_Prep_Report_${branch}_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+};
 
-    XLSX.utils.book_append_sheet(wb, ws, "Orders");
-    XLSX.writeFile(wb, "Orders.xlsx");
-  };
 
   /* ------------------ Logout ------------------ */
   const handleLogout = () => {
@@ -246,14 +413,14 @@ export default function ManagerDashboard() {
               onClick={generatePDFReport}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg"
             >
-              <FileDown size={16} /> PDF Report
+              <FileDown size={16} /> PDF Order Report
             </button>
 
             <button
               onClick={generateExcelReport}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg"
             >
-              <FileSpreadsheet size={16} /> Excel Report
+              <FileSpreadsheet size={16} /> Excel Order Report
             </button>
 
             <button
@@ -386,7 +553,7 @@ export default function ManagerDashboard() {
       {/* Toast */}
       {showFeatureToast && (
         <FeatureToast
-          message="✨ New! You can now delete cancelled orders in Manage Orders."
+          message="✨ New! Mutton Haleem is readily available to add to existing orders."
           onClose={() => setShowFeatureToast(false)}
         />
       )}

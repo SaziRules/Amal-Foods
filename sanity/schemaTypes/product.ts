@@ -37,6 +37,7 @@ export const product = defineType({
           { title: "Parathas", value: "parathas" },
           { title: "Vegetarian", value: "vegetarian" },
           { title: "Vegan", value: "vegan" },
+          { title: "Internal Stock", value: "internal-stock" },
         ],
         layout: "dropdown",
       },

@@ -104,7 +104,7 @@ export default function ContactPage() {
         <Phone size={16} /> 031 303 7786
       </p>
       <p className="text-sm text-gray-200 flex justify-center md:justify-start items-center gap-2 mt-1">
-        <Mail size={16} /> info@aminasfoods.co.za
+        <Mail size={16} /> info@amalfoods.co.za
       </p>
 
       <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-4 mt-8">
@@ -158,7 +158,7 @@ export default function ContactPage() {
       <AnimatePresence>
         {showModal && (
           <motion.div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[999]"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-999"
             role="dialog"
             aria-modal="true"
             initial={{ opacity: 0 }}
