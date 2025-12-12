@@ -316,6 +316,173 @@ const generateExcelReport = () => {
   );
 };
 
+/* ------------------ KITCHEN REPORT PDF ------------------ */
+const generateKitchenPDF = () => {
+  if (!orders.length) return alert("No orders available.");
+
+  // Filter only pending + processed
+  const kitchenOrders = orders.filter(
+    (o) => o.status === "pending" || o.status === "processed"
+  );
+
+  if (!kitchenOrders.length)
+    return alert("No pending or processed orders found.");
+
+  const doc = new jsPDF("p", "mm", "a4");
+  let y = 20;
+
+  doc.setFontSize(18);
+  doc.setTextColor(184, 0, 19);
+  doc.text(`Kitchen Report — ${branch}`, 14, y);
+  y += 8;
+
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, y);
+  y += 12;
+
+  const summary: Record<
+    string,
+    { quantity: number; orders: number; statuses: Record<string, number> }
+  > = {};
+
+  kitchenOrders.forEach((order) => {
+    const items = parseItems(order.items);
+    const seen = new Set<string>();
+
+    items.forEach((item: any) => {
+      const name = item.title || item.name || "Unnamed";
+
+      if (!summary[name]) {
+        summary[name] = {
+          quantity: 0,
+          orders: 0,
+          statuses: {},
+        };
+      }
+
+      summary[name].quantity += Number(item.quantity) || 0;
+
+      if (!seen.has(name)) {
+        summary[name].orders += 1;
+        seen.add(name);
+      }
+
+      const status = order.status;
+      summary[name].statuses[status] =
+        (summary[name].statuses[status] || 0) + 1;
+    });
+  });
+
+  const rows = Object.entries(summary)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([name, data]) => {
+      const statusString = [
+        data.statuses["pending"] ? `pending: ${data.statuses["pending"]}` : null,
+        data.statuses["processed"]
+          ? `processed: ${data.statuses["processed"]}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      return [
+        name,
+        data.quantity,
+        data.orders,
+        statusString,
+      ];
+    });
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Item", "Qty", "Orders", "Statuses"]],
+    body: rows,
+    theme: "grid",
+    headStyles: { fillColor: [184, 0, 19], textColor: 255 },
+    styles: { fontSize: 9, cellPadding: 2 },
+    margin: { left: 14, right: 14 },
+  });
+
+  doc.save(
+    `Kitchen_Report_${branch}_${new Date().toISOString().slice(0, 10)}.pdf`
+  );
+};
+/* ------------------ KITCHEN REPORT EXCEL ------------------ */
+const generateKitchenExcel = () => {
+  if (!orders.length) return alert("No orders available.");
+
+  const kitchenOrders = orders.filter(
+    (o) => o.status === "pending" || o.status === "processed"
+  );
+
+  if (!kitchenOrders.length)
+    return alert("No pending or processed orders found.");
+
+  const summary: Record<
+    string,
+    { quantity: number; orders: number; statuses: Record<string, number> }
+  > = {};
+
+  kitchenOrders.forEach((order) => {
+    const items = parseItems(order.items);
+    const seen = new Set<string>();
+
+    items.forEach((item: any) => {
+      const name = item.title || item.name || "Unnamed";
+
+      if (!summary[name]) {
+        summary[name] = {
+          quantity: 0,
+          orders: 0,
+          statuses: {},
+        };
+      }
+
+      summary[name].quantity += Number(item.quantity) || 0;
+
+      if (!seen.has(name)) {
+        summary[name].orders += 1;
+        seen.add(name);
+      }
+
+      const status = order.status;
+      summary[name].statuses[status] =
+        (summary[name].statuses[status] || 0) + 1;
+    });
+  });
+
+  const rows = Object.entries(summary)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([name, data]) => {
+      const statusString = [
+        data.statuses["pending"] ? `pending: ${data.statuses["pending"]}` : null,
+        data.statuses["processed"]
+          ? `processed: ${data.statuses["processed"]}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      return {
+        Item: name,
+        Qty: data.quantity,
+        Orders: data.orders,
+        Statuses: statusString,
+      };
+    });
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Kitchen Report");
+
+  XLSX.writeFile(
+    wb,
+    `Kitchen_Report_${branch}_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+};
+
 
   /* ------------------ Logout ------------------ */
   const handleLogout = () => {
@@ -394,6 +561,20 @@ const generateExcelReport = () => {
             </button>
 
             {/* NEW DETAILED EXPORTS */}
+            <button
+  onClick={generateKitchenPDF}
+  className="flex items-center gap-2 px-4 py-2 bg-green-500/15  border border-white/20 rounded-lg cursor-pointer"
+>
+  <FileDown size={16} /> Kitchen PDF
+</button>
+
+<button
+  onClick={generateKitchenExcel}
+  className="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-white/20 rounded-lg cursor-pointer"
+>
+  <FileSpreadsheet size={16} /> Kitchen Excel
+</button>
+
             <button
               onClick={generateOrderPrepPDF}
               className="flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/20 rounded-lg"
