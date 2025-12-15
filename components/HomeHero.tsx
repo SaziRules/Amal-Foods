@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useState, useRef } from "react";
+import confetti from "canvas-confetti";
 
 export default function HomeHero() {
   const [activeVideo, setActiveVideo] = useState(0);
@@ -14,9 +15,14 @@ export default function HomeHero() {
     "/videos/hero3.mp4",
   ];
 
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [timeLeft, setTimeLeft] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
 
-  // 🕰️ Countdown
+  // 🕰️ Countdown (kept for UI but now irrelevant)
   useEffect(() => {
     const target = new Date("2025-12-15T23:59:59").getTime();
     const timer = setInterval(() => {
@@ -37,21 +43,47 @@ export default function HomeHero() {
     return () => clearInterval(timer);
   }, []);
 
+  // 🎉 Brand Confetti (Red + White Only)
+  useEffect(() => {
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+      confetti({
+        particleCount: 5,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: ["#B80013", "#FFFFFF"],
+      });
+      confetti({
+        particleCount: 5,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: ["#B80013", "#FFFFFF"],
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    })();
+  }, []);
+
   // 🎞️ Video rotation logic
   useEffect(() => {
     const current = videoRefs.current[activeVideo];
     if (current) {
       current.play();
-      const handleEnded = () => {
+      const handleEnded = () =>
         setActiveVideo((prev) => (prev + 1) % videos.length);
-      };
       current.addEventListener("ended", handleEnded);
       return () => current.removeEventListener("ended", handleEnded);
     }
   }, [activeVideo]);
 
   return (
-    <section className="relative flex flex-col md:flex-row h-auto md:h-[100vh] min-h-[100dvh] overflow-hidden bg-[#0b0b0b] text-white">
+    <section className="relative flex flex-col md:flex-row h-auto md:h-screen min-h-dvh overflow-hidden bg-[#0b0b0b] text-white">
       {/* LEFT CONTENT */}
       <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-24 xl:px-32 py-20 md:py-0 relative z-10">
         <motion.div
@@ -61,21 +93,19 @@ export default function HomeHero() {
           className="max-w-[900px] pt-10"
         >
           <h1
-  className="uppercase font-extrabold leading-[1.1]
+            className="uppercase font-extrabold leading-[1.1]
              text-[2.25rem] sm:text-[3rem] md:text-[2.75rem] lg:text-[4.5rem] xl:text-[3.83rem]"
-  style={{
-    fontFamily: "var(--font-roboto-condensed)",
-    letterSpacing: "1.5px",
-  }}
->
-  Ramadan Orders
-  <span className="block text-[#B80013]">Now Open</span>
-</h1>
-
+            style={{
+              fontFamily: "var(--font-roboto-condensed)",
+              letterSpacing: "1.5px",
+            }}
+          >
+            Ramadan Orders
+            <span className="block text-[#B80013]">Closed</span>
+          </h1>
 
           <p className="mt-6 text-white/90 font-medium text-[1rem] md:text-[1.15rem] tracking-wide max-w-2xl">
-            Pre-order your iftar favourites before <strong>15 December 2025</strong>.
-            Once the countdown ends — the ovens close.
+            Thank you for choosing Amal Foods for your Ramadan preparations. Our kitchens are now in full swing, crafting your favourites with precision and passion. We appreciate your trust in us — your meals are in expert hands.
           </p>
 
           {/* Countdown */}
@@ -100,10 +130,10 @@ export default function HomeHero() {
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-5 mt-12">
             <a
-              href="/products"
+              href="/customer/login"
               className="px-10 py-3.5 bg-[#B80013] text-white rounded-full font-bold uppercase text-sm md:text-base tracking-wide hover:bg-[#a20010] transition"
             >
-              Order Now
+              Track Orders
             </a>
             <a
               href="/customer/login"
@@ -116,8 +146,8 @@ export default function HomeHero() {
       </div>
 
       {/* RIGHT VISUAL STRIP */}
-      <div className="hidden md:grid flex-[1.1] grid-cols-2 gap-[4px] h-full">
-        {/* 🎞️ VIDEO COLUMN (rotating videos) */}
+      <div className="hidden md:grid flex-[1.1] grid-cols-2 gap-1 h-full">
+        {/* 🎞️ VIDEO COLUMN */}
         <motion.div
           key={activeVideo}
           initial={{ opacity: 0 }}
@@ -129,7 +159,9 @@ export default function HomeHero() {
           {videos.map((src, i) => (
             <video
               key={i}
-              ref={(el) => { videoRefs.current[i] = el; }}
+              ref={(el) => {
+                videoRefs.current[i] = el;
+              }}
               src={src}
               muted
               playsInline
