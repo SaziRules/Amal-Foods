@@ -29,7 +29,7 @@ import ManageOrdersModal from "@/components/ManageOrdersModal";
 import OrderPrepDisplay from "@/components/OrderPrepDisplay";
 import useOrderPrepExport from "@/components/OrderPrepExport";
 import CreateOrderModal from "@/components/CreateOrderModal";
-import CustomerDetailsModal from "@/components/Customerdetailsmodal · ";
+import CustomerDetailsModal from "@/components/CustomerDetailsModal";
 
 /* ⭐ Toast Component */
 function FeatureToast({ message, onClose }: { message: string; onClose: () => void }) {
