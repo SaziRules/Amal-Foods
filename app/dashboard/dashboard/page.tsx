@@ -34,7 +34,7 @@ import CustomerDetailsModal from "@/components/CustomerDetailsModal.tsx"
 /* ⭐ Toast Component */
 function FeatureToast({ message, onClose }: { message: string; onClose: () => void }) {
   return (
-    <div className="fixed bottom-6 right-6 bg-[#111]/90 border border-white/10 text-white px-5 py-3 rounded-xl shadow-lg z-9999 animate-slideIn">
+    <div className="fixed bottom-6 left-6 bg-[#111]/90 border border-white/10 text-white px-5 py-3 rounded-xl shadow-lg z-9999 animate-slideIn">
       <div className="flex items-center gap-3">
         <span className="text-lg">✨</span>
         <p className="text-sm">{message}</p>
@@ -758,7 +758,7 @@ const generateKitchenExcel = () => {
       {/* Toast */}
       {showFeatureToast && (
         <FeatureToast
-          message="✨ New! Mutton Haleem is readily available to add to existing orders."
+          message="✨ New! You can now add or create orders from the Manager Dashboard."
           onClose={() => setShowFeatureToast(false)}
         />
       )}
@@ -780,7 +780,7 @@ const generateKitchenExcel = () => {
       {showCustomerDetails && (
         <CustomerDetailsModal
           items={selectedItems}
-          branch={branch}
+          branch={branch || ""}
           onClose={() => {
             setShowCustomerDetails(false);
             setSelectedItems([]);
