@@ -10,6 +10,7 @@ import {
   FileDown,
   FileSpreadsheet,
   Pen,
+  Plus,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -27,11 +28,13 @@ import * as XLSX from "xlsx";
 import ManageOrdersModal from "@/components/ManageOrdersModal";
 import OrderPrepDisplay from "@/components/OrderPrepDisplay";
 import useOrderPrepExport from "@/components/OrderPrepExport";
+import CreateOrderModal from "@/components/CreateOrderModal";
+import CustomerDetailsModal from "@/components/Customerdetailsmodal · ";
 
 /* ⭐ Toast Component */
 function FeatureToast({ message, onClose }: { message: string; onClose: () => void }) {
   return (
-    <div className="fixed bottom-6 right-6 bg-[#111]/90 border border-white/10 text-white px-5 py-3 rounded-xl shadow-lg z-9999 animate-slideIn">
+    <div className="fixed bottom-6 left-6 bg-[#111]/90 border border-white/10 text-white px-5 py-3 rounded-xl shadow-lg z-9999 animate-slideIn">
       <div className="flex items-center gap-3">
         <span className="text-lg">✨</span>
         <p className="text-sm">{message}</p>
@@ -50,6 +53,9 @@ export default function ManagerDashboard() {
   const [loading, setLoading] = useState(true);
   const [showManageOrders, setShowManageOrders] = useState(false);
   const [showFeatureToast, setShowFeatureToast] = useState(true);
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
 
   /* ------------------ Utilities ------------------ */
   const parseItems = (raw: any) => {
@@ -408,6 +414,7 @@ const generateKitchenPDF = () => {
     `Kitchen_Report_${branch}_${new Date().toISOString().slice(0, 10)}.pdf`
   );
 };
+
 /* ------------------ KITCHEN REPORT EXCEL ------------------ */
 const generateKitchenExcel = () => {
   if (!orders.length) return alert("No orders available.");
@@ -562,18 +569,18 @@ const generateKitchenExcel = () => {
 
             {/* NEW DETAILED EXPORTS */}
             <button
-  onClick={generateKitchenPDF}
-  className="flex items-center gap-2 px-4 py-2 bg-green-500/15  border border-white/20 rounded-lg cursor-pointer"
->
-  <FileDown size={16} /> Kitchen PDF
-</button>
+              onClick={generateKitchenPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500/15  border border-white/20 rounded-lg cursor-pointer"
+            >
+              <FileDown size={16} /> Kitchen PDF
+            </button>
 
-<button
-  onClick={generateKitchenExcel}
-  className="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-white/20 rounded-lg cursor-pointer"
->
-  <FileSpreadsheet size={16} /> Kitchen Excel
-</button>
+            <button
+              onClick={generateKitchenExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500/15 border border-white/20 rounded-lg cursor-pointer"
+            >
+              <FileSpreadsheet size={16} /> Kitchen Excel
+            </button>
 
             <button
               onClick={generateOrderPrepPDF}
@@ -731,13 +738,63 @@ const generateKitchenExcel = () => {
 
       </div>
 
+      {/* Floating + Button */}
+      <button
+        onClick={() => setShowCreateOrder(true)}
+        className="
+          fixed bottom-8 right-8 z-50
+          w-18 h-18 rounded-full
+          bg-[#B80013] text-white
+          flex items-center justify-center
+          shadow-xl
+          hover:scale-105 active:scale-95
+          transition cursor-pointer
+        "
+        aria-label="Create Order"
+      >
+        <Plus size={28} />
+      </button>
+
       {/* Toast */}
       {showFeatureToast && (
         <FeatureToast
-          message="✨ New! Mutton Haleem is readily available to add to existing orders."
+          message="✨ New! You can now create orders from your Manager Dashboard."
           onClose={() => setShowFeatureToast(false)}
         />
       )}
+      
+
+      {/* STEP 1: Product Selection Modal */}
+      {showCreateOrder && (
+        <CreateOrderModal
+          branch={branch}
+          onClose={() => setShowCreateOrder(false)}
+          onComplete={(items) => {
+            setSelectedItems(items);
+            setShowCreateOrder(false);
+            setShowCustomerDetails(true);
+          }}
+        />
+      )}
+
+      {/* STEP 2: Customer Details & Submission Modal */}
+      {showCustomerDetails && (
+        <CustomerDetailsModal
+          items={selectedItems}
+          branch={branch}
+          onClose={() => {
+            setShowCustomerDetails(false);
+            setSelectedItems([]);
+          }}
+          onSuccess={() => {
+            setShowCustomerDetails(false);
+            setSelectedItems([]);
+            // Refresh orders list
+            window.location.reload();
+          }}
+        />
+      )}
+
     </main>
   );
 }
