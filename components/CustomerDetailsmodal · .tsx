@@ -132,6 +132,11 @@ export default function CustomerDetailsModal({
       return;
     }
 
+    if (!email.trim()) {
+      setError("Please enter customer email address");
+      return;
+    }
+
     if (!paymentMethod) {
       setError("Please select a payment method");
       return;
@@ -192,13 +197,34 @@ export default function CustomerDetailsModal({
 
       if (insertError) throw insertError;
 
+      console.log("🎯 Order inserted successfully, returned data:", data);
+      console.log("📧 Customer email in returned data:", data.email);
+      console.log("📧 Customer name:", data.customer_name);
+
+      if (!data.email) {
+        console.error("❌ ERROR: No email in returned order data!");
+        console.log("Original email from form:", email);
+      }
+
       setOrderData(data);
+
+      console.log("✅ Order created successfully:", data.order_number);
+      
+      // Failsafe: Check if email exists
+      if (!data.email || data.email.trim() === "") {
+        console.error("❌ CRITICAL: No email address for invoice! Skipping email send.");
+        setStep("success");
+        return;
+      }
+      
+      console.log("📧 Starting invoice generation for:", data.email);
 
       // 🧾 Generate PDF invoice and send email (matches checkout flow exactly)
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
 
       // Add logo
+      console.log("📄 Generating PDF invoice...");
       const logoUrl = "/images/logo-light.png";
       const logo = await fetch(logoUrl)
         .then((res) => res.blob())
@@ -256,6 +282,7 @@ export default function CustomerDetailsModal({
 
       // Convert to blob for email attachment
       const pdfBlob = doc.output("blob");
+      console.log("✅ PDF generated successfully, size:", pdfBlob.size, "bytes");
 
       const form = new FormData();
       form.append("order-number", data.order_number);
@@ -271,6 +298,9 @@ export default function CustomerDetailsModal({
         new File([pdfBlob], `${data.order_number}.pdf`, { type: "application/pdf" })
       );
 
+      console.log("📤 Sending invoice email to:", data.email);
+      console.log("📋 FormData prepared with", form.has("pdf") ? "PDF attached" : "NO PDF");
+
       // 📧 Send invoice email silently
       setSendingInvoice(true);
       
@@ -278,8 +308,29 @@ export default function CustomerDetailsModal({
         method: "POST",
         body: form,
       })
-        .catch((err) => console.error("Email send failed:", err))
-        .finally(() => setSendingInvoice(false));
+        .then((res) => {
+          console.log("📧 Email API response status:", res.status);
+          return res.json();
+        })
+        .then((result) => {
+          console.log("📧 Email API result:", result);
+          if (result.success) {
+            console.log("✅ Invoice email sent successfully!");
+          } else {
+            console.error("❌ Email sending failed:", result);
+          }
+        })
+        .catch((err) => {
+          console.error("❌ Email send failed:", err);
+        })
+        .finally(() => {
+          console.log("📧 Invoice sending complete, hiding modal");
+          setSendingInvoice(false);
+        });
+
+      // Show success screen after invoice is sent (or failed)
+      console.log("🎉 Moving to success screen");
+      setStep("success");
 
       setStep("success");
 
@@ -474,11 +525,14 @@ export default function CustomerDetailsModal({
 
               {/* Email */}
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Email Address</label>
+                <label className="block text-sm text-gray-400 mb-2">
+                  Email Address <span className="text-red-500">*</span>
+                </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="email"
+                    required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-black/30 border border-white/20 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-[#B80013]"
