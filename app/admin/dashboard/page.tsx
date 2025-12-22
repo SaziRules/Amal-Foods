@@ -129,6 +129,23 @@ const handleDeleteManager = async (id: string) => {
 
 
   const totalRevenue = orders.reduce((a, b) => a + b.total, 0);
+  //  Payment stats (matches ManageOrdersModal logic)
+const paidOrders = orders.filter((o) => o.payment_status === "paid");
+const unpaidOrders = orders.filter((o) => o.payment_status === "unpaid");
+
+const paidCount = paidOrders.length;
+const unpaidCount = unpaidOrders.length;
+
+const paidTotal = paidOrders.reduce(
+  (sum, o) => sum + Number(o.total || 0),
+  0
+);
+
+const unpaidTotal = unpaidOrders.reduce(
+  (sum, o) => sum + Number(o.total || 0),
+  0
+);
+
   const pending = orders.filter((o) => o.status === "pending").length;
   const completed = orders.filter((o) => o.status === "completed").length;
 
@@ -434,7 +451,7 @@ const handleDeleteManager = async (id: string) => {
   </div>
 
   {/* Divider */}
-  <div className="w-full h-[1px] bg-white/10 my-6"></div>
+  <div className="w-full h-px bg-white/10 my-6"></div>
 
   {/* 👥 Managers Section */}
   <div className="flex-1">
@@ -689,7 +706,7 @@ const handleDeleteManager = async (id: string) => {
 
   {/* 🗑️ Delete Confirmation Modal */}
 {showDeleteConfirm && managerToDelete && (
-  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[999]">
+  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-999">
     <div className="bg-[#141414]/95 border border-white/10 rounded-3xl w-[90%] max-w-sm p-8 text-center shadow-2xl">
       <h2 className="text-xl font-semibold text-[#B80013] mb-4">
         Confirm Deletion
@@ -758,8 +775,22 @@ const handleDeleteManager = async (id: string) => {
           </p>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
             <StatCard title="Total Revenue" value={`R${totalRevenue.toLocaleString()}`} icon={<TrendingUp size={22} />} color="emerald" />
+            <StatCard
+  title={`${paidCount} Paid Orders`}
+  value={`R${paidTotal.toLocaleString()}`}
+  icon={<TrendingUp size={22} />}
+  color="emerald"
+/>
+<StatCard
+  title={`${unpaidCount} Unpaid Orders`}
+  value={`R${unpaidTotal.toLocaleString()}`}
+  icon={<Clock size={22} />}
+  color="yellow"
+/>
+
+
             <StatCard title="Pending Orders" value={pending} icon={<Clock size={22} />} color="yellow" />
             <StatCard title="Completed Orders" value={completed} icon={<ShoppingBag size={22} />} color="green" />
             <StatCard title="Managers" value={`${managers.length} Active`} icon={<User size={22} />} color="red" />
