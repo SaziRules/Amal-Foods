@@ -98,6 +98,7 @@ export default function useOrderPrepExport(orders: any[], parseItems: any, branc
         "Order Number": order.order_number || order.id,
         Customer: order.customer_name || "N/A",
         "Cell Number": order.cell_number || order.phone_number || "",
+        Region: order.region || "-", 
       };
 
       // Set all item columns to 0
