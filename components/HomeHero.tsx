@@ -1,9 +1,7 @@
-"use client";
+'use client';
 
-import { motion } from "framer-motion";
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import confetti from "canvas-confetti";
+import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 function KenBurns({
   children,
@@ -22,107 +20,79 @@ function KenBurns({
     <motion.div
       className="absolute inset-0"
       animate={{ scale: [1, 1.08, 1], x: [0, dx, 0], y: [0, dy, 0] }}
-      transition={{ duration, repeat: Infinity, ease: "easeInOut", delay }}
+      transition={{ duration, repeat: Infinity, ease: 'easeInOut', delay }}
     >
       {children}
     </motion.div>
   );
 }
 
+const TICKER =
+  'SAMOOSAS  ·  PARATHAS  ·  SPRING ROLLS  ·  PIES  ·  PASTRIES  ·  MADE FRESH DAILY  ·  DURBAN BORN  ·  ';
+
 export default function HomeHero() {
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-
-  useEffect(() => {
-    const target = new Date("2025-12-15T23:59:59").getTime();
-    const timer = setInterval(() => {
-      const dist = target - Date.now();
-      if (dist <= 0) {
-        clearInterval(timer);
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      } else {
-        setTimeLeft({
-          days: Math.floor(dist / 86400000),
-          hours: Math.floor((dist / 3600000) % 24),
-          minutes: Math.floor((dist / 60000) % 60),
-          seconds: Math.floor((dist / 1000) % 60),
-        });
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const end = Date.now() + 2000;
-    (function frame() {
-      confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ["#B80013", "#FFFFFF"] });
-      confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ["#B80013", "#FFFFFF"] });
-      if (Date.now() < end) requestAnimationFrame(frame);
-    })();
-  }, []);
-
   return (
     <section className="relative flex flex-col md:flex-row h-auto md:h-screen min-h-dvh overflow-hidden bg-[#0b0b0b] text-white">
       {/* LEFT CONTENT */}
-      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-24 xl:px-32 py-20 md:py-0 relative z-10">
+      <div className="flex-1 flex flex-col justify-end md:justify-center px-6 sm:px-12 lg:px-24 xl:px-32 pt-32 pb-20 md:py-0 relative z-10">
         <motion.div
           initial={{ opacity: 0, x: -50 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1 }}
           className="max-w-[900px] pt-10"
         >
-          <h1
-            className="uppercase font-extrabold leading-[1.1] text-[2.25rem] sm:text-[3rem] md:text-[2.75rem] lg:text-[4.5rem] xl:text-[3.83rem]"
-            style={{ fontFamily: "var(--font-roboto-condensed)", letterSpacing: "1.5px" }}
-          >
-            Ramadan Orders
-            <span className="block text-[#B80013]">Closed</span>
-          </h1>
-
-          <p className="mt-6 text-white/90 font-medium text-[1rem] md:text-[1.15rem] tracking-wide max-w-2xl">
-            Thank you for choosing Amal Foods for your Ramadan preparations. Our kitchens are now in full swing, crafting your favourites with precision and passion. We appreciate your trust in us — your meals are in expert hands.
-          </p>
-
-          <div className="flex flex-wrap gap-6 mt-10 text-white/90">
-            {[
-              { label: "Days", value: timeLeft.days },
-              { label: "Hours", value: timeLeft.hours },
-              { label: "Minutes", value: timeLeft.minutes },
-              { label: "Seconds", value: timeLeft.seconds },
-            ].map((u, i) => (
-              <div key={i} className="text-center">
-                <div className="text-5xl font-extrabold text-white drop-shadow-md">
-                  {String(u.value).padStart(2, "0")}
-                </div>
-                <div className="text-xs uppercase tracking-widest mt-1 text-gray-300">{u.label}</div>
-              </div>
-            ))}
+          <div className="flex items-center gap-3 mb-6">
+            <span className="w-6 h-px bg-[#B80013]" />
+            <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] font-bold">
+              Durban&apos;s Finest · Since Day One
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-5 mt-12">
-            <a href="/customer/login" className="px-10 py-3.5 bg-[#B80013] text-white rounded-full font-bold uppercase text-sm md:text-base tracking-wide hover:bg-[#a20010] transition">
-              Track Orders
+          <h1
+            className="uppercase font-extrabold leading-[1.0] text-[2.6rem] sm:text-[3.5rem] md:text-[3.2rem] lg:text-[4.2rem] xl:text-[4.5rem] 2xl:text-[5rem]"
+            style={{ fontFamily: 'var(--font-roboto-condensed)', letterSpacing: '1px' }}
+          >
+            Handcrafted.
+            <span className="block text-[#B80013]">Born in Durban.</span>
+            <span className="block whitespace-nowrap">Ready in Minutes.</span>
+          </h1>
+
+          <p className="mt-6 border-l border-[#B80013]/35 pl-4 text-white/55 text-[0.95rem] md:text-[1rem] leading-relaxed max-w-sm">
+            From flaky samoosas to golden parathas — made with real ingredients, family recipes,
+            and a passion for quality.
+          </p>
+
+          <div className="flex flex-wrap gap-4 mt-10">
+            <a
+              href="/products"
+              className="px-10 py-3.5 bg-[#B80013] text-white rounded-full font-bold uppercase text-sm tracking-wide hover:bg-[#a20010] transition-all duration-200"
+            >
+              Explore Range
             </a>
-            <a href="/customer/login" className="px-10 py-3.5 bg-white text-[#111] rounded-full font-bold uppercase text-sm md:text-base tracking-wide hover:bg-gray-200 transition">
-              Signup
+            <a
+              href="/about"
+              className="px-10 py-3.5 border border-white/25 text-white/90 rounded-full font-bold uppercase text-sm tracking-wide hover:border-white/60 hover:text-white transition-all duration-200"
+            >
+              Our Story
             </a>
           </div>
         </motion.div>
+
       </div>
 
       {/* RIGHT VISUAL COLLAGE */}
       <div
-        className="hidden md:flex flex-[1.1] gap-3 h-full p-4 overflow-hidden"
-        style={{ perspective: "1600px" }}
+        className="hidden md:flex flex-[1.25] gap-3 h-full p-4 overflow-hidden"
+        style={{ perspective: '2000px' }}
       >
-        {/* PANEL 1 — angled left, top-aligned */}
+        {/* PANEL 1 — angled left */}
         <motion.div
           className="flex-1 flex flex-col gap-3 h-full"
-          style={{ transform: "rotateY(-7deg)", transformOrigin: "right center" }}
+          style={{ transform: 'rotateY(-7deg)', transformOrigin: 'right center' }}
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.9, delay: 0.1 }}
         >
-          {/* Image top */}
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={13} dy={-10}>
               <Image src="/images/hero1.jpg" alt="" fill className="object-cover" priority />
@@ -130,7 +100,6 @@ export default function HomeHero() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
           </div>
 
-          {/* Video middle — hero1 only */}
           <div className="relative flex-[5] rounded-2xl overflow-hidden">
             <video
               src="/videos/hero1.mp4"
@@ -143,7 +112,6 @@ export default function HomeHero() {
             <div className="absolute inset-0 bg-black/10 z-10" />
           </div>
 
-          {/* Image bottom */}
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={16} dy={10} delay={4}>
               <Image src="/images/dough.jpg" alt="" fill className="object-cover" />
@@ -156,15 +124,14 @@ export default function HomeHero() {
         <motion.div
           className="flex-1 flex flex-col gap-3"
           style={{
-            transform: "rotateY(7deg) translateY(14%)",
-            transformOrigin: "left center",
-            height: "100%",
+            transform: 'rotateY(7deg) translateY(14%)',
+            transformOrigin: 'left center',
+            height: '100%',
           }}
           initial={{ opacity: 0, x: 60 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.9, delay: 0.25 }}
         >
-          {/* Image top */}
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={15} dx={-10} delay={2}>
               <Image src="/images/pie-rolling.jpg" alt="" fill className="object-cover" />
@@ -172,7 +139,6 @@ export default function HomeHero() {
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
           </div>
 
-          {/* Video middle — hero3 only */}
           <div className="relative flex-[5] rounded-2xl overflow-hidden">
             <video
               src="/videos/hero3.mp4"
@@ -185,7 +151,6 @@ export default function HomeHero() {
             <div className="absolute inset-0 bg-black/10 z-10" />
           </div>
 
-          {/* Image bottom */}
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={12} dx={10} delay={6}>
               <Image src="/images/hero2.jpg" alt="" fill className="object-cover" />
@@ -195,8 +160,32 @@ export default function HomeHero() {
         </motion.div>
       </div>
 
-      {/* Background glow */}
-      <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-[#B80013]/25 blur-[200px] rounded-full" />
+      {/* Mobile background image */}
+      <div className="absolute inset-0 md:hidden">
+        <Image
+          src="/images/hero1.jpg"
+          alt=""
+          fill
+          className="object-cover object-center"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0b] via-[#0b0b0b]/75 to-black/50" />
+      </div>
+
+      {/* Background glow — sits under the right collage */}
+      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-[#B80013]/20 blur-[220px] rounded-full pointer-events-none translate-x-1/4 translate-y-1/4" />
+
+      {/* Ticker strip */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 bg-[#B80013] py-2.5 overflow-hidden">
+        <div className="animate-ticker">
+          <span className="text-white text-[10px] font-bold uppercase tracking-[0.35em]">
+            {TICKER}
+          </span>
+          <span className="text-white text-[10px] font-bold uppercase tracking-[0.35em]">
+            {TICKER}
+          </span>
+        </div>
+      </div>
     </section>
   );
 }

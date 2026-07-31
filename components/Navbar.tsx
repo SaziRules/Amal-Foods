@@ -390,17 +390,24 @@ export default function Navbar() {
             {[
               { href: "/", label: "Home" },
               { href: "/products", label: "Products" },
+              { href: "/about", label: "About" },
               { href: "/contact", label: "Contact" },
-            ].map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                onClick={() => setMenuOpen(false)}
-                className="block py-2 text-sm text-gray-200 hover:text-red-500 transition-colors"
-              >
-                {l.label}
-              </Link>
-            ))}
+            ].map((l) => {
+              const isActive = l.href === "/" ? pathname === "/" : pathname?.startsWith(l.href);
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex items-center gap-2.5 py-2 text-sm font-medium transition-colors ${
+                    isActive ? "text-white" : "text-white/40 hover:text-white"
+                  }`}
+                >
+                  <span className={`w-1 h-1 rounded-full shrink-0 transition-colors ${isActive ? "bg-[#B80013]" : "bg-transparent"}`} />
+                  {l.label}
+                </Link>
+              );
+            })}
           </nav>
         </div>
       </header>

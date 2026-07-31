@@ -152,3 +152,15 @@ h1, h2, h3, h4, h5, h6 {
   display: none;  /* Chrome, Safari, Opera */
 }
 
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-ticker {
+  animation: ticker 24s linear infinite;
+  display: flex;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+

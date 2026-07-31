@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export default function ManagerLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,63 +25,131 @@ export default function ManagerLogin() {
     if (error) {
       setError(error.message);
     } else {
-      router.push("/dashboard/dashboard"); // redirect to manager dashboard
+      router.push("/dashboard/dashboard");
     }
 
     setLoading(false);
   };
 
   return (
-    <main
-      className="min-h-screen flex items-center justify-center bg-cover bg-center bg-no-repeat text-white px-6 relative"
-      style={{ backgroundImage: "url('/images/login.png')" }}
-    >
-      {/* 🔲 Overlay for readability */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-[2px]" />
+    <main className="min-h-screen flex bg-[#0d0d0d] text-white">
+      {/* Left — image */}
+      <div className="hidden md:block relative flex-[1.1] overflow-hidden">
+        <Image src="/images/login.png" alt="" fill className="object-cover" priority />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/15" />
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/30" />
 
-      {/* 🔐 Login Box */}
-      <div className="relative z-10 w-full max-w-md bg-[#111]/80 border border-white/10 p-10 rounded-2xl text-center shadow-[0_0_25px_rgba(255,0,0,0.2)]">
-        <h1 className="text-3xl font-bold text-[#B80013] mb-8 drop-shadow-md">
-          Branch Manager Login
-        </h1>
+        {/* Top-left label */}
+        <div className="absolute top-10 left-10">
+          <span className="text-[10px] uppercase tracking-[0.4em] text-white/30 font-bold border border-white/15 px-3 py-1.5 rounded-full">
+            Staff Access Only
+          </span>
+        </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg bg-black/50 border border-white/20 px-4 py-2.5 text-sm placeholder-gray-400 focus:border-red-600 outline-none transition"
-            required
+        <div className="absolute bottom-0 left-0 p-12">
+          <p className="text-[#B80013] text-[10px] uppercase tracking-[0.4em] font-bold mb-4">
+            Branch Portal
+          </p>
+          <h2
+            className="text-5xl font-extrabold uppercase leading-[1.0] max-w-xs"
+            style={{ fontFamily: "var(--font-roboto-condensed)" }}
+          >
+            Manager<br />Dashboard.
+          </h2>
+          <p className="text-white/45 text-sm mt-4 max-w-xs leading-relaxed">
+            Manage branch orders, update stock levels, and view daily reports.
+          </p>
+        </div>
+      </div>
+
+      {/* Right — form */}
+      <div className="flex-1 flex flex-col px-8 sm:px-14 md:px-16 lg:px-20 py-12 relative">
+        <Link href="/" className="inline-block mb-auto pb-16">
+          <Image
+            src="/images/logo-dark.png"
+            alt="Amal Foods"
+            width={130}
+            height={45}
+            className="h-9 w-auto"
           />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg bg-black/50 border border-white/20 px-4 py-2.5 text-sm placeholder-gray-400 focus:border-red-600 outline-none transition"
-            required
-          />
+        </Link>
+
+        <div className="max-w-sm w-full mb-auto">
+          <p className="text-[#B80013] text-[10px] uppercase tracking-[0.4em] font-bold mb-3">
+            Restricted Access
+          </p>
+          <h1
+            className="text-4xl font-extrabold uppercase leading-[1.0] mb-2"
+            style={{ fontFamily: "var(--font-roboto-condensed)" }}
+          >
+            Manager Login.
+          </h1>
+          <p className="text-white/35 text-sm mb-10 leading-relaxed">
+            Sign in with your branch manager credentials to access the dashboard.
+          </p>
+
+          <form onSubmit={handleLogin} className="space-y-8">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase tracking-[0.3em] text-white/35 font-bold">
+                Email Address
+              </label>
+              <input
+                type="email"
+                placeholder="manager@amalfoods.co.za"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="bg-transparent border-b border-white/12 focus:border-[#B80013] pb-3 text-white text-sm placeholder-white/20 outline-none transition-colors duration-200"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase tracking-[0.3em] text-white/35 font-bold">
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-transparent border-b border-white/12 focus:border-[#B80013] pb-3 text-white text-sm placeholder-white/20 outline-none transition-colors duration-200 pr-8"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-0 bottom-3 text-white/25 hover:text-white transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {error && <p className="text-[#B80013] text-xs leading-relaxed">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 bg-[#B80013] hover:bg-[#a20010] text-white font-bold uppercase text-[11px] tracking-widest py-4 rounded-full transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? "Signing in..." : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight size={13} />
+                </>
+              )}
+            </button>
+          </form>
 
           <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-full bg-red-700 hover:bg-red-800 py-3 font-semibold text-sm tracking-wide transition-all shadow-[0_0_15px_rgba(255,0,0,0.3)] disabled:bg-gray-700 disabled:cursor-not-allowed"
+            onClick={() => router.push("/")}
+            className="mt-8 text-white/25 text-xs hover:text-white transition-colors"
           >
-            {loading ? "Signing in..." : "Login"}
+            ← Back to site
           </button>
-
-          {error && (
-            <p className="text-red-400 text-sm font-medium mt-3">{error}</p>
-          )}
-        </form>
-        <button
-  onClick={() => router.push("/")}
-  className="mt-6 w-full rounded-full bg-white/10 hover:bg-white/20 text-gray-200 py-3 font-medium text-sm transition"
->
-  ← Back to Shopping
-</button>
-
+        </div>
       </div>
     </main>
   );

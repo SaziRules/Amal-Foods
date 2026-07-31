@@ -1,20 +1,39 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, Phone, Mail, X, Facebook, Instagram, Twitter, Music, Youtube } from "lucide-react";
-import HeroSection from "@/components/HeroSection";
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Phone, Mail, X, Facebook, Instagram, Twitter, Youtube } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+
+const branches = [
+  {
+    title: 'Durban Branch',
+    address: '1271 Umgeni Rd, Stamford Hill, Durban, 4025',
+    phone: '031 303 7786',
+    email: 'info@amalfoods.co.za',
+    mapUrl: 'https://maps.google.com/?q=1271+Umgeni+Rd,+Stamford+Hill,+Durban,+4025',
+  },
+  {
+    title: 'Johannesburg Branch',
+    address: '123 Van Tonder St, Sunderland Ridge, Centurion, 0157',
+    phone: '011 838 3299',
+    email: 'jhb@amalfoods.co.za',
+    mapUrl: 'https://maps.google.com/?q=123+Van+Tonder+St,+Sunderland+Ridge,+Centurion,+0157',
+  },
+];
+
+const socials = [
+  { Icon: Facebook, href: 'https://facebook.com', label: 'Facebook' },
+  { Icon: Instagram, href: 'https://www.instagram.com/amalfoods_', label: 'Instagram' },
+  { Icon: Twitter, href: 'https://x.com', label: 'X / Twitter' },
+  { Icon: Youtube, href: 'https://youtube.com', label: 'YouTube' },
+];
 
 export default function ContactPage() {
   const [showModal, setShowModal] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [openFAQ, setOpenFAQ] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -25,140 +44,152 @@ export default function ContactPage() {
     e.preventDefault();
     setSuccess(true);
     setTimeout(() => setSuccess(false), 3000);
-    setFormData({ name: "", email: "", phone: "", message: "" });
+    setFormData({ name: '', email: '', phone: '', message: '' });
   };
 
-  const branches = [
-    {
-      title: "Durban Branch",
-      address: "1271 Umgeni Rd, Umgeni, Durban, 4001",
-      phone: "031 303 7786",
-      email: "info@aminasfoods.co.za",
-      mapUrl: "https://maps.google.com/?q=1271+Umgeni+Rd,+Umgeni,+Durban,+4001",
-    },
-    {
-      title: "Johannesburg Branch",
-      address: "123 Van Tonder St, Sunderland Ridge, Centurion, 0157",
-      phone: "011 838 3299",
-      email: "jhb@aminasfoods.co.za",
-      mapUrl: "https://maps.google.com/?q=123+Van+Tonder+St,+Sunderland+Ridge,+Centurion,+0157",
-    },
-  ];
-
-  const faqs = [
-    {
-      q: "Where can I buy Amal Foods products?",
-      a: "You can find our range in major supermarkets, select local retailers, and right here through our online store. Simply choose your region (Durban or Johannesburg) to shop directly.",
-    },
-    {
-      q: "Do you offer wholesale or bulk purchasing?",
-      a: "Yes! We supply to stores, restaurants, and caterers across South Africa. Use the contact form or call your nearest branch to set up a wholesale account.",
-    },
-    {
-      q: "Can I collaborate or become a distributor?",
-      a: "We’re always open to partnerships that share our love for quality food. Reach out via the contact form and our sales team will get in touch.",
-    },
-    {
-      q: "How long do deliveries take?",
-      a: "Delivery times depend on your area, but typically orders are fulfilled within 2–5 business days from your nearest branch.",
-    },
-  ];
-
   return (
-    <main className="min-h-screen bg-[#111] text-white">
-      {/* 🧱 HERO SECTION */}
-      <HeroSection
-        title="We're here"
-        highlight="To help you"
-        subtitle="Reach out to our branches directly or send us a message below."
-        primaryLabel="Contact Us"
-        secondaryLabel="Our Stores"
-        onPrimaryClick={() => setShowModal(true)}
-      />
-
-      {/* 📍 CONTACT DETAILS */}
-<section className="py-24 px-6 md:px-16 lg:px-24 bg-[#f4f4f4] text-[#111]">
-  <h2 className="max-w-7xl mx-auto text-3xl md:text-4xl font-bold text-center mb-16 text-[#B80013]">
-    Pickup Location & Contact Information
-  </h2>
-
-  <motion.div
-    initial={{ opacity: 0, y: 30 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.6 }}
-    viewport={{ once: true }}
-    className="max-w-3xl mx-auto bg-[#1a1a1a] text-white rounded-2xl shadow-xl border border-white/10 p-10 flex flex-col md:flex-row items-start md:items-center gap-8 hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#B80013]/10 transition-all duration-300"
-  >
-    <div className="flex flex-col items-center">
-      <div className="bg-[#B80013] w-20 h-20 rounded-full flex items-center justify-center mb-2">
-        <MapPin size={32} color="white" />
-      </div>
-    </div>
-
-    <div className="flex-1 text-center md:text-left">
-      <h3 className="text-2xl font-semibold mb-2">Durban Branch</h3>
-      <p className="text-sm text-gray-200">
-        1271 Umgeni Rd, Umgeni, Durban, 4001
-      </p>
-      <p className="text-sm text-gray-200 flex justify-center md:justify-start items-center gap-2 mt-3">
-        <Phone size={16} /> 031 303 7786
-      </p>
-      <p className="text-sm text-gray-200 flex justify-center md:justify-start items-center gap-2 mt-1">
-        <Mail size={16} /> info@amalfoods.co.za
-      </p>
-
-      <div className="flex flex-col sm:flex-row justify-center md:justify-start gap-4 mt-8">
-        <a
-          href="https://maps.google.com/?q=1277+Umgeni+Rd,+Stamford+Hill,+Durban,+4025"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-[#B80013] text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-[#a00010] transition"
-        >
-          Open in Google Maps
-        </a>
-        <button
-          onClick={() => setShowModal(true)}
-          className="border border-white px-6 py-3 rounded-full text-sm font-medium hover:bg-white hover:text-[#111] transition"
-        >
-          Get In Touch
-        </button>
-      </div>
-    </div>
-  </motion.div>
-</section>
-
-
-      {/* 🌐 SOCIAL MEDIA SECTION */}
-      <section className="bg-[#111] py-16 border-t border-white/10 text-center">
-        <h3 className="text-2xl font-semibold mb-8 text-white">Follow Us</h3>
-        <div className="flex justify-center gap-6">
-          {[
-            { Icon: Facebook, href: "https://facebook.com" },
-            { Icon: Instagram, href: "https://instagram.com" },
-            { Icon: Twitter, href: "https://x.com" },
-            { Icon: Youtube, href: "https://tiktok.com" },
-          ].map(({ Icon, href }, i) => (
-            <a
-              key={i}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-white/10 flex items-center justify-center hover:bg-[#B80013] hover:border-[#B80013] transition-all duration-300 group"
-            >
-              <Icon size={22} className="text-white group-hover:text-white" />
-            </a>
-          ))}
+    <main className="bg-[#0d0d0d] text-white overflow-x-hidden">
+      {/* ── PAGE HERO ── */}
+      <section className="relative h-[60vh] flex items-end overflow-hidden">
+        <Image
+          src="/images/dough.jpg"
+          fill
+          alt=""
+          className="object-cover"
+          priority
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-black/60 to-black/20" />
+        <div className="relative z-10 px-6 md:px-16 lg:px-24 max-w-7xl mx-auto w-full pb-20">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-4 font-bold"
+          >
+            Reach Out
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-5xl md:text-7xl lg:text-8xl font-extrabold uppercase leading-[1.0]"
+            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+          >
+            We&apos;re Here
+            <br />
+            <span className="text-[#B80013]">To Help You.</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mt-4 text-white/50 text-sm tracking-widest uppercase"
+          >
+            Reach out to our branches directly or send us a message below.
+          </motion.p>
         </div>
       </section>
 
-      {/* ❓ FAQ SECTION */}
-      
+      {/* ── BRANCH CARDS ── */}
+      <section className="py-24 px-6 md:px-16 lg:px-24">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-12 font-bold">
+            Our Locations
+          </p>
+          <div className="grid md:grid-cols-2 gap-6">
+            {branches.map((branch, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                viewport={{ once: true }}
+                className="group relative rounded-2xl border border-white/8 hover:border-[#B80013]/40 p-8 transition-colors duration-300 overflow-hidden"
+              >
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+                  style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 110%, rgba(184,0,19,0.12) 0%, transparent 70%)' }}
+                />
+                <div className="relative z-10">
+                  <h3
+                    className="text-2xl font-extrabold uppercase tracking-tight mb-6 group-hover:text-[#B80013] transition-colors duration-200"
+                    style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+                  >
+                    {branch.title}
+                  </h3>
+                  <div className="space-y-3 mb-8">
+                    <div className="flex items-start gap-3 text-white/60 text-sm">
+                      <MapPin size={16} className="text-[#B80013] shrink-0 mt-0.5" />
+                      <span>{branch.address}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-white/60 text-sm">
+                      <Phone size={16} className="text-[#B80013] shrink-0" />
+                      <a href={`tel:${branch.phone}`} className="hover:text-white transition-colors">
+                        {branch.phone}
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-3 text-white/60 text-sm">
+                      <Mail size={16} className="text-[#B80013] shrink-0" />
+                      <a href={`mailto:${branch.email}`} className="hover:text-white transition-colors">
+                        {branch.email}
+                      </a>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <a
+                      href={branch.mapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-6 py-2.5 bg-[#B80013] text-white text-sm font-bold uppercase tracking-wide rounded-full hover:bg-[#a00010] transition"
+                    >
+                      Get Directions
+                    </a>
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="px-6 py-2.5 border border-white/20 text-white/80 text-sm font-bold uppercase tracking-wide rounded-full hover:border-white/60 hover:text-white transition"
+                    >
+                      Get In Touch
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* 💌 CONTACT MODAL */}
+      {/* ── SOCIAL ── */}
+      <section className="py-20 px-6 md:px-16 lg:px-24 border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-10 font-bold">
+            Follow Us
+          </p>
+          <div className="flex gap-4 flex-wrap">
+            {socials.map(({ Icon, href, label }, i) => (
+              <motion.a
+                key={i}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: i * 0.08 }}
+                viewport={{ once: true }}
+                className="flex items-center gap-2.5 px-5 py-2.5 rounded-full border border-white/10 text-white/60 text-sm hover:border-[#B80013]/60 hover:text-white hover:bg-[#B80013]/10 transition-all duration-200"
+              >
+                <Icon size={16} />
+                <span>{label}</span>
+              </motion.a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CONTACT MODAL ── */}
       <AnimatePresence>
         {showModal && (
           <motion.div
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-999"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[999]"
             role="dialog"
             aria-modal="true"
             initial={{ opacity: 0 }}
@@ -168,19 +199,26 @@ export default function ContactPage() {
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0, transition: { duration: 0.2 } }}
-              className="bg-[#1a1a1a] border border-white/10 rounded-2xl shadow-2xl w-[95%] max-w-lg p-8 relative"
+              exit={{ scale: 0.92, opacity: 0, transition: { duration: 0.2 } }}
+              className="bg-[#111] border border-white/10 rounded-2xl shadow-2xl w-[95%] max-w-lg p-8 relative"
             >
               <button
                 onClick={() => setShowModal(false)}
-                className="absolute top-5 right-5 text-gray-400 hover:text-white"
+                className="absolute top-5 right-5 text-white/40 hover:text-white transition-colors"
               >
                 <X size={22} />
               </button>
-
-              <h2 className="text-2xl font-bold mb-6 text-[#B80013]">Send Us a Message</h2>
+              <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-2 font-bold">
+                Send a Message
+              </p>
+              <h2
+                className="text-2xl font-extrabold uppercase mb-6"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                Get In Touch
+              </h2>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <input
                   type="text"
@@ -189,7 +227,7 @@ export default function ContactPage() {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full bg-transparent border border-gray-600 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-[#B80013] outline-none"
+                  className="w-full bg-transparent border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:ring-1 focus:ring-[#B80013] focus:border-[#B80013] outline-none transition"
                 />
                 <input
                   type="email"
@@ -198,7 +236,7 @@ export default function ContactPage() {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full bg-transparent border border-gray-600 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-[#B80013] outline-none"
+                  className="w-full bg-transparent border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:ring-1 focus:ring-[#B80013] focus:border-[#B80013] outline-none transition"
                 />
                 <input
                   type="tel"
@@ -206,7 +244,7 @@ export default function ContactPage() {
                   placeholder="Phone Number"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full bg-transparent border border-gray-600 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-[#B80013] outline-none"
+                  className="w-full bg-transparent border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:ring-1 focus:ring-[#B80013] focus:border-[#B80013] outline-none transition"
                 />
                 <textarea
                   name="message"
@@ -215,23 +253,21 @@ export default function ContactPage() {
                   onChange={handleChange}
                   rows={5}
                   required
-                  className="w-full bg-transparent border border-gray-600 rounded-lg px-4 py-3 text-sm text-white placeholder-gray-400 focus:ring-2 focus:ring-[#B80013] outline-none resize-none"
+                  className="w-full bg-transparent border border-white/15 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 focus:ring-1 focus:ring-[#B80013] focus:border-[#B80013] outline-none resize-none transition"
                 />
-
                 <button
                   type="submit"
-                  className="w-full bg-[#B80013] text-white font-semibold rounded-full py-3 mt-2 hover:bg-[#a00010] transition"
+                  className="w-full bg-[#B80013] text-white font-bold uppercase tracking-widest text-sm rounded-full py-3 mt-2 hover:bg-[#a00010] transition"
                 >
                   Send Message
                 </button>
-
                 {success && (
                   <motion.p
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-green-500 text-sm font-medium text-center mt-3"
+                    className="text-green-400 text-sm text-center mt-3"
                   >
-                    ✅ Message sent successfully!
+                    Message sent successfully!
                   </motion.p>
                 )}
               </form>

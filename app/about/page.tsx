@@ -1,208 +1,305 @@
-"use client";
+'use client';
 
-import { motion, useInView } from "framer-motion";
-import Image from "next/image";
-import HeroSection from "@/components/HeroSection";
-import { Heart, Users, CheckCircle } from "lucide-react";
-import { useRef } from "react";
+import { motion, useInView } from 'framer-motion';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRef } from 'react';
+
+const values = [
+  {
+    num: '01',
+    title: 'Authenticity',
+    text: 'We keep it real — no shortcuts, no compromises. Every Amal product carries the flavour and comfort of a homemade meal.',
+  },
+  {
+    num: '02',
+    title: 'Community',
+    text: "We're proudly local — built on family kitchens, community stores, and the joy of sharing food that brings people together.",
+  },
+  {
+    num: '03',
+    title: 'Quality',
+    text: 'From our crisp pastry rolls to golden samoosas, quality and freshness come first — every pack, every time.',
+  },
+];
+
+const timeline = [
+  {
+    year: '2005',
+    title: 'A Kitchen Dream',
+    text: 'What began in a small Durban kitchen with a single batch of samoosas soon became a neighbourhood favourite.',
+  },
+  {
+    year: '2010',
+    title: 'Heat & Eat at Home',
+    text: 'We launched our first frozen range — ready to heat, crisp, and enjoy — making home entertaining effortless.',
+  },
+  {
+    year: '2015',
+    title: 'Expanding to Johannesburg',
+    text: 'Our second branch opened, bringing authentic Durban-style flavour to Gauteng and beyond.',
+  },
+  {
+    year: '2020',
+    title: 'Innovation in Every Bite',
+    text: 'We modernised our range with premium fillings, new pastry recipes, and eco-friendly packaging.',
+  },
+  {
+    year: '2024',
+    title: 'The Next Chapter',
+    text: 'Today, Amal Foods stands for quality, convenience, and taste — made with love, ready in minutes.',
+  },
+];
 
 export default function AboutPage() {
-  const values = [
-    {
-      icon: <Heart size={30} />,
-      title: "Authenticity",
-      desc: "We keep it real — no shortcuts, no compromises. Every Amal product carries the flavour and comfort of a homemade meal.",
-    },
-    {
-      icon: <Users size={30} />,
-      title: "Community",
-      desc: "We’re proudly local — built on family kitchens, community stores, and the joy of sharing food that brings people together.",
-    },
-    {
-      icon: <CheckCircle size={30} />,
-      title: "Quality",
-      desc: "From our crisp pastry rolls to golden samoosas, quality and freshness come first — every pack, every time.",
-    },
-  ];
-
-  const timeline = [
-    {
-      year: "2005",
-      title: "A Kitchen Dream",
-      text: "What began in a small Durban kitchen with a single batch of samoosas soon became a neighbourhood favourite.",
-    },
-    {
-      year: "2010",
-      title: "Bringing Heat & Eat to Homes",
-      text: "We launched our first frozen range — ready to heat, crisp, and enjoy — making home entertaining effortless.",
-    },
-    {
-      year: "2015",
-      title: "Expanding to Johannesburg",
-      text: "Our second branch opened, helping us bring authentic Durban-style flavour to Gauteng and beyond.",
-    },
-    {
-      year: "2020",
-      title: "Innovation in Every Bite",
-      text: "We modernised our range with premium fillings, new pastry recipes, and eco-friendly packaging.",
-    },
-    {
-      year: "2024",
-      title: "The Next Chapter",
-      text: "Today, Amal Foods stands for quality, convenience, and taste — made with love, ready in minutes.",
-    },
-  ];
-
   const timelineRef = useRef(null);
-  const isInView = useInView(timelineRef, { once: true, amount: 0.2 });
+  const isInView = useInView(timelineRef, { once: true, amount: 0.15 });
 
   return (
-    <main className="bg-[#111] text-white">
-      {/* 🧱 HERO */}
-      <HeroSection
-        title="We're Rooted"
-        highlight="In Flavour."
-        subtitle="From Durban kitchens to your table — the taste of home in every bite."
-        primaryLabel="Our Journey"
-        secondaryLabel="Shop Now"
-      />
-
-      {/* 📖 OUR STORY */}
-      <section className="bg-[#F4F4F4] text-[#111] py-24 px-6 md:px-16 lg:px-24">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -40 }}
-            whileInView={{ opacity: 1, x: 0 }}
+    <main className="bg-[#0d0d0d] text-white overflow-x-hidden">
+      {/* ── PAGE HERO ── */}
+      <section className="relative h-[65vh] flex items-end overflow-hidden">
+        <Image
+          src="/images/pie-rolling.jpg"
+          fill
+          alt=""
+          className="object-cover"
+          priority
+          sizes="100vw"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-black/60 to-black/20" />
+        <div className="relative z-10 px-6 md:px-16 lg:px-24 max-w-7xl mx-auto w-full pb-20">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-4 font-bold"
           >
-            <Image
-              src="/images/about.png"
-              alt="Amal Foods Pastry Preparation"
-              width={600}
-              height={500}
-              className="rounded-2xl shadow-xl object-cover"
-            />
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 40 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            Who We Are
+          </motion.p>
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="text-5xl md:text-7xl lg:text-8xl font-extrabold uppercase leading-[1.0]"
+            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
           >
-            <h2 className="text-3xl md:text-4xl font-bold text-[#B80013] mb-6">
-              Our Story
-            </h2>
-            <p className="text-gray-800 leading-relaxed text-[15px] md:text-base">
-              Amal Foods was born in Durban — a small family kitchen serving
-              up golden pastry pockets, rich fillings, and recipes passed down
-              through generations. What started as a love for flavour turned
-              into a movement to make quality home-style food more accessible.
-            </p>
-            <p className="text-gray-800 leading-relaxed mt-4 text-[15px] md:text-base">
-              From our signature samoosas to crisp spring rolls and soft, flaky
-              parathas, every product is prepared with care, sealed with pride,
-              and packed for your convenience — so you can heat, eat, and share
-              moments that taste like home.
-            </p>
-          </motion.div>
+            We&apos;re Rooted
+            <br />
+            <span className="text-[#B80013]">In Flavour.</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="mt-4 text-white/50 text-sm tracking-widest uppercase"
+          >
+            From Durban kitchens to your table — the taste of home in every bite.
+          </motion.p>
         </div>
       </section>
 
-      {/* 💡 MISSION & VALUES */}
-      <section className="py-24 px-6 md:px-16 lg:px-24 bg-[#111] text-white border-t border-white/10">
-        <div className="max-w-7xl mx-auto text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B80013]">
-            Our Mission & Values
-          </h2>
-          <p className="text-gray-300 mt-3 max-w-3xl mx-auto">
-            At Amal Foods, we make it easy to enjoy authentic taste — quick,
-            simple, and delicious. Because great food should never feel out of
-            reach.
-          </p>
+      {/* ── OUR STORY ── */}
+      <section className="py-28 px-6 md:px-16 lg:px-24">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 md:gap-24 items-start">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-5 font-bold">
+              Our Story
+            </p>
+            <h2
+              className="text-4xl md:text-5xl lg:text-6xl font-extrabold uppercase leading-[1.0]"
+              style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+            >
+              Born in a small
+              <br />
+              Durban kitchen.
+            </h2>
+            <div className="mt-8 w-12 h-0.5 bg-[#B80013]" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            viewport={{ once: true }}
+            className="pt-2"
+          >
+            <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-5">
+              Amal Foods was born in Durban — a small family kitchen serving up golden pastry
+              pockets, rich fillings, and recipes passed down through generations. What started as a
+              love for flavour turned into a movement to make quality home-style food more accessible.
+            </p>
+            <p className="text-white/55 leading-relaxed text-[15px] md:text-base">
+              From our signature samoosas to crisp spring rolls and soft, flaky parathas, every
+              product is prepared with care, sealed with pride, and packed for your convenience — so
+              you can heat, eat, and share moments that taste like home.
+            </p>
+          </motion.div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
-          {values.map((val, i) => (
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          viewport={{ once: true }}
+          className="mt-20 relative h-[50vh] md:h-[60vh] rounded-2xl overflow-hidden"
+        >
+          <Image
+            src="/images/about.png"
+            fill
+            alt="Amal Foods kitchen"
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d]/50 via-transparent to-transparent" />
+        </motion.div>
+      </section>
+
+      {/* ── MISSION & VALUES ── */}
+      <section className="py-4 px-6 md:px-16 lg:px-24 border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] pt-16 pb-2 font-bold">
+            Our Values
+          </p>
+          {values.map((v, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: i * 0.2 }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="p-8 rounded-2xl border border-white/10 bg-[#1a1a1a] shadow-lg hover:-translate-y-1 hover:shadow-2xl hover:shadow-[#B80013]/10 transition-all duration-300 text-center"
+              className="group grid grid-cols-1 md:grid-cols-[80px_1fr_280px] gap-x-12 gap-y-2 md:gap-y-0 py-12 border-b border-white/8 hover:border-[#B80013]/40 transition-colors duration-300 md:items-center"
             >
-              <div className="bg-[#B80013] w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4">
-                {val.icon}
-              </div>
-              <h3 className="text-lg font-semibold mb-2">{val.title}</h3>
-              <p className="text-gray-300 text-sm">{val.desc}</p>
+              <span
+                className="text-[#B80013] font-extrabold text-3xl md:text-4xl leading-none"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                {v.num}
+              </span>
+              <h3
+                className="text-xl md:text-3xl font-extrabold uppercase tracking-tight group-hover:text-[#B80013] transition-colors duration-300"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                {v.title}
+              </h3>
+              <p className="text-white/45 text-sm leading-relaxed">{v.text}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* 🕰️ TIMELINE SECTION */}
-      <section className="py-24 px-6 md:px-16 lg:px-24 bg-[#F4F4F4] text-[#111]" ref={timelineRef}>
-        <div className="max-w-6xl mx-auto text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B80013]">
+      {/* ── TIMELINE ── */}
+      <section className="py-28 px-6 md:px-16 lg:px-24" ref={timelineRef}>
+        <div className="max-w-7xl mx-auto">
+          <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-4 font-bold">
             Our Journey
-          </h2>
-          <p className="text-gray-700 mt-3 max-w-3xl mx-auto">
-            From a family kitchen to South African homes everywhere — here’s how Amal Foods grew, one flaky, golden milestone at a time.
           </p>
-        </div>
+          <h2
+            className="text-4xl md:text-5xl font-extrabold uppercase leading-[1.0] mb-20"
+            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+          >
+            From one kitchen.
+            <br />
+            <span className="text-[#B80013]">To every table.</span>
+          </h2>
 
-        <div className="relative max-w-5xl mx-auto">
-          {/* Animated timeline line */}
-          <motion.div
-            className="absolute left-1/2 top-0 bottom-0 w-[2px] bg-[#B80013]/80 transform -translate-x-1/2 origin-top"
-            initial={{ scaleY: 0 }}
-            animate={isInView ? { scaleY: 1 } : {}}
-            transition={{ duration: 1.2, ease: "easeOut" }}
-          />
+          <div className="relative">
+            <motion.div
+              className="absolute left-[19px] md:left-1/2 top-0 bottom-0 w-px bg-[#B80013]/25 -translate-x-1/2 origin-top"
+              initial={{ scaleY: 0 }}
+              animate={isInView ? { scaleY: 1 } : {}}
+              transition={{ duration: 1.4, ease: 'easeOut' }}
+            />
 
-          <div className="space-y-16 relative z-10">
-            {timeline.map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: i * 0.15 }}
-                viewport={{ once: true }}
-                className={`relative flex flex-col md:flex-row items-center gap-6 ${
-                  i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"
-                }`}
-              >
-                <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6 w-full md:w-[45%]">
-                  <h3 className="text-xl font-bold text-[#B80013] mb-2">
-                    {item.year} — {item.title}
-                  </h3>
-                  <p className="text-gray-700 text-sm leading-relaxed">{item.text}</p>
-                </div>
-                <div className="hidden md:block w-6 h-6 bg-[#B80013] rounded-full border-4 border-white shadow-md z-20" />
-              </motion.div>
-            ))}
+            <div className="relative z-10">
+              {timeline.map((item, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: i * 0.1 }}
+                  viewport={{ once: true }}
+                  className={`relative flex items-start gap-8 md:gap-0 pb-16 ${
+                    i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
+                  } md:flex-row`}
+                >
+                  {/* Mobile: left-offset content */}
+                  <div
+                    className={`pl-10 md:pl-0 md:w-[calc(50%-30px)] ${
+                      i % 2 === 0 ? 'md:pr-16 md:text-right' : 'md:pl-16 md:ml-auto'
+                    }`}
+                  >
+                    <span
+                      className="text-[#B80013] font-extrabold text-2xl block mb-1"
+                      style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+                    >
+                      {item.year}
+                    </span>
+                    <h3 className="text-white font-bold text-lg mb-2">{item.title}</h3>
+                    <p className="text-white/50 text-sm leading-relaxed">{item.text}</p>
+                  </div>
+
+                  {/* Center dot */}
+                  <div className="absolute left-[19px] md:left-1/2 top-1 -translate-x-1/2 w-3 h-3 bg-[#B80013] rounded-full border-2 border-[#0d0d0d] z-20" />
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ❤️ CTA SECTION */}
-      <section className="bg-[#B80013] text-white text-center py-20 px-6 md:px-16 lg:px-24">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          From our kitchen to yours
-        </h2>
-        <p className="text-white/90 max-w-2xl mx-auto mb-8">
-          Bringing convenience, flavour, and family together — Amal Foods
-          delivers heat-and-eat goodness that always tastes homemade.
-        </p>
-        <a
-          href="/products"
-          className="inline-block bg-white text-[#B80013] font-semibold rounded-full px-8 py-3 text-sm md:text-base hover:bg-gray-200 transition"
-        >
-          Explore Our Products
-        </a>
+      {/* ── CTA ── */}
+      <section className="relative py-28 px-6 md:px-16 lg:px-24 bg-[#B80013] overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div className="relative max-w-7xl mx-auto text-center">
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+            className="text-5xl md:text-7xl font-extrabold uppercase leading-tight mb-6"
+            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+          >
+            From our kitchen.
+            <br />
+            To yours.
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="text-white/80 max-w-xl mx-auto mb-10 text-[15px] leading-relaxed"
+          >
+            Convenience, flavour, and family together — heat-and-eat goodness that always tastes
+            homemade.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            viewport={{ once: true }}
+          >
+            <Link
+              href="/products"
+              className="inline-block bg-black text-white font-bold uppercase tracking-widest text-sm px-10 py-4 rounded-full hover:bg-white hover:text-[#B80013] transition-all duration-300"
+            >
+              Explore Our Products
+            </Link>
+          </motion.div>
+        </div>
       </section>
     </main>
   );

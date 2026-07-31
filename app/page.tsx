@@ -1,179 +1,232 @@
-"use client";
+'use client';
 
-import HomeHero from "@/components/HomeHero";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
-import { sanityClient } from "@/lib/sanityClient";
-import { Leaf, HeartHandshake, Clock } from "lucide-react"; // ✅ Lucide icons
+import HomeHero from '@/components/HomeHero';
+import ProductSlider from '@/components/ProductSlider';
+import Image from 'next/image';
+import Link from 'next/link';
+import { motion } from 'framer-motion';
+
+const pillars = [
+  {
+    num: '01',
+    title: 'Freshly Made',
+    text: 'Every batch is handcrafted with care — from the kneading of our dough to the sealing of each flaky pastry. We prepare daily to lock in freshness and ensure every bite delivers that just-made aroma and crisp golden texture.',
+  },
+  {
+    num: '02',
+    title: 'Family Recipes',
+    text: 'Our recipes come straight from Durban family kitchens where every meal tells a story. Generations have perfected these blends of spice and comfort — and now we bring that same heart and heritage straight to your home.',
+  },
+  {
+    num: '03',
+    title: 'Ready in Minutes',
+    text: 'Our heat-and-eat range is designed for convenience without compromise — authentic flavour and warmth on your plate in just a few easy minutes.',
+  },
+];
 
 export default function HomePage() {
-  const [products, setProducts] = useState<any[]>([]);
-
-  useEffect(() => {
-    sanityClient
-      .fetch(
-        `*[_type == "product" && active == true][0..5]{
-          _id, title, unit, "imageUrl": image.asset->url, pricing
-        }`
-      )
-      .then(setProducts)
-      .catch(console.error);
-  }, []);
-
   return (
-    <main className="bg-[#111] text-white overflow-x-hidden">
+    <main className="bg-[#0d0d0d] text-white overflow-x-hidden">
       <HomeHero />
 
-      {/* 🧁 Highlights */}
-      <section className="py-24 px-6 md:px-16 lg:px-24 bg-[#F4F4F4] text-[#111]">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 text-center">
-          {[
-            {
-              icon: <Leaf size={42} strokeWidth={1.5} />,
-              title: "Freshly Made",
-              text: "Every batch is handcrafted with care — from the kneading of our dough to the sealing of each flaky pastry. We prepare daily to lock in freshness and ensure every bite delivers that just-made aroma and crisp golden texture you love.",
-            },
-            {
-              icon: <HeartHandshake size={42} strokeWidth={1.5} />,
-              title: "Family Recipes",
-              text: "Our recipes come straight from Durban family kitchens where every meal tells a story. Generations have perfected these blends of spice and comfort — and now, we bring that same heart and heritage straight to your home.",
-            },
-            {
-              icon: <Clock size={42} strokeWidth={1.5} />,
-              title: "Ready in Minutes",
-              text: "Life moves fast — but good food shouldn’t fall behind. Our heat-and-eat range is designed for convenience without compromise, giving you authentic flavour and warmth on your plate in just a few easy minutes.",
-            },
-          ].map((item, i) => (
+      {/* ── EDITORIAL PILLARS ── */}
+      <section className="py-4 px-6 md:px-16 lg:px-24 border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+          {pillars.map((p, i) => (
             <motion.div
               key={i}
-              initial={{ opacity: 0, y: 40 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: i * 0.2 }}
+              transition={{ duration: 0.5, delay: i * 0.1 }}
               viewport={{ once: true }}
-              className="bg-white rounded-2xl shadow-md p-8 border border-gray-200 hover:shadow-xl transition group"
+              className="group grid grid-cols-1 md:grid-cols-[80px_1fr_280px] gap-x-12 gap-y-2 md:gap-y-0 py-12 border-b border-white/8 hover:border-[#B80013]/40 transition-colors duration-300 md:items-center"
             >
-              <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-[#B80013]/10 text-[#B80013] group-hover:bg-[#B80013] group-hover:text-white transition-all duration-300">
-                {item.icon}
-              </div>
-              <h3 className="font-bold text-lg mb-3 text-[#B80013]">
-                {item.title}
+              <span
+                className="text-[#B80013] font-extrabold text-3xl md:text-4xl leading-none"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                {p.num}
+              </span>
+              <h3
+                className="text-xl md:text-3xl font-extrabold uppercase tracking-tight group-hover:text-[#B80013] transition-colors duration-300"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                {p.title}
               </h3>
-              <p className="text-gray-700 text-sm leading-relaxed">
-                {item.text}
-              </p>
+              <p className="text-white/45 text-sm leading-relaxed">{p.text}</p>
             </motion.div>
           ))}
         </div>
       </section>
 
-      {/* ⭐ Featured Favourites (Parallax CTA) */}
-      <section
-        className="relative py-40 px-6 md:px-16 lg:px-24 text-white overflow-hidden"
-        style={{
-          backgroundImage: "url('/images/about.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundAttachment: "fixed",
-        }}
-      >
-        <div className="absolute inset-0 bg-black/60" />
+      <ProductSlider />
 
-        <div className="relative max-w-4xl mx-auto text-center z-10">
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
+      {/* ── CINEMATIC VIDEO BREAK ── */}
+      <section className="relative h-[85vh] overflow-hidden">
+        <video
+          src="/videos/hero2.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-6">
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="text-3xl md:text-5xl font-bold text-white mb-6"
+            className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-6 font-bold"
           >
-            Our Featured Favourites
-          </motion.h2>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
-            className="text-white/90 leading-relaxed text-[15px] md:text-lg mb-10"
-          >
-            Discover the flavours South Africa loves most — from crispy samoosas to tender parathas,
-            each bite crafted with care and ready to serve in minutes. Taste the legacy of
-            home-grown recipes perfected over generations.
+            Our Promise
           </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            viewport={{ once: true }}
+            className="text-5xl md:text-7xl lg:text-[88px] font-extrabold uppercase leading-[1.0] max-w-5xl"
+            style={{ fontFamily: 'var(--font-roboto-condensed)', letterSpacing: '1px' }}
+          >
+            Born in Durban.
+            <br />
+            <span className="text-[#B80013]">Built for Every Table.</span>
+          </motion.h2>
+          <motion.div
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            viewport={{ once: true }}
+            className="mt-8 w-24 h-0.5 bg-[#B80013] origin-left"
+          />
+        </div>
+      </section>
 
+      {/* ── STORY SPLIT ── */}
+      <section className="py-28 px-6 md:px-16 lg:px-24">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 md:gap-24 items-start">
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true }}
+          >
+            <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-5 font-bold">
+              Our Story
+            </p>
+            <h2
+              className="text-4xl md:text-5xl lg:text-6xl font-extrabold uppercase leading-[1.0]"
+              style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+            >
+              Taste the tradition behind every bite.
+            </h2>
+            <div className="mt-8 w-12 h-0.5 bg-[#B80013]" />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            viewport={{ once: true }}
+            className="flex flex-col justify-between pt-2"
+          >
+            <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-5">
+              From humble beginnings to homes across South Africa — Amal Foods is the story of taste,
+              tradition, and togetherness. What began as a small family venture has grown into a brand
+              trusted by families, chefs, and retailers alike.
+            </p>
+            <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-10">
+              Every product we make carries the same promise we started with — to deliver freshness,
+              consistency, and that unmistakable Amal quality in every bite.
+            </p>
+            <Link
+              href="/about"
+              className="group/link inline-flex items-center gap-3 text-white font-bold uppercase text-sm tracking-widest w-fit"
+            >
+              <span className="group-hover/link:text-[#B80013] transition-colors duration-200">
+                Read Our Story
+              </span>
+              <span className="w-8 h-px bg-white group-hover/link:w-16 group-hover/link:bg-[#B80013] transition-all duration-300 inline-block" />
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* Full-width image */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          viewport={{ once: true }}
+          className="mt-20 relative h-[45vh] md:h-[55vh] rounded-2xl overflow-hidden"
+        >
+          <Image
+            src="/images/about.png"
+            fill
+            alt="Amal Foods kitchen"
+            className="object-cover"
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d]/60 via-transparent to-transparent" />
+        </motion.div>
+      </section>
+
+      {/* ── RED CTA ── */}
+      <section className="relative py-28 px-6 md:px-16 lg:px-24 bg-[#B80013] overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div className="relative max-w-7xl mx-auto text-center">
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            viewport={{ once: true }}
+            className="text-white/60 text-xs uppercase tracking-[0.4em] mb-6 font-bold"
+          >
+            Made with Love
+          </motion.p>
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            viewport={{ once: true }}
+            className="text-5xl md:text-7xl font-extrabold uppercase leading-tight mb-6"
+            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+          >
+            Made with Love.
+            <br />
+            Ready in Minutes.
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            viewport={{ once: true }}
+            className="text-white/80 max-w-xl mx-auto mb-10 text-[15px] leading-relaxed"
+          >
+            Bringing the warmth of Durban kitchens to tables everywhere.
+          </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
             viewport={{ once: true }}
           >
-            <a
+            <Link
               href="/products"
-              className="inline-block bg-white text-[#B80013] font-semibold rounded-full px-10 py-4 text-sm md:text-base hover:bg-gray-100 transition shadow-lg"
+              className="inline-block bg-black text-white font-bold uppercase tracking-widest text-sm px-10 py-4 rounded-full hover:bg-white hover:text-[#B80013] transition-all duration-300"
             >
               Explore Our Range
-            </a>
+            </Link>
           </motion.div>
         </div>
-      </section>
-
-      {/* 📖 About CTA */}
-      <section className="py-24 px-6 md:px-16 lg:px-24 bg-[#F4F4F4] text-[#111]">
-  <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
-    <motion.div
-      initial={{ opacity: 0, x: -40 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.6 }}
-      viewport={{ once: true }}
-    >
-      <Image
-        src="/images/about.png"
-        alt="Amal story visual"
-        width={600}
-        height={500}
-        className="rounded-2xl shadow-xl object-cover"
-      />
-    </motion.div>
-
-    <motion.div
-      initial={{ opacity: 0, x: 40 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.6 }}
-      viewport={{ once: true }}
-    >
-      <h2 className="text-3xl md:text-4xl font-bold text-[#B80013] mb-4">
-        Our Story
-      </h2>
-      <p className="text-gray-800 leading-relaxed text-[15px] md:text-base">
-        From humble beginnings to homes across South Africa — Amal Foods is the story of taste,
-        tradition, and togetherness. What began as a small family venture driven by a passion for
-        quality and authentic flavour has grown into a brand trusted by families, chefs, and
-        retailers alike. Every product we make carries the same promise we started with — to deliver
-        freshness, consistency, and that unmistakable Amal quality in every bite. <br /><br />
-        Today, our range continues to expand, but our values remain rooted in care, community, and
-        craft. From sourcing the finest ingredients to maintaining the highest production standards,
-        Amal Foods stands for reliability and excellence that you can taste. <br /><br />
-        </p>
-    </motion.div>
-  </div>
-</section>
-
-
-      {/* ❤️ Red CTA Footer */}
-      <section className="bg-[#B80013] text-white text-center py-20 px-6 md:px-16 lg:px-24">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">
-          Made with Love. Ready in Minutes.
-        </h2>
-        <p className="text-white/90 max-w-2xl mx-auto mb-8">
-          Bringing the warmth of Durban kitchens to tables everywhere.
-        </p>
-        <a
-          href="/products"
-          className="inline-block bg-white text-[#B80013] font-semibold rounded-full px-8 py-3 hover:bg-gray-200 transition"
-        >
-          Explore Our Range
-        </a>
       </section>
     </main>
   );
