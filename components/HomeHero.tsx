@@ -95,7 +95,7 @@ export default function HomeHero() {
         >
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={13} dy={-10}>
-              <Image src="/images/hero1.jpg" alt="" fill className="object-cover" priority />
+              <Image src="/images/hero1.jpg" alt="" fill sizes="25vw" className="object-cover" priority />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
           </div>
@@ -114,7 +114,7 @@ export default function HomeHero() {
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={16} dy={10} delay={4}>
-              <Image src="/images/dough.jpg" alt="" fill className="object-cover" />
+              <Image src="/images/dough.jpg" alt="" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
@@ -134,7 +134,7 @@ export default function HomeHero() {
         >
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={15} dx={-10} delay={2}>
-              <Image src="/images/pie-rolling.jpg" alt="" fill className="object-cover" />
+              <Image src="/images/pie-rolling.jpg" alt="" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
           </div>
@@ -153,7 +153,7 @@ export default function HomeHero() {
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={12} dx={10} delay={6}>
-              <Image src="/images/hero2.jpg" alt="" fill className="object-cover" />
+              <Image src="/images/hero2.jpg" alt="" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
@@ -161,11 +161,12 @@ export default function HomeHero() {
       </div>
 
       {/* Mobile background image */}
-      <div className="absolute inset-0 md:hidden">
+      <div className="absolute inset-0 md:hidden" style={{ minHeight: '100dvh' }}>
         <Image
           src="/images/hero1.jpg"
           alt=""
           fill
+          sizes="100vw"
           className="object-cover object-center"
           priority
         />

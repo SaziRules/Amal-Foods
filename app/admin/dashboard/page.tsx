@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import {
   User,
   Settings,
@@ -14,6 +17,8 @@ import {
   Users,
   X,
   ExternalLink,
+  Download,
+  FileText,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -50,6 +55,7 @@ export default function AdminDashboard() {
   const [showManageOrders, setShowManageOrders] = useState(false);
 
   const [showManagerModal, setShowManagerModal] = useState(false);
+  const [isGeneratingInvoices, setIsGeneratingInvoices] = useState(false);
   const [managerForm, setManagerForm] = useState({
     name: "",
     email: "",
@@ -194,6 +200,181 @@ const unpaidTotal = unpaidOrders.reduce(
   }
 };
 
+
+  const handleExportToExcel = () => {
+    const rows: Record<string, any>[] = [];
+
+    orders.forEach((order) => {
+      let items: any[] = [];
+      try {
+        if (typeof order.items === "string") {
+          const parsed = JSON.parse(order.items);
+          items = Array.isArray(parsed)
+            ? parsed
+            : parsed.items
+            ? parsed.items
+            : Object.values(parsed);
+        } else if (Array.isArray(order.items)) {
+          items = order.items;
+        } else if (order.items && typeof order.items === "object") {
+          items = Object.values(order.items);
+        }
+      } catch {
+        items = [];
+      }
+
+      const base = {
+        "Order ID": order.id,
+        "Date": new Date(order.created_at).toLocaleString("en-ZA", {
+          dateStyle: "short",
+          timeStyle: "short",
+        }),
+        "Customer": order.customer_name || "",
+        "Phone": order.phone_number || "",
+        "Email": order.email || "",
+        "Branch": order.branch || "",
+        "Order Total (R)": Number(order.total || 0).toFixed(2),
+        "Status": order.status || "",
+        "Payment": order.payment_status || "",
+      };
+
+      if (items.length === 0) {
+        rows.push({ ...base, "Item": "", "Variant": "", "Qty": "", "Item Price (R)": "" });
+      } else {
+        items.forEach((item: any, idx: number) => {
+          rows.push({
+            // repeat order-level fields only on the first item row for readability
+            "Order ID": idx === 0 ? order.id : "",
+            "Date": idx === 0 ? base["Date"] : "",
+            "Customer": idx === 0 ? base["Customer"] : "",
+            "Phone": idx === 0 ? base["Phone"] : "",
+            "Email": idx === 0 ? base["Email"] : "",
+            "Branch": idx === 0 ? base["Branch"] : "",
+            "Item": item.name || item.title || item.product || item.item_name || "",
+            "Variant": item.variant || "",
+            "Qty": item.quantity ?? 1,
+            "Item Price (R)": Number(item.price || item.total || 0).toFixed(2),
+            "Order Total (R)": idx === 0 ? base["Order Total (R)"] : "",
+            "Status": idx === 0 ? base["Status"] : "",
+            "Payment": idx === 0 ? base["Payment"] : "",
+          });
+        });
+      }
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    // auto-size columns
+    const colKeys = Object.keys(rows[0] || {});
+    ws["!cols"] = colKeys.map((key) => ({
+      wch: Math.max(key.length, ...rows.map((r) => String(r[key] ?? "").length)) + 2,
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "All Orders");
+    XLSX.writeFile(wb, `amal-foods-orders-${new Date().toISOString().split("T")[0]}.xlsx`);
+  };
+
+  const handleGenerateAllInvoices = async () => {
+    if (orders.length === 0) return alert("No orders to generate invoices for.");
+    setIsGeneratingInvoices(true);
+    try {
+      const logoUrl = "/images/logo-light.png";
+      const logoBlob = await fetch(logoUrl).then((r) => r.blob());
+      const logoDataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(logoBlob);
+      });
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      for (let idx = 0; idx < orders.length; idx++) {
+        const order = orders[idx];
+        if (idx > 0) doc.addPage();
+
+        // Parse items (handles JSON string, array, object)
+        let items: any[] = [];
+        try {
+          if (typeof order.items === "string") {
+            const parsed = JSON.parse(order.items);
+            items = Array.isArray(parsed)
+              ? parsed
+              : parsed.items
+              ? parsed.items
+              : Object.values(parsed);
+          } else if (Array.isArray(order.items)) {
+            items = order.items;
+          } else if (order.items && typeof order.items === "object") {
+            items = Object.values(order.items);
+          }
+        } catch {
+          items = [];
+        }
+
+        doc.addImage(logoDataUrl, "PNG", pageWidth / 2 - 25, 10, 50, 20);
+
+        doc.setFontSize(16);
+        doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
+
+        doc.setFontSize(10);
+        const paymentStatus = (order.payment_status || "unpaid").toUpperCase();
+        const infoLines = [
+          `Date: ${new Date(order.created_at).toLocaleDateString()}`,
+          `Order Number: ${order.order_number || order.id}`,
+          `Customer: ${order.customer_name || "—"}`,
+          `Cell: ${order.cell_number || order.phone_number || "—"}`,
+          `Email: ${order.email || "—"}`,
+          `Region: ${order.region || "—"}`,
+          `Branch: ${order.branch || "—"}`,
+          `Payment Method: ${order.payment_method || "—"}`,
+          `Payment Status: ${paymentStatus}`,
+        ];
+        infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
+
+        const rows = items.map((item: any) => [
+          item.title || item.name || item.product || "—",
+          item.quantity ?? 1,
+          `R${Number(item.price || 0).toFixed(2)}`,
+          `R${(Number(item.price || 0) * (item.quantity ?? 1)).toFixed(2)}`,
+        ]);
+
+        autoTable(doc, {
+          startY: 55 + infoLines.length * 6 + 5,
+          head: [["Item", "Qty", "Price", "Subtotal"]],
+          body: rows.length > 0 ? rows : [["—", "—", "—", "—"]],
+          theme: "grid",
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [184, 0, 19] },
+        });
+
+        const lastY = (doc as any).lastAutoTable?.finalY ?? 100;
+        doc.setFontSize(11);
+        doc.text(`Total: R${Number(order.total || 0).toFixed(2)}`, 14, lastY + 10);
+
+        doc.setFontSize(10);
+        const bankY = lastY + 25;
+        doc.text("EFT Banking Details:", 14, bankY);
+        doc.text("Bank: Nedbank", 14, bankY + 6);
+        doc.text("Account Name: Amal Holdings", 14, bankY + 12);
+        doc.text("Account Number: 1169327818", 14, bankY + 18);
+        doc.text("Reference: Your Full Name", 14, bankY + 24);
+        doc.text(
+          "Please send proof of payment to your nearest branch before collection.",
+          14,
+          bankY + 30
+        );
+      }
+
+      doc.save(`amal-foods-all-invoices-${new Date().toISOString().split("T")[0]}.pdf`);
+    } catch (err: any) {
+      alert("Failed to generate invoices: " + err.message);
+    } finally {
+      setIsGeneratingInvoices(false);
+    }
+  };
 
   const handleAddManager = async () => {
     const { name, email, password, branch } = managerForm;
@@ -439,6 +620,22 @@ const unpaidTotal = unpaidOrders.reduce(
         className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
       >
         <TrendingUp size={16} /> Generate Report
+      </button>
+
+      <button
+        onClick={handleExportToExcel}
+        className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-700/80 hover:bg-emerald-700 rounded-lg text-sm transition"
+      >
+        <Download size={16} /> Export to Excel
+      </button>
+
+      <button
+        onClick={handleGenerateAllInvoices}
+        disabled={isGeneratingInvoices}
+        className="flex items-center justify-center gap-2 w-full py-2 bg-blue-700/80 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm transition"
+      >
+        <FileText size={16} />
+        {isGeneratingInvoices ? "Generating…" : "Generate All Invoices"}
       </button>
 
       <button

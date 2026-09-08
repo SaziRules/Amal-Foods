@@ -1,10 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // ✅ Global runtime configuration for Next.js 15+
-  // This ensures Supabase fetch works correctly across app routes
-  runtime: "nodejs",
-
   images: {
     remotePatterns: [
       {
@@ -20,10 +16,6 @@ const nextConfig: NextConfig = {
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60,
-  },
-
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 
   typescript: {
