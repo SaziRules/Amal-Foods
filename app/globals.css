@@ -163,4 +163,54 @@ h1, h2, h3, h4, h5, h6 {
   width: fit-content;
 }
 
+/* ── Dual-range price slider ── */
+.price-range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;   /* fills the container so the whole row is draggable */
+  background: transparent;
+  pointer-events: none;
+  outline: none;
+  margin: 0;
+  padding: 0;
+}
+.price-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  pointer-events: all;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2.5px solid #B80013;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.price-range-input::-webkit-slider-thumb:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45), 0 0 0 5px rgba(184,0,19,0.18);
+  transform: scale(1.1);
+}
+.price-range-input:active::-webkit-slider-thumb {
+  cursor: grabbing;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45), 0 0 0 7px rgba(184,0,19,0.22);
+  transform: scale(1.15);
+}
+.price-range-input::-moz-range-thumb {
+  pointer-events: all;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2.5px solid #B80013;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+}
+.price-range-input:active::-moz-range-thumb { cursor: grabbing; }
+/* hide the default Firefox track */
+.price-range-input::-moz-range-track { background: transparent; }
+
 

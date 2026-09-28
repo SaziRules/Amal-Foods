@@ -1,13 +1,10 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
 import fs from "fs";
 import path from "path";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 /* -------------------------------------------------
    TIMEOUT WRAPPER
@@ -139,13 +136,21 @@ export async function POST(req: Request) {
     let emailError = null;
 
     try {
-      const { error } = await withTimeout(
-        resend.emails.send({
-          from: "Amal Foods <invoices@amalfoods.co.za>",
-          replyTo: "orders@amalfoods.co.za",
-          to: [email, "orders@amalfoods.co.za"],
-          subject: `Proforma Invoice — Amal Foods`,
-          html: `
+      const brevoRes = await withTimeout(
+        fetch("https://api.brevo.com/v3/smtp/email", {
+          method: "POST",
+          headers: {
+            "accept": "application/json",
+            "api-key": process.env.BREVO_API_KEY!,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            sender: { name: "Amal Foods", email: "admin@amalfoods.co.za" },
+            to: [{ email, name }],
+            cc: [{ email: "orders@amalfoods.co.za" }],
+            replyTo: { email: "orders@amalfoods.co.za" },
+            subject: `Proforma Invoice — Amal Foods`,
+            htmlContent: `
   <div style="font-family: Arial, Helvetica, sans-serif; background-color: #f5f5f5; padding: 30px 0; color: #333;">
     <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 0px; overflow: hidden; box-shadow: 0 3px 15px rgba(0,0,0,0.08);">
       
@@ -219,17 +224,21 @@ export async function POST(req: Request) {
     </div>
   </div>
 `,
-          attachments: [
-            {
-              filename: `${order.order_number}.pdf`,
-              content: pdfBase64,
-            },
-          ],
+            attachment: [
+              {
+                name: `${order.order_number}.pdf`,
+                content: pdfBase64,
+              },
+            ],
+          }),
         }),
         8000
       );
 
-      if (error) emailError = error;
+      if (!brevoRes.ok) {
+        const body = await brevoRes.json().catch(() => ({}));
+        emailError = body?.message || `Brevo error ${brevoRes.status}`;
+      }
     } catch (err) {
       console.error("⚠ Email timeout/failure:", err);
       emailError = err;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import Link from 'next/link';
 import { client } from '@/sanity/lib/client';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -91,8 +92,9 @@ function Card({ product }: { product: Product }) {
   };
 
   return (
-    <div
-      className="group relative flex-shrink-0 flex flex-col justify-between p-6 rounded-2xl overflow-hidden border border-white/10 hover:border-white/25 hover:scale-[1.02] hover:-translate-y-1 transition-all duration-400 cursor-default"
+    <Link
+      href={`/products?category=${product.category}`}
+      className="group relative flex-shrink-0 flex flex-col justify-between p-6 rounded-2xl overflow-hidden border border-white/10 hover:border-white/25 hover:scale-[1.02] hover:-translate-y-1 transition-all duration-400 cursor-pointer no-underline"
       style={{
         width: CARD_W,
         height: 300,
@@ -147,14 +149,14 @@ function Card({ product }: { product: Product }) {
             {product.unit}
           </span>
         ) : <span />}
-        <div className="flex items-center gap-1.5 text-white opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-300">
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">View</span>
+        <div className="flex items-center gap-1.5 text-white/40 group-hover:text-white group-hover:translate-x-1 transition-all duration-300">
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]">View Range</span>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 

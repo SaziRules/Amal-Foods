@@ -3,30 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
-import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, X, FileDown } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import SendingInvoiceModal from "@/components/SendingInvoiceModal";
-
-// Supabase insert timeout wrapper
-function withSupabaseTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Supabase insert timeout")), ms);
-
-    promise
-      .then((v) => {
-        clearTimeout(timer);
-        resolve(v);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-  });
-}
 
 
 /* ───────────── PDF Invoice Generator ───────────── */
@@ -151,40 +133,7 @@ export default function Checkout() {
     }
   };
 
-  /* ───────────── Generate Order Number (Fixed Version) ───────────── */
-const generateOrderNumber = async () => {
-  try {
-    const currentYear = new Date().getFullYear().toString().slice(-2);
-
-    // Query ONLY the latest order for CURRENT YEAR
-    const { data, error } = await supabase
-      .from("orders")
-      .select("order_number")
-      .like("order_number", `Amal${currentYear}#%`)
-      .order("order_number", { ascending: false })
-      .limit(1);
-
-    if (error) throw error;
-
-    let nextSeq = 1;
-
-    if (data && data.length > 0) {
-      const last = data[0].order_number;
-      const match = last?.match(/#(\d+)$/);
-      if (match) {
-        nextSeq = parseInt(match[1], 10) + 1;
-      }
-    }
-
-    return `Amal${currentYear}#${String(nextSeq).padStart(4, "0")}`;
-
-  } catch (err) {
-    console.error("Order number generation failed:", err);
-    // Safe fallback
-    const fallbackYear = new Date().getFullYear().toString().slice(-2);
-    return `Amal${fallbackYear}#0001`;
-  }
-};
+  /* Order number generation and insert handled server-side via /api/place-order */
 
 
 
@@ -208,44 +157,28 @@ const generateOrderNumber = async () => {
     setLoading(true);
     setError(null);
 
-    const orderNumber = await generateOrderNumber();
-
-
     try {
-      const orderPayload = {
-        order_number: orderNumber,
-        customer_name: name.trim(),
-        phone_number: phone || cell,
-        cell_number: cell || phone,
-        email: email || null,
-        branch,
-        region,
-        payment_method:
-          paymentMethod === "cash" ? "Cash on Collection" : "EFT before Collection",
-        items: cart.map((i) => ({
-          id: i.id,
-          title: i.title,
-          quantity: i.quantity,
-          price: i.price,
-          region: (i as any).region,
-        })),
-        total: totalPrice,
-        status: "pending",
-      };
+      const res = await fetch("/api/place-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customer_name:  name.trim(),
+          phone_number:   phone || cell,
+          cell_number:    cell || phone,
+          email:          email || null,
+          branch,
+          region,
+          payment_method: paymentMethod === "cash" ? "Cash on Collection" : "EFT before Collection",
+          items: cart.map((i) => ({
+            id: i.id, title: i.title, quantity: i.quantity, price: i.price, region: (i as any).region,
+          })),
+          total: totalPrice,
+        }),
+      });
 
-      const { data, error: insertError } = await withSupabaseTimeout(
-  (async () => {
-    return await supabase
-      .from("orders")
-      .insert([orderPayload])
-      .select()
-      .single();
-  })(),
-  8000
-);
-
-
-      if (insertError) throw insertError;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Failed to place order");
+      const data = json.data;
 
             setOrderData(data);
       clearCart();
