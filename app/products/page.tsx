@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -438,8 +437,6 @@ function ProductCard({ product, launched }: { product: Product; launched: boolea
 /* ─────────────────────────── Page ──────────────────────────────────────── */
 
 export default function ProductsPage() {
-  const searchParams = useSearchParams();
-
   const [timeLeft, setTimeLeft]         = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [launched, setLaunched]         = useState(false);
   const [products, setProducts]         = useState<Product[]>([]);
@@ -453,7 +450,7 @@ export default function ProductsPage() {
 
   /* pre-select category from ?category= query param */
   useEffect(() => {
-    const cat = searchParams.get('category');
+    const cat = new URLSearchParams(window.location.search).get('category');
     if (cat && CATEGORY_LABELS[cat]) {
       setSelectedCategories([cat]);
     }
