@@ -622,13 +622,15 @@ export default function ProductsPage() {
   const [priceRange, setPriceRange]                 = useState<[number, number]>([0, 0]);
   const [priceInited, setPriceInited]               = useState(false);
   const [sort, setSort]                             = useState('default');
+  const [searchQ, setSearchQ]                       = useState('');
 
-  /* pre-select category from ?category= query param */
+  /* pre-select category or search query from URL params */
   useEffect(() => {
-    const cat = new URLSearchParams(window.location.search).get('category');
-    if (cat && CATEGORY_LABELS[cat]) {
-      setSelectedCategories([cat]);
-    }
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get('category');
+    const q   = params.get('q');
+    if (cat && CATEGORY_LABELS[cat]) setSelectedCategories([cat]);
+    if (q) setSearchQ(q.toLowerCase());
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* countdown */
@@ -701,6 +703,9 @@ export default function ProductsPage() {
   const filtered = useMemo(() => {
     let list = [...products];
 
+    if (searchQ)
+      list = list.filter(p => p.title.toLowerCase().includes(searchQ));
+
     if (selectedCategories.length)
       list = list.filter(p => selectedCategories.includes(p.category));
 
@@ -720,7 +725,7 @@ export default function ProductsPage() {
       case 'price-desc': return [...list].sort((a, b) => (getPrice(b) ?? 0) - (getPrice(a) ?? 0));
       default:           return list;
     }
-  }, [products, selectedCategories, selectedLabels, priceRange, priceInited, sort]);
+  }, [products, searchQ, selectedCategories, selectedLabels, priceRange, priceInited, sort]);
 
   /* active filter count */
   const activeFilterCount =
@@ -883,6 +888,13 @@ export default function ProductsPage() {
                 <span className="text-white/30 text-[10px] uppercase tracking-widest shrink-0">
                   {filtered.length} {filtered.length === 1 ? 'product' : 'products'}
                 </span>
+
+                {searchQ && (
+                  <span className="flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-[#B80013]/20 border border-[#B80013]/30 text-[10px] text-[#B80013]">
+                    &ldquo;{searchQ}&rdquo;
+                    <button onClick={() => setSearchQ('')} className="text-[#B80013]/60 hover:text-[#B80013] transition-colors"><X size={10} /></button>
+                  </span>
+                )}
 
                 {selectedCategories.map(c => (
                   <span key={c} className="flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-white/[0.06] border border-white/10 text-[10px] text-white/60">

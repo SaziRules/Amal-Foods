@@ -21,7 +21,13 @@ import { client } from "@/sanity/lib/client";
 interface SearchResult {
   title: string;
   slug: string;
-  image: string;
+  category: string;
+  priceDurban: number | null;
+  priceJoburg: number | null;
+}
+
+function prettyCategory(cat: string) {
+  return cat.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export default function Navbar() {
@@ -108,7 +114,9 @@ export default function Navbar() {
     const fetchResults = async () => {
       const data = await client.fetch(
         `*[_type == "product" && title match $q + "*"][0...6]{
-          title, "slug": slug.current, "image": image.asset->url
+          title, "slug": slug.current, category,
+          "priceDurban": pricing.durban,
+          "priceJoburg": pricing.joburg
         }`,
         { q: query }
       );
@@ -243,26 +251,32 @@ export default function Navbar() {
 
                 {results.length > 0 && (
                   <div className="absolute top-[110%] left-0 w-full bg-[#111] rounded-xl shadow-lg border border-white/10 overflow-hidden z-50">
-                    {results.map((item, index) => (
-                      <Link
-                        key={item.slug || `${item.title}-${index}`}
-                        href={`/products/${item.slug}`}
-                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-200 hover:bg-red-700/20 transition-colors"
-                        onClick={() => {
-                          setQuery("");
-                          setResults([]);
-                        }}
-                      >
-                        <Image
-                          src={item.image}
-                          alt={item.title}
-                          width={32}
-                          height={32}
-                          className="rounded-md object-cover"
-                        />
-                        {item.title}
-                      </Link>
-                    ))}
+                    {results.map((item, index) => {
+                      const price = item.priceDurban ?? item.priceJoburg;
+                      return (
+                        <button
+                          key={item.slug || `${item.title}-${index}`}
+                          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#B80013]/15 transition-colors border-b border-white/[0.05] last:border-0"
+                          onClick={() => {
+                            setQuery("");
+                            setResults([]);
+                            router.push(`/products?q=${encodeURIComponent(item.title)}`);
+                          }}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-white text-sm font-medium truncate">{item.title}</p>
+                            <p className="text-white/35 text-[10px] uppercase tracking-[0.25em] mt-0.5">
+                              {prettyCategory(item.category)}
+                            </p>
+                          </div>
+                          {price != null && (
+                            <span className="text-[#B80013] text-sm font-bold ml-4 flex-shrink-0">
+                              R{price}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
