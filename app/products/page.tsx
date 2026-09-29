@@ -44,6 +44,8 @@ const SORT_OPTIONS = [
 
 /* ─────────────────────────── types ─────────────────────────────────────── */
 
+type Region = 'durban' | 'joburg' | 'capetown';
+
 type Product = {
   _id: string;
   title: string;
@@ -434,9 +436,177 @@ function ProductCard({ product, launched }: { product: Product; launched: boolea
   );
 }
 
+/* ─────────────────────────── RegionModal ───────────────────────────────── */
+
+const CITIES: { id: Region; label: string; sub: string }[] = [
+  { id: 'durban',   label: 'Durban',    sub: 'Browse & order online' },
+  { id: 'joburg',   label: "Jo'burg",   sub: 'Contact us for your order' },
+  { id: 'capetown', label: 'Cape Town', sub: 'Contact us for your order' },
+];
+
+function RegionModal({ onSelect }: { onSelect: (r: Region) => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(6px)' }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 28, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 16, scale: 0.97 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 300 }}
+        className="w-full max-w-md bg-[#111] border border-white/[0.09] rounded-2xl overflow-hidden"
+      >
+        {/* Header */}
+        <div className="px-8 pt-9 pb-6 border-b border-white/[0.06]">
+          <p className="text-[#B80013] text-[10px] uppercase tracking-[0.4em] font-bold mb-2">Welcome</p>
+          <h2
+            className="text-3xl font-extrabold uppercase leading-tight text-white"
+            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+          >
+            Where are you<br />ordering from?
+          </h2>
+          <p className="text-white/35 text-[12px] mt-3 leading-relaxed">
+            Select your city to continue. Availability and ordering vary by region.
+          </p>
+        </div>
+
+        {/* City options */}
+        <div className="p-4 space-y-2">
+          {CITIES.map((city, i) => (
+            <motion.button
+              key={city.id}
+              initial={{ opacity: 0, x: -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 + i * 0.07 }}
+              onClick={() => onSelect(city.id)}
+              className="w-full flex items-center justify-between px-5 py-4 rounded-xl border border-white/[0.08] hover:border-[#B80013]/60 hover:bg-[#B80013]/[0.06] transition-all duration-200 group text-left"
+            >
+              <div>
+                <p
+                  className="text-white font-extrabold uppercase text-[1.1rem] leading-tight group-hover:text-white transition-colors"
+                  style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+                >
+                  {city.label}
+                </p>
+                <p className="text-white/35 text-[10px] mt-0.5 tracking-wide">{city.sub}</p>
+              </div>
+              <svg
+                className="text-white/20 group-hover:text-[#B80013] transition-colors shrink-0"
+                width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              >
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </motion.button>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ─────────────────────────── ContactPage ───────────────────────────────── */
+
+function ContactPage({ region, onBack }: { region: 'joburg' | 'capetown'; onBack: () => void }) {
+  const cityLabel = region === 'joburg' ? "Jo'burg" : 'Cape Town';
+  const contacts = [
+    { name: 'Zakiya', number: '083 457 8662', tel: '+27834578662' },
+    { name: 'Zahra',  number: '083 777 7401', tel: '+27837777401' },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-[#0d0d0d] flex flex-col items-center justify-center px-6 overflow-hidden"
+    >
+      {/* Background texture */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.8) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* Back button */}
+      <motion.button
+        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}
+        onClick={onBack}
+        className="absolute top-6 left-6 flex items-center gap-2 text-white/35 hover:text-white/70 text-[11px] uppercase tracking-[0.25em] font-bold transition-colors"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M11 6l-6 6 6 6" />
+        </svg>
+        Change city
+      </motion.button>
+
+      <div className="relative max-w-lg w-full text-center">
+        {/* City badge */}
+        <motion.p
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="text-[#B80013] text-[10px] uppercase tracking-[0.5em] font-bold mb-4"
+        >
+          {cityLabel} Orders
+        </motion.p>
+
+        {/* Heading */}
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="text-5xl md:text-7xl font-extrabold uppercase leading-[0.95] text-white mb-6"
+          style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+        >
+          Order via<br /><span className="text-[#B80013]">WhatsApp.</span>
+        </motion.h1>
+
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}
+          className="text-white/45 text-[13px] leading-relaxed mb-10 max-w-sm mx-auto"
+        >
+          We don&apos;t ship online to {cityLabel} yet — but our team will sort you out directly. Reach out to get your order form.
+        </motion.p>
+
+        {/* Contact cards */}
+        <div className="space-y-3 mb-8">
+          {contacts.map((c, i) => (
+            <motion.a
+              key={c.name}
+              href={`https://wa.me/${c.tel.replace('+', '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 + i * 0.08 }}
+              className="flex items-center justify-between px-6 py-4 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-[#B80013]/50 hover:bg-[#B80013]/[0.06] transition-all duration-200 group"
+            >
+              <div className="text-left">
+                <p className="text-white font-bold text-[15px]">{c.name}</p>
+                <p className="text-white/40 text-[12px] mt-0.5 tabular-nums">{c.number}</p>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#B80013]/60 group-hover:text-[#B80013] transition-colors flex items-center gap-1.5">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.556 4.116 1.527 5.845L.057 23.17a.75.75 0 0 0 .904.903l5.376-1.461A11.946 11.946 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.75a9.745 9.745 0 0 1-4.96-1.354l-.356-.212-3.693 1.004 1.017-3.607-.232-.372A9.722 9.722 0 0 1 2.25 12C2.25 6.615 6.615 2.25 12 2.25S21.75 6.615 21.75 12 17.385 21.75 12 21.75z"/>
+                </svg>
+                WhatsApp
+              </span>
+            </motion.a>
+          ))}
+        </div>
+
+        <motion.p
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+          className="text-white/20 text-[11px] uppercase tracking-[0.3em]"
+        >
+          Tap a card to open WhatsApp
+        </motion.p>
+      </div>
+    </motion.div>
+  );
+}
+
 /* ─────────────────────────── Page ──────────────────────────────────────── */
 
 export default function ProductsPage() {
+  const [region, setRegion]             = useState<Region | null>(null);
   const [timeLeft, setTimeLeft]         = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [launched, setLaunched]         = useState(false);
   const [products, setProducts]         = useState<Product[]>([]);
@@ -583,6 +753,19 @@ export default function ProductsPage() {
   };
 
   return (
+    <>
+    <AnimatePresence>
+      {region === null && <RegionModal onSelect={setRegion} />}
+    </AnimatePresence>
+    <AnimatePresence>
+      {(region === 'joburg' || region === 'capetown') && (
+        <ContactPage region={region} onBack={() => setRegion(null)} />
+      )}
+    </AnimatePresence>
+    <div
+      className="transition-all duration-500"
+      style={region === null ? { filter: 'blur(8px)', pointerEvents: 'none', userSelect: 'none', opacity: 0.45 } : {}}
+    >
     <main className="bg-[#0d0d0d] text-white overflow-x-hidden">
 
       {/* ── HERO ── */}
@@ -752,7 +935,7 @@ export default function ProductsPage() {
       </section>
 
       {/* ── MOBILE FILTER DRAWER ── */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {mobileFiltersOpen && (
           <>
             <motion.div
@@ -827,5 +1010,7 @@ export default function ProductsPage() {
         </div>
       </section>
     </main>
+    </div>
+    </>
   );
 }
