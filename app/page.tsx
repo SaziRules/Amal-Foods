@@ -10,17 +10,17 @@ const pillars = [
   {
     num: '01',
     title: 'Freshly Made',
-    text: 'Every batch is handcrafted with care — from the kneading of our dough to the sealing of each flaky pastry. We prepare daily to lock in freshness and ensure every bite delivers that just-made aroma and crisp golden texture.',
+    text: 'Every batch is handcrafted with care, from the kneading of our dough to the sealing of each flaky pastry. We prepare daily to lock in freshness and ensure every bite delivers that just-made aroma and crisp golden texture.',
   },
   {
     num: '02',
     title: 'Family Recipes',
-    text: 'Our recipes come straight from Durban family kitchens where every meal tells a story. Generations have perfected these blends of spice and comfort — and now we bring that same heart and heritage straight to your home.',
+    text: 'Our recipes come straight from Durban family kitchens where every meal tells a story. Generations have perfected these blends of spice and comfort, and now we bring that same heart and heritage straight to your home.',
   },
   {
     num: '03',
     title: 'Ready in Minutes',
-    text: 'Our heat-and-eat range is designed for convenience without compromise — authentic flavour and warmth on your plate in just a few easy minutes.',
+    text: 'Our heat-and-eat range is designed for convenience without compromise, authentic flavour and warmth on your plate in just a few easy minutes.',
   },
 ];
 
@@ -133,12 +133,12 @@ export default function HomePage() {
             className="flex flex-col justify-between pt-2"
           >
             <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-5">
-              From humble beginnings to homes across South Africa — Amal Foods is the story of taste,
+              From humble beginnings to homes across South Africa, Amal Foods is the story of taste,
               tradition, and togetherness. What began as a small family venture has grown into a brand
               trusted by families, chefs, and retailers alike.
             </p>
             <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-10">
-              Every product we make carries the same promise we started with — to deliver freshness,
+              Every product we make carries the same promise we started with, to deliver freshness,
               consistency, and that unmistakable Amal quality in every bite.
             </p>
             <Link
@@ -153,22 +153,35 @@ export default function HomePage() {
           </motion.div>
         </div>
 
-        {/* Full-width image */}
+        {/* 5-col brand image grid */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
-          className="mt-20 relative h-[45vh] md:h-[55vh] rounded-2xl overflow-hidden"
+          className="mt-20 grid grid-cols-2 md:grid-cols-5 gap-3"
         >
-          <Image
-            src="/images/about.png"
-            fill
-            alt="Amal Foods kitchen"
-            className="object-cover"
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d]/60 via-transparent to-transparent" />
+          {[
+            '/images/brand/P64A2825.JPG',
+            '/images/brand/P64A2912.jpg',
+            '/images/brand/P64A2977.JPG',
+            '/images/brand/P64A3087.JPG',
+            '/images/brand/P64A3148.JPG',
+          ].map((src, i) => (
+            <div
+              key={i}
+              className={`relative aspect-[3/4] rounded-xl overflow-hidden${i === 4 ? ' col-span-2 md:col-span-1' : ''}`}
+            >
+              <Image
+                src={src}
+                fill
+                alt=""
+                className="object-cover hover:scale-105 transition-transform duration-700"
+                sizes="(max-width: 768px) 50vw, 20vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/25 to-transparent" />
+            </div>
+          ))}
         </motion.div>
       </section>
 

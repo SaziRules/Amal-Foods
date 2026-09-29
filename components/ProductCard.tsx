@@ -47,7 +47,7 @@ export default function ProductCard({ product, index }: ProductCardProps) {
     region === "joburg"
       ? product.pricing?.joburg ?? 0
       : product.pricing?.durban ?? 0;
-  const priceText = price ? `R${price}` : "R—";
+  const priceText = price ? `R${price}` : "R-";
   const isRed = index % 2 === 0;
 
   // 🏬 Hide product if not available in this region
@@ -102,6 +102,11 @@ export default function ProductCard({ product, index }: ProductCardProps) {
     }`}
   >
     {product.label.replace(/-/g, " ")}
+  </span>
+)}
+{title.toUpperCase().startsWith("FATIMA'S") && (
+  <span className="absolute -top-3 right-4 z-10 text-[9px] font-semibold uppercase px-2.5 py-[3px] rounded-full bg-white/10 border border-white/20 text-white/60">
+    Not Min Order Qty
   </span>
 )}
 

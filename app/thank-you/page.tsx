@@ -3,14 +3,13 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { ArrowRight } from "lucide-react";
 // @ts-ignore: no declaration file for 'canvas-confetti'
 import confetti from "canvas-confetti";
 
 export default function ThankYouPage() {
   useEffect(() => {
-    // Fire confetti once on page load
-    const end = Date.now() + 800; // 0.8 seconds
-
+    const end = Date.now() + 800;
     (function frame() {
       confetti({
         particleCount: 6,
@@ -26,73 +25,63 @@ export default function ThankYouPage() {
         origin: { x: 1 },
         colors: ["#B80013", "#ffffff", "#333333"],
       });
-
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
+      if (Date.now() < end) requestAnimationFrame(frame);
     })();
   }, []);
 
   return (
     <main
-      className="relative min-h-screen flex items-center justify-center px-6"
-      style={{
-        backgroundImage: "url('/images/checkout.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
+      className="relative min-h-screen flex items-center justify-center px-4 py-12 bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: "url('/images/checkout.png')" }}
     >
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/75 pointer-events-none" />
 
-      {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      {/* Card */}
+      <div className="relative w-full max-w-sm bg-[#111] rounded-3xl border border-white/[0.07] shadow-[0_0_80px_rgba(0,0,0,0.9)] px-8 py-10 text-center text-white">
 
-      {/* Center Card */}
-      <div className="relative z-10 w-full max-w-md bg-black/40 border border-white/10 rounded-2xl shadow-2xl px-8 py-10 text-center">
-
-        {/* Logo */}
         <Image
           src="/images/logo-dark.png"
           alt="Amal Foods"
-          width={140}
-          height={50}
-          className="mx-auto mb-6"
+          width={120}
+          height={42}
+          className="mx-auto mb-7 h-8 w-auto"
         />
 
-        {/* Title */}
-        <h1 className="text-2xl font-bold text-[#B80013] mb-4">
-          Thank You for Your Order!
-        </h1>
-
-        {/* Message */}
-        <p className="text-gray-200 text-sm leading-relaxed mb-6">
-          Your order has been received successfully.
-          <br />
-          Create an account or log in to track your orders at any time.
+        <p className="text-[10px] uppercase tracking-[0.45em] text-[#B80013] font-bold mb-3">
+          Order Confirmed
         </p>
 
-        {/* Buttons */}
-        <div className="flex flex-col gap-4 mt-6">
+        <h1
+          className="text-6xl font-extrabold uppercase leading-[0.9] mb-5"
+          style={{ fontFamily: "var(--font-roboto-condensed)" }}
+        >
+          Thank<br />You.
+        </h1>
 
-          {/* Login/Register */}
+        <p className="text-white/35 text-sm leading-relaxed mb-8 max-w-[240px] mx-auto">
+          Your order has been received. Log in to track and manage your orders.
+        </p>
+
+        <div className="flex flex-col gap-3">
           <Link
             href="/customer/login"
-            className="bg-[#B80013] hover:bg-[#a20010] text-white font-semibold py-3 rounded-full transition-all shadow-lg"
+            className="w-full flex items-center justify-center gap-2 bg-[#B80013] hover:bg-[#a20010] active:bg-[#a20010] text-white font-bold uppercase text-[11px] tracking-widest py-4 rounded-full transition-all duration-200"
           >
-            Create Account / Login
+            <span>Create Account / Login</span>
+            <ArrowRight size={13} />
           </Link>
 
-          {/* Continue Shopping */}
           <Link
             href="/products"
-            className="border border-[#B80013] text-[#B80013] hover:bg-[#B80013] hover:text-white font-semibold py-3 rounded-full transition-all"
+            className="w-full flex items-center justify-center text-white/25 text-[11px] uppercase tracking-[0.25em] font-bold py-3 hover:text-white/55 active:text-white/55 transition-colors"
           >
             Continue Shopping
           </Link>
-
         </div>
 
-        <p className="text-[11px] text-gray-400 mt-6">
-          Thank you for choosing Amal Foods. We appreciate your support!
+        <p className="mt-7 text-[11px] text-white/15 leading-relaxed">
+          Thank you for choosing Amal Foods.
         </p>
       </div>
     </main>

@@ -1,6 +1,6 @@
 "use client";
 
-import {
+import React, {
   createContext,
   useContext,
   useState,
@@ -27,9 +27,11 @@ interface CartContextType {
   updateQuantity: (id: string, qty: number) => void;
   clearCart: () => void;
   totalItems: number;
+  qualifyingItems: number;
   totalPrice: number;
   selectedRegion: string | null;
   setSelectedRegion: (region: string | null) => void;
+  hydrated: boolean;
 }
 
 //
@@ -43,7 +45,9 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null); // 🍞 message
+  const [toast, setToast] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const isFirstRender = React.useRef(true);
 
   //
   // 🔄 Load persisted cart + region
@@ -57,12 +61,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {
       localStorage.removeItem("cart");
     }
+    setHydrated(true);
   }, []);
 
   //
   // 💾 Persist
   //
   useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
@@ -81,7 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // 🛑 Restrict mixed regions
       if (existingRegion && item.region && existingRegion !== item.region) {
         setToast(
-          `Cart locked to ${existingRegion.toUpperCase()} region — clear cart to add ${item.region.toUpperCase()} products.`
+          `Cart locked to ${existingRegion.toUpperCase()} region. Clear cart to add ${item.region.toUpperCase()} products.`
         );
         return prev;
       }
@@ -129,13 +135,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setSelectedRegion(null);
     localStorage.removeItem("cart");
     localStorage.removeItem("selectedRegion");
-    setToast("Cart cleared — you can now shop any region.");
+    setToast("Cart cleared. You can now shop any region.");
   };
 
   //
   // 💰 Totals
   //
   const totalItems = cart.reduce((sum, i) => sum + i.quantity, 0);
+  const qualifyingItems = cart
+    .filter((i) => !i.title.toUpperCase().startsWith("FATIMA'S"))
+    .reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   //
@@ -160,9 +169,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         updateQuantity,
         clearCart,
         totalItems,
+        qualifyingItems,
         totalPrice,
         selectedRegion,
         setSelectedRegion,
+        hydrated,
       }}
     >
       {children}

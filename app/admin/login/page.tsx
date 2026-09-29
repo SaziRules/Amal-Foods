@@ -46,7 +46,7 @@ export default function AdminLogin() {
       if (userData?.role === "owner") {
         router.push("/admin/dashboard");
       } else {
-        setError("Access denied — managers must use their branch login page.");
+        setError("Access denied. Managers must use their branch login page.");
         await supabase.auth.signOut();
       }
     }

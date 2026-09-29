@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import ReactDOM from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import CartDrawer from "./CartDrawer";
 import { useCart } from "@/context/CartContext";
@@ -26,6 +26,7 @@ interface SearchResult {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   // ⭐ ALL HOOKS MUST COME FIRST (React strict rule)
   const [menuOpen, setMenuOpen] = useState(false);
@@ -391,6 +392,7 @@ export default function Navbar() {
             {[
               { href: "/", label: "Home" },
               { href: "/products", label: "Products" },
+              { href: "/gallery", label: "Gallery" },
               { href: "/about", label: "About" },
               { href: "/contact", label: "Contact" },
             ].map((l) => {
@@ -473,7 +475,7 @@ export default function Navbar() {
             onClose={() => setCartOpen(false)}
             onCheckout={() => {
               setCartOpen(false);
-              window.location.href = "/checkout";
+              router.push("/checkout");
             }}
           />,
           document.body

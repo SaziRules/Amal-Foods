@@ -118,7 +118,7 @@ export default function ManagerDashboard() {
   // Header
   doc.setFontSize(18);
   doc.setTextColor(184, 0, 19);
-  doc.text(`Order Prep Report — ${branch}`, 14, y);
+  doc.text(`Order Prep Report - ${branch}`, 14, y);
   y += 8;
 
   doc.setFontSize(10);
@@ -339,7 +339,7 @@ const generateKitchenPDF = () => {
 
   doc.setFontSize(18);
   doc.setTextColor(184, 0, 19);
-  doc.text(`Kitchen Report — ${branch}`, 14, y);
+  doc.text(`Kitchen Report - ${branch}`, 14, y);
   y += 8;
 
   doc.setFontSize(10);
@@ -505,7 +505,7 @@ const generateKitchenExcel = () => {
       }, 200);
     } catch (error) {
       console.error("Logout error:", error);
-      alert("Logout failed — please refresh manually.");
+      alert("Logout failed. Please refresh manually.");
     }
   };
 

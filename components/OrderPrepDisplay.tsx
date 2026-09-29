@@ -127,7 +127,7 @@ export default function OrderPrepDisplay({
     let y = 15;
 
     doc.setFontSize(14);
-    doc.text(`Prep Report — ${category.replace(/-/g, " ")}`, 14, y);
+    doc.text(`Prep Report - ${category.replace(/-/g, " ")}`, 14, y);
     y += 6;
 
     doc.setFontSize(10);

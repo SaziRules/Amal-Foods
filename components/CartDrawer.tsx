@@ -11,7 +11,7 @@ interface CartDrawerProps {
 }
 
 export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProps) {
-  const { cart, totalItems, totalPrice, removeFromCart, updateQuantity } = useCart();
+  const { cart, totalItems, qualifyingItems, totalPrice, removeFromCart, updateQuantity } = useCart();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -65,6 +65,11 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
                       <p className="text-xs text-gray-400">
                         {item.quantity} × R{item.price.toFixed(2)}
                       </p>
+                      {item.title?.toUpperCase().startsWith("FATIMA'S") && (
+                        <p className="text-[10px] text-amber-400/70 mt-0.5">
+                          Not counted in minimum order quantity
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -107,16 +112,16 @@ export default function CartDrawer({ open, onClose, onCheckout }: CartDrawerProp
             <span>R{totalPrice.toFixed(2)}</span>
           </div>
           <button
-            disabled={totalItems < 10}
+            disabled={qualifyingItems < 10}
             onClick={onCheckout}
             className={`mt-3 w-full rounded-full py-2.5 font-semibold text-sm transition-colors ${
-              totalItems < 10
+              qualifyingItems < 10
                 ? "bg-gray-700 text-gray-400 cursor-not-allowed"
                 : "bg-red-700 hover:bg-red-800 text-white"
             }`}
           >
-            {totalItems < 10
-              ? `Add ${10 - totalItems} more to checkout`
+            {qualifyingItems < 10
+              ? `Add ${10 - qualifyingItems} more to checkout`
               : "Proceed to Checkout"}
           </button>
         </div>

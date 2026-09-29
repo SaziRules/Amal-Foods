@@ -52,7 +52,7 @@ export default function ContactPage() {
       {/* ── PAGE HERO ── */}
       <section className="relative h-[60vh] flex items-end overflow-hidden">
         <Image
-          src="/images/dough.jpg"
+          src="/images/brand/contact-hero.JPG"
           fill
           alt=""
           className="object-cover"

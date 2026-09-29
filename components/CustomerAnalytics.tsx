@@ -182,14 +182,14 @@ export default function CustomerAnalytics() {
         />
         <InsightCard
           title="Most Active Customer"
-          value={mostActiveCustomer ? mostActiveCustomer[0] : "—"}
+          value={mostActiveCustomer ? mostActiveCustomer[0] : "-"}
           description={`Orders placed: ${
             mostActiveCustomer ? mostActiveCustomer[1] : 0
           }`}
         />
         <InsightCard
           title="Highest Total Spender"
-          value={highestSpender ? highestSpender[0] : "—"}
+          value={highestSpender ? highestSpender[0] : "-"}
           description={`Spent R${
             highestSpender ? highestSpender[1].toFixed(2) : 0
           } total`}
@@ -222,7 +222,7 @@ export default function CustomerAnalytics() {
       {/* Bar Chart */}
       <div className="mt-10">
         <h3 className="text-[#B80013] font-semibold mb-3 text-sm uppercase">
-          Orders & Avg Value — Registered vs Guests
+          Orders & Avg Value, Registered vs Guests
         </h3>
         <div className="h-[300px] w-full">
           <ResponsiveContainer>
@@ -264,7 +264,7 @@ function InsightCard({
 }) {
   const displayValue =
     value === null || value === undefined
-      ? "—"
+      ? "-"
       : typeof value === "string" || typeof value === "number"
       ? value
       : Array.isArray(value)

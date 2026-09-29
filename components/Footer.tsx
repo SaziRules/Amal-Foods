@@ -137,7 +137,7 @@ export default function Footer() {
         {/* Bottom row: copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-white/25 text-xs">
           <span>© {new Date().getFullYear()} Amal Foods. All rights reserved.</span>
-          <span>Built to thrive — by Move Digital.</span>
+          <span>Built to thrive, by Move Digital.</span>
         </div>
       </div>
     </footer>

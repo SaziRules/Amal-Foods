@@ -33,7 +33,7 @@ const robotoCondensed = Roboto_Condensed({
 
 export const metadata: Metadata = {
   title: "Amal Foods",
-  description: "Savor the Crunch — Amal Foods",
+  description: "Savor the Crunch, Amal Foods",
 };
 
 export default function RootLayout({

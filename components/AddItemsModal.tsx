@@ -203,7 +203,7 @@ export default function AddItemsModal({
                     <p className="text-gray-400 text-xs">
                       {product.unit && `${product.unit} · `}
                       <span className="text-[#B80013] font-medium">
-                        R{product.price?.toFixed(2) ?? "—"}
+                        R{product.price?.toFixed(2) ?? "-"}
                       </span>
                     </p>
                   </div>

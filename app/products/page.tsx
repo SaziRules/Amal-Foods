@@ -301,7 +301,7 @@ function SidebarFilters({
 
 /* ─────────────────────────── ProductCard ───────────────────────────────── */
 
-function ProductCard({ product, launched }: { product: Product; launched: boolean }) {
+function ProductCard({ product, launched, region }: { product: Product; launched: boolean; region: Region }) {
   const { addToCart, removeFromCart, updateQuantity, cart } = useCart();
   const [quantity, setQuantity] = useState(0);
 
@@ -321,7 +321,7 @@ function ProductCard({ product, launched }: { product: Product; launched: boolea
   const handleAdd = () => {
     const existing = cart.find(item => item.id === id);
     if (!existing) {
-      addToCart({ id, title: product.title, price: price!, quantity: 1 });
+      addToCart({ id, title: product.title, price: price!, quantity: 1, region });
     } else {
       updateQuantity(id, quantity + 1);
     }
@@ -366,6 +366,11 @@ function ProductCard({ product, launched }: { product: Product; launched: boolea
         {product.label && (
           <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.15em] bg-[#B80013] text-white px-2.5 py-1 rounded-full">
             {LABEL_DISPLAY[product.label] ?? product.label}
+          </span>
+        )}
+        {product.title.toUpperCase().startsWith("FATIMA'S") && (
+          <span className="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-[0.12em] bg-black/50 border border-white/20 text-white/70 px-2.5 py-1 rounded-full backdrop-blur-sm">
+            Not Min Order Qty
           </span>
         )}
       </div>
@@ -563,7 +568,7 @@ function ContactPage({ region, onBack }: { region: 'joburg' | 'capetown'; onBack
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.22 }}
           className="text-white/45 text-[13px] leading-relaxed mb-10 max-w-sm mx-auto"
         >
-          We don&apos;t ship online to {cityLabel} yet — but our team will sort you out directly. Reach out to get your order form.
+          We don&apos;t ship online to {cityLabel} yet, but our team will sort you out directly. Reach out to get your order form.
         </motion.p>
 
         {/* Contact cards */}
@@ -769,55 +774,65 @@ export default function ProductsPage() {
     <main className="bg-[#0d0d0d] text-white overflow-x-hidden">
 
       {/* ── HERO ── */}
-      <section className="relative h-[28vh] flex items-end overflow-hidden">
-        <Image src="/images/hero3.jpg" fill alt="" className="object-cover" priority sizes="100vw" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-black/65 to-black/20" />
-        <div className="relative z-10 px-6 md:px-16 lg:px-24 max-w-7xl mx-auto w-full pb-10">
-          <motion.p
-            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-            className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-2 font-bold"
-          >
-            {launched ? 'Our Full Range' : 'Orders Opening · 1 October 2026'}
-          </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}
-            className="text-4xl md:text-6xl font-extrabold uppercase leading-[1.0]"
-            style={{ fontFamily: 'var(--font-roboto-condensed)' }}
-          >
-            {launched
-              ? <>The Full <span className="text-[#B80013]">Collection.</span></>
-              : <>Browse the Range. <span className="text-[#B80013]">Orders Open Soon.</span></>
-            }
-          </motion.h1>
+      <section className="relative h-[60vh] flex items-end overflow-hidden">
+        <Image src="/images/brand/products-hero.JPG" fill alt="" className="object-cover" priority sizes="100vw" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-black/45 to-transparent" />
+        <div className="relative z-10 w-full pb-14 px-6 md:px-16 lg:px-24">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-10">
+
+            {/* Heading */}
+            <div>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
+                className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-4 font-bold"
+              >
+                {launched ? 'Our Full Range' : 'Orders Opening · 1 October 2026'}
+              </motion.p>
+              <motion.h1
+                initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}
+                className="text-5xl md:text-7xl lg:text-8xl font-extrabold uppercase leading-[1.0]"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                {launched
+                  ? <>The Full<br /><span className="text-[#B80013]">Collection.</span></>
+                  : <>Browse<br /><span className="text-[#B80013]">the Range.</span></>
+                }
+              </motion.h1>
+            </div>
+
+            {/* Countdown pill cards — below heading on mobile, right-aligned on desktop */}
+            {!launched && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
+                className="flex flex-col items-start md:items-end flex-shrink-0"
+              >
+                <p className="text-[#B80013] text-[9px] uppercase tracking-[0.4em] font-bold mb-4">Orders open in</p>
+                <div className="flex items-stretch gap-2">
+                  {([
+                    { label: 'Days',    value: timeLeft.days    },
+                    { label: 'Hours',   value: timeLeft.hours   },
+                    { label: 'Minutes', value: timeLeft.minutes },
+                    { label: 'Seconds', value: timeLeft.seconds },
+                  ] as const).map((u, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-col items-center justify-center gap-1 px-4 py-3 md:px-5 md:py-4 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm min-w-[60px] md:min-w-[72px]"
+                    >
+                      <div
+                        className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-none tabular-nums"
+                        style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+                      >
+                        {String(u.value).padStart(2, '0')}
+                      </div>
+                      <div className="text-[#B80013] text-[8px] uppercase tracking-[0.35em] font-bold">{u.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </div>
         </div>
       </section>
-
-      {/* ── COUNTDOWN ── */}
-      {!launched && (
-        <section className="py-16 px-6 md:px-16 lg:px-24 border-b border-white/[0.06]">
-          <div className="max-w-5xl mx-auto">
-            <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-8 font-bold">Orders open in</p>
-            <div className="flex flex-wrap gap-8 md:gap-14">
-              {([
-                { label: 'Days',    value: timeLeft.days    },
-                { label: 'Hours',   value: timeLeft.hours   },
-                { label: 'Minutes', value: timeLeft.minutes },
-                { label: 'Seconds', value: timeLeft.seconds },
-              ] as const).map((u, i) => (
-                <div key={i}>
-                  <div
-                    className="text-5xl md:text-7xl font-extrabold text-white leading-none tabular-nums"
-                    style={{ fontFamily: 'var(--font-roboto-condensed)' }}
-                  >
-                    {String(u.value).padStart(2, '0')}
-                  </div>
-                  <div className="text-white/35 text-[10px] uppercase tracking-[0.3em] mt-1.5">{u.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* ── MAIN: SIDEBAR + GRID ── */}
       <section className="py-14 px-6 md:px-16 lg:px-24">
@@ -924,7 +939,7 @@ export default function ProductsPage() {
                 <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
                   <AnimatePresence mode="popLayout">
                     {filtered.map(product => (
-                      <ProductCard key={product._id} product={product} launched={launched} />
+                      <ProductCard key={product._id} product={product} launched={launched} region={region ?? 'durban'} />
                     ))}
                   </AnimatePresence>
                 </motion.div>

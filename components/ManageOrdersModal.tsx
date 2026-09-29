@@ -39,7 +39,7 @@ const [deleting, setDeleting] = useState(false);
 
 
   useEffect(() => {
-  // Always fetch — admin passes null to load all branches
+  // Always fetch -admin passes null to load all branches
   fetchOrders();
 }, [branch]);
 
@@ -219,12 +219,12 @@ return matchesSearch && matchesStatus && matchesPayment;
     const infoLines = [
       `Date: ${new Date(order.created_at).toLocaleDateString()}`,
       `Order Number: ${order.order_number || order.id}`,
-      `Customer: ${order.customer_name || "—"}`,
-      `Cell: ${order.cell_number || order.phone_number || "—"}`,
-      `Email: ${order.email || "—"}`,
-      `Region: ${order.region || "—"}`,
-      `Branch: ${order.branch || "—"}`,
-      `Payment Method: ${order.payment_method || order.payment_status || "—"}`,
+      `Customer: ${order.customer_name || "-"}`,
+      `Cell: ${order.cell_number || order.phone_number || "-"}`,
+      `Email: ${order.email || "-"}`,
+      `Region: ${order.region || "-"}`,
+      `Branch: ${order.branch || "-"}`,
+      `Payment Method: ${order.payment_method || order.payment_status || "-"}`,
     ];
     infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
 
@@ -274,7 +274,7 @@ return matchesSearch && matchesStatus && matchesPayment;
         };
     
         const rows: OrderRow[] = items.map((i: any) => ({
-          Item: i.title || i.name || "—",
+          Item: i.title || i.name || "-",
           Quantity: Number(i.quantity) || 0,
           Price: `R${Number(i.price || 0).toFixed(2)}`,
           Subtotal: `R${(Number(i.price || 0) * (Number(i.quantity) || 0)).toFixed(2)}`,
@@ -283,18 +283,18 @@ return matchesSearch && matchesStatus && matchesPayment;
         const meta = [
           ["Order Number", order.order_number || order.id],
           ["Date", new Date(order.created_at).toLocaleDateString()],
-          ["Customer", order.customer_name || "—"],
-          ["Cell", order.cell_number || order.phone_number || "—"],
-          ["Email", order.email || "—"],
-          ["Region", order.region || "—"],
-          ["Branch", order.branch || "—"],
-          ["Payment Method", order.payment_method || order.payment_status || "—"],
+          ["Customer", order.customer_name || "-"],
+          ["Cell", order.cell_number || order.phone_number || "-"],
+          ["Email", order.email || "-"],
+          ["Region", order.region || "-"],
+          ["Branch", order.branch || "-"],
+          ["Payment Method", order.payment_method || order.payment_status || "-"],
           ["Total", `R${Number(order.total || 0).toFixed(2)}`],
           [],
         ];
     
         const ws = XLSX.utils.aoa_to_sheet([
-          ["Amal Foods — Order Summary"],
+          ["Amal Foods -Order Summary"],
           [],
           ...meta,
           [],
@@ -315,7 +315,7 @@ return matchesSearch && matchesStatus && matchesPayment;
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-white/10 bg-[#0b0b0b]/60">
           <h2 className="text-xl font-semibold text-[#B80013]">
-            Manage / Process Orders — {branch || "All Branches"}
+            Manage / Process Orders -{branch || "All Branches"}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white">
             <X size={22} />
@@ -433,10 +433,10 @@ return matchesSearch && matchesStatus && matchesPayment;
                   <strong>Customer:</strong> {order.customer_name || "N/A"}
                 </p>
                 <p className="text-gray-300 text-sm">
-                  <strong>Cell:</strong> {order.cell_number || "—"}
+                  <strong>Cell:</strong> {order.cell_number || "-"}
                 </p>
                 <p className="text-gray-300 text-sm">
-                  <strong>Region:</strong> {order.region || "—"}
+                  <strong>Region:</strong> {order.region || "-"}
                 </p>
                 <p className="text-gray-400 text-sm">
                   <strong>Total:</strong> R{Number(order.total || 0).toFixed(2)}
@@ -635,7 +635,7 @@ return matchesSearch && matchesStatus && matchesPayment;
         <div>
           <p className="text-sm text-gray-400">Payment</p>
           <p className="font-medium capitalize text-white">
-            {editingOrder.payment_status || "—"}
+            {editingOrder.payment_status || "-"}
           </p>
         </div>
         <div>

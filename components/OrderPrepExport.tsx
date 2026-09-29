@@ -16,7 +16,7 @@ export default function useOrderPrepExport(orders: any[], parseItems: any, branc
     // Header
     doc.setFontSize(18);
     doc.setTextColor(184, 0, 19);
-    doc.text(`Prep Report — ${branch}`, 14, y);
+    doc.text(`Prep Report - ${branch}`, 14, y);
     y += 8;
 
     doc.setFontSize(10);

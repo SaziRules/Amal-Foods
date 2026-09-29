@@ -3,23 +3,24 @@
 import { motion, useInView } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRef } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const values = [
   {
     num: '01',
     title: 'Authenticity',
-    text: 'We keep it real — no shortcuts, no compromises. Every Amal product carries the flavour and comfort of a homemade meal.',
+    text: 'We keep it real. No shortcuts, no compromises. Every Amal product carries the flavour and comfort of a homemade meal.',
   },
   {
     num: '02',
     title: 'Community',
-    text: "We're proudly local — built on family kitchens, community stores, and the joy of sharing food that brings people together.",
+    text: "We're proudly local, built on family kitchens, community stores, and the joy of sharing food that brings people together.",
   },
   {
     num: '03',
     title: 'Quality',
-    text: 'From our crisp pastry rolls to golden samoosas, quality and freshness come first — every pack, every time.',
+    text: 'From our crisp pastry rolls to golden samoosas, quality and freshness come first, every pack, every time.',
   },
 ];
 
@@ -32,7 +33,7 @@ const timeline = [
   {
     year: '2010',
     title: 'Heat & Eat at Home',
-    text: 'We launched our first frozen range — ready to heat, crisp, and enjoy — making home entertaining effortless.',
+    text: 'We launched our first frozen range. Ready to heat, crisp, and enjoy. Making home entertaining effortless.',
   },
   {
     year: '2015',
@@ -47,20 +48,118 @@ const timeline = [
   {
     year: '2024',
     title: 'The Next Chapter',
-    text: 'Today, Amal Foods stands for quality, convenience, and taste — made with love, ready in minutes.',
+    text: 'Today, Amal Foods stands for quality, convenience, and taste. Made with love, ready in minutes.',
   },
 ];
 
+// 12 brand images
+const REAL_IMAGES = [
+  '/images/brand/one.JPG',
+  '/images/brand/two.JPG',
+  '/images/brand/three.JPG',
+  '/images/brand/four.JPG',
+  '/images/brand/P64A2825.JPG',
+  '/images/brand/P64A2912.jpg',
+  '/images/brand/P64A2916.JPG',
+  '/images/brand/P64A2977.JPG',
+  '/images/brand/P64A3050.JPG',
+  '/images/brand/P64A3087.JPG',
+  '/images/brand/P64A3110.JPG',
+  '/images/brand/P64A3148.JPG',
+];
+
+// Pad to 15 (3 full pages × 5 tiles)
+const PADDED = [...REAL_IMAGES, ...REAL_IMAGES.slice(0, 3)];
+// Page 0: idx 0-4 | Page 1: idx 5-9 | Page 2: idx 10-14 (wraps to 0,1,2)
+
+// Track: [clone of P2] + [P0] + [P1] + [P2] + [clone of P0]
+// Internal pages: 0=clone-P2, 1=P0, 2=P1, 3=P2, 4=clone-P0
+// After advancing to 4 → snap instantly to 1 (same images). Backward 0 → snap to 3.
+const TRACK = [
+  ...PADDED.slice(10),   // clone P2
+  ...PADDED,             // P0 + P1 + P2
+  ...PADDED.slice(0, 5), // clone P0
+];
+
+const PAGE_FIRST = 1;
+const PAGE_LAST  = 3;
+const GAP = 12;
+const TILES = 5;
+const AUTO_INTERVAL = 4000;
+const TRANSITION_MS = 800;
+
 export default function AboutPage() {
-  const timelineRef = useRef(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(timelineRef, { once: true, amount: 0.15 });
+
+  const carouselRef  = useRef<HTMLDivElement>(null);
+  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [containerW, setContainerW] = useState(0);
+  const [page, setPage]             = useState(PAGE_FIRST);
+  const [animate, setAnimate]       = useState(true);
+
+  // Measure container width
+  useEffect(() => {
+    function measure() {
+      if (carouselRef.current) setContainerW(carouselRef.current.offsetWidth);
+    }
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+
+  // Auto-advance — resets whenever startInterval is called
+  const startInterval = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => setPage(p => p + 1), AUTO_INTERVAL);
+  }, []);
+
+  useEffect(() => {
+    startInterval();
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [startInterval]);
+
+  // When we land on a clone page, wait for the transition then snap
+  useEffect(() => {
+    if (page > PAGE_LAST || page < PAGE_FIRST) {
+      const snapTo = page > PAGE_LAST ? PAGE_FIRST : PAGE_LAST;
+      const id = setTimeout(() => {
+        setAnimate(false);
+        setPage(snapTo);
+      }, TRANSITION_MS + 20);
+      return () => clearTimeout(id);
+    }
+  }, [page]);
+
+  // Re-enable animation one frame after the no-animation snap
+  useEffect(() => {
+    if (!animate) {
+      const id = requestAnimationFrame(() => requestAnimationFrame(() => setAnimate(true)));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [animate]);
+
+  const tileW  = containerW > 0 ? (containerW - GAP * (TILES - 1)) / TILES : 0;
+  const pageW  = containerW + GAP;
+  const offset = page * pageW;
+
+  function handlePrev() {
+    setPage(p => p - 1);
+    startInterval();
+  }
+
+  function handleNext() {
+    setPage(p => p + 1);
+    startInterval();
+  }
 
   return (
     <main className="bg-[#0d0d0d] text-white overflow-x-hidden">
       {/* ── PAGE HERO ── */}
       <section className="relative h-[65vh] flex items-end overflow-hidden">
         <Image
-          src="/images/pie-rolling.jpg"
+          src="/images/brand/about-hero.JPG"
           fill
           alt=""
           className="object-cover"
@@ -94,69 +193,114 @@ export default function AboutPage() {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="mt-4 text-white/50 text-sm tracking-widest uppercase"
           >
-            From Durban kitchens to your table — the taste of home in every bite.
+            From Durban kitchens to your table. The taste of home in every bite.
           </motion.p>
         </div>
       </section>
 
       {/* ── OUR STORY ── */}
       <section className="py-28 px-6 md:px-16 lg:px-24">
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 md:gap-24 items-start">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-          >
-            <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-5 font-bold">
-              Our Story
-            </p>
-            <h2
-              className="text-4xl md:text-5xl lg:text-6xl font-extrabold uppercase leading-[1.0]"
-              style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-16 md:gap-24 items-start">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
             >
-              Born in a small
-              <br />
-              Durban kitchen.
-            </h2>
-            <div className="mt-8 w-12 h-0.5 bg-[#B80013]" />
-          </motion.div>
+              <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-5 font-bold">
+                Our Story
+              </p>
+              <h2
+                className="text-4xl md:text-5xl lg:text-6xl font-extrabold uppercase leading-[1.0]"
+                style={{ fontFamily: 'var(--font-roboto-condensed)' }}
+              >
+                Born in a small
+                <br />
+                Durban kitchen.
+              </h2>
+              <div className="mt-8 w-12 h-0.5 bg-[#B80013]" />
+            </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 }}
-            viewport={{ once: true }}
-            className="pt-2"
-          >
-            <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-5">
-              Amal Foods was born in Durban — a small family kitchen serving up golden pastry
-              pockets, rich fillings, and recipes passed down through generations. What started as a
-              love for flavour turned into a movement to make quality home-style food more accessible.
-            </p>
-            <p className="text-white/55 leading-relaxed text-[15px] md:text-base">
-              From our signature samoosas to crisp spring rolls and soft, flaky parathas, every
-              product is prepared with care, sealed with pride, and packed for your convenience — so
-              you can heat, eat, and share moments that taste like home.
-            </p>
-          </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              viewport={{ once: true }}
+              className="pt-2"
+            >
+              <p className="text-white/55 leading-relaxed text-[15px] md:text-base mb-5">
+                Amal Foods was born in Durban, a small family kitchen serving up golden pastry
+                pockets, rich fillings, and recipes passed down through generations. What started as a
+                love for flavour turned into a movement to make quality home-style food more accessible.
+              </p>
+              <p className="text-white/55 leading-relaxed text-[15px] md:text-base">
+                From our signature samoosas to crisp spring rolls and soft, flaky parathas, every
+                product is prepared with care, sealed with pride, and packed for your convenience, so
+                you can heat, eat, and share moments that taste like home.
+              </p>
+            </motion.div>
+          </div>
+
         </div>
 
+        {/* ── BRAND IMAGE CAROUSEL — same width as home page grid ── */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
-          className="mt-20 relative h-[50vh] md:h-[60vh] rounded-2xl overflow-hidden"
+          className="mt-20"
         >
-          <Image
-            src="/images/about.png"
-            fill
-            alt="Amal Foods kitchen"
-            className="object-cover"
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d]/50 via-transparent to-transparent" />
+          {/* Arrow controls */}
+          <div className="flex justify-end gap-2 mb-4">
+            <button
+              onClick={handlePrev}
+              className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:border-white/50 hover:text-white transition-all duration-200"
+              aria-label="Previous"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              onClick={handleNext}
+              className="w-10 h-10 rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:border-white/50 hover:text-white transition-all duration-200"
+              aria-label="Next"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+
+          {/* Track */}
+          <div ref={carouselRef} className="overflow-hidden">
+            <div
+              className="flex gap-3"
+              style={{
+                transform: `translateX(-${offset}px)`,
+                transition: animate ? `transform ${TRANSITION_MS}ms ease-in-out` : 'none',
+                willChange: 'transform',
+              }}
+            >
+              {TRACK.map((src, i) => (
+                <div
+                  key={i}
+                  className="relative flex-shrink-0 rounded-xl overflow-hidden"
+                  style={{
+                    width: tileW > 0 ? `${tileW}px` : 'calc(20% - 9.6px)',
+                    aspectRatio: '3/4',
+                  }}
+                >
+                  <Image
+                    src={src}
+                    fill
+                    alt=""
+                    className="object-cover"
+                    sizes="(max-width: 768px) 40vw, 20vw"
+                    quality={90}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
         </motion.div>
       </section>
 
@@ -228,7 +372,6 @@ export default function AboutPage() {
                     i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
                   } md:flex-row`}
                 >
-                  {/* Mobile: left-offset content */}
                   <div
                     className={`pl-10 md:pl-0 md:w-[calc(50%-30px)] ${
                       i % 2 === 0 ? 'md:pr-16 md:text-right' : 'md:pl-16 md:ml-auto'
@@ -283,7 +426,7 @@ export default function AboutPage() {
             viewport={{ once: true }}
             className="text-white/80 max-w-xl mx-auto mb-10 text-[15px] leading-relaxed"
           >
-            Convenience, flavour, and family together — heat-and-eat goodness that always tastes
+            Convenience, flavour, and family together. Heat-and-eat goodness that always tastes
             homemade.
           </motion.p>
           <motion.div

@@ -31,7 +31,7 @@ export default function CustomerLogin() {
     });
 
     if (error) setError(error.message);
-    else setMessage("Check your inbox — we've sent you a secure login link.");
+    else setMessage("Check your inbox. We've sent you a secure login link.");
 
     setLoading(false);
   };
@@ -79,7 +79,7 @@ export default function CustomerLogin() {
             Welcome back.
           </h1>
           <p className="text-white/35 text-sm mb-10 leading-relaxed">
-            Enter your email and we'll send a secure magic link — no password needed.
+            Enter your email and we'll send a secure magic link. No password needed.
           </p>
 
           {message ? (

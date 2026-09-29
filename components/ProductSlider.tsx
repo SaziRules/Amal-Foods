@@ -17,42 +17,42 @@ const CATEGORY_META: Record<string, { label: string; ghost: string; desc: string
   'rockets-and-pillows': {
     label: 'Rockets & Pillows',
     ghost: 'ROCKETS',
-    desc: 'Crumbed and golden-fried parcels packed with bold, indulgent fillings — heat and enjoy.',
+    desc: 'Crumbed and golden-fried parcels packed with bold, indulgent fillings. Heat and enjoy.',
   },
   pies: {
     label: 'Pies',
     ghost: 'PIES',
-    desc: 'Flaky, buttery pastry shells with rich slow-cooked fillings — comfort food in every bite.',
+    desc: 'Flaky, buttery pastry shells with rich slow-cooked fillings. Comfort food in every bite.',
   },
   'spring-rolls': {
     label: 'Spring Rolls',
     ghost: 'ROLLS',
-    desc: 'Thin, crispy wrappers packed with seasoned fillings — perfect for entertaining or a quick snack.',
+    desc: 'Thin, crispy wrappers packed with seasoned fillings. Perfect for entertaining or a quick snack.',
   },
   samoosas: {
     label: 'Samoosas',
     ghost: 'SAMOOSA',
-    desc: 'Crispy golden pastry filled with spiced mince or veg — a Durban classic, freshly sealed.',
+    desc: 'Crispy golden pastry filled with spiced mince or veg. A Durban classic, freshly sealed.',
   },
   'ready-to-heat': {
     label: 'Ready to Heat',
     ghost: 'HEAT',
-    desc: 'Fully prepared, fully flavoured — just heat, serve, and enjoy the taste of a home kitchen.',
+    desc: 'Fully prepared, fully flavoured. Just heat, serve, and enjoy the taste of a home kitchen.',
   },
   haleem: {
     label: 'Haleem',
     ghost: 'HALEEM',
-    desc: 'Slow-cooked, richly spiced lentil and meat stew — a warming Durban favourite.',
+    desc: 'Slow-cooked, richly spiced lentil and meat stew. A warming Durban favourite.',
   },
   parathas: {
     label: 'Parathas',
     ghost: 'PARATHA',
-    desc: 'Soft, layered flatbreads made fresh — serve alongside a curry or enjoy on their own.',
+    desc: 'Soft, layered flatbreads made fresh. Serve alongside a curry or enjoy on their own.',
   },
   'biryani-rice': {
     label: 'Biryani & Rice',
     ghost: 'BIRYANI',
-    desc: 'Fragrant, spiced rice made with tradition — ready to heat and serve.',
+    desc: 'Fragrant, spiced rice made with tradition. Ready to heat and serve.',
   },
   'chutney-sauces': {
     label: 'Chutney & Sauces',
@@ -62,12 +62,12 @@ const CATEGORY_META: Record<string, { label: string; ghost: string; desc: string
   'bunny-chow': {
     label: 'Bunny Chow',
     ghost: 'BUNNY',
-    desc: "Durban's iconic street food — spiced curry in a bread roll, ready to heat.",
+    desc: "Durban's iconic street food. Spiced curry in a bread roll, ready to heat.",
   },
   'chicken-strips': {
     label: 'Chicken Strips',
     ghost: 'STRIPS',
-    desc: 'Golden crumbed chicken strips — crispy on the outside, tender within.',
+    desc: 'Golden crumbed chicken strips. Crispy on the outside, tender within.',
   },
 };
 
@@ -88,7 +88,7 @@ function Card({ product }: { product: Product }) {
   const meta = CATEGORY_META[product.category] ?? {
     label: product.category,
     ghost: product.category.slice(0, 6).toUpperCase(),
-    desc: 'Handcrafted with care — fresh, flavourful, and ready in minutes.',
+    desc: 'Handcrafted with care,fresh, flavourful, and ready in minutes.',
   };
 
   return (

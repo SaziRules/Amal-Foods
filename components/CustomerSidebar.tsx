@@ -183,7 +183,7 @@ export default function CustomerSidebar({ user }: any) {
     }, 300); // 300ms delay gives smooth transition
   } catch (error) {
     console.error("Logout error:", error);
-    alert("Logout failed — please refresh manually.");
+    alert("Logout failed. Please refresh manually.");
   }
 };
 
@@ -254,13 +254,13 @@ export default function CustomerSidebar({ user }: any) {
         {/* Details */}
         <ul className="text-sm text-gray-300 space-y-3 mb-6">
           <li className="flex items-center gap-2">
-            <Phone size={16} className="text-red-600" /> {profile.phone || "—"}
+            <Phone size={16} className="text-red-600" /> {profile.phone || "-"}
           </li>
           <li className="flex items-center gap-2">
-            <Home size={16} className="text-red-600" /> {profile.street || "—"}
+            <Home size={16} className="text-red-600" /> {profile.street || "-"}
           </li>
           <li className="flex items-center gap-2">
-            <MapPin size={16} className="text-red-600" /> {profile.city || "—"}
+            <MapPin size={16} className="text-red-600" /> {profile.city || "-"}
           </li>
         </ul>
 

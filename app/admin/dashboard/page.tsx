@@ -196,7 +196,7 @@ const unpaidTotal = unpaidOrders.reduce(
     }, 200); // non-blocking, guaranteed execution
   } catch (error) {
     console.error("Logout error:", error);
-    alert("Logout failed — please refresh manually.");
+    alert("Logout failed. Please refresh manually.");
   }
 };
 
@@ -324,18 +324,18 @@ const unpaidTotal = unpaidOrders.reduce(
         const infoLines = [
           `Date: ${new Date(order.created_at).toLocaleDateString()}`,
           `Order Number: ${order.order_number || order.id}`,
-          `Customer: ${order.customer_name || "—"}`,
-          `Cell: ${order.cell_number || order.phone_number || "—"}`,
-          `Email: ${order.email || "—"}`,
-          `Region: ${order.region || "—"}`,
-          `Branch: ${order.branch || "—"}`,
-          `Payment Method: ${order.payment_method || "—"}`,
+          `Customer: ${order.customer_name || "-"}`,
+          `Cell: ${order.cell_number || order.phone_number || "-"}`,
+          `Email: ${order.email || "-"}`,
+          `Region: ${order.region || "-"}`,
+          `Branch: ${order.branch || "-"}`,
+          `Payment Method: ${order.payment_method || "-"}`,
           `Payment Status: ${paymentStatus}`,
         ];
         infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
 
         const rows = items.map((item: any) => [
-          item.title || item.name || item.product || "—",
+          item.title || item.name || item.product || "-",
           item.quantity ?? 1,
           `R${Number(item.price || 0).toFixed(2)}`,
           `R${(Number(item.price || 0) * (item.quantity ?? 1)).toFixed(2)}`,
@@ -344,7 +344,7 @@ const unpaidTotal = unpaidOrders.reduce(
         autoTable(doc, {
           startY: 55 + infoLines.length * 6 + 5,
           head: [["Item", "Qty", "Price", "Subtotal"]],
-          body: rows.length > 0 ? rows : [["—", "—", "—", "—"]],
+          body: rows.length > 0 ? rows : [["-", "-", "-", "-"]],
           theme: "grid",
           styles: { fontSize: 9 },
           headStyles: { fillColor: [184, 0, 19] },

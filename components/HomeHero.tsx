@@ -86,7 +86,7 @@ export default function HomeHero() {
                   <span className="block whitespace-nowrap">Ready in Minutes.</span>
                 </h1>
                 <p className="mt-6 border-l border-[#B80013]/35 pl-4 text-white/55 text-[0.95rem] md:text-[1rem] leading-relaxed max-w-sm">
-                  From flaky samoosas to golden parathas — made with real ingredients, family recipes,
+                  From flaky samoosas to golden parathas, made with real ingredients, family recipes,
                   and a passion for quality.
                 </p>
               </div>
@@ -122,27 +122,25 @@ export default function HomeHero() {
                   <span className="block whitespace-nowrap">Orders Open Soon.</span>
                 </h1>
 
-                <p className="mt-6 border-l border-[#B80013]/35 pl-4 text-white/55 text-[0.95rem] md:text-[1rem] leading-relaxed max-w-sm">
-                  Samoosas, parathas, spring rolls and more — fresh from our Durban kitchen.
-                  Pre-orders open 1 October. Be ready.
-                </p>
-
                 {/* Countdown */}
-                <div className="flex items-end gap-7 mt-10">
+                <div className="flex items-stretch gap-2 mt-10">
                   {[
                     { label: 'Days',    value: timeLeft.days    },
                     { label: 'Hours',   value: timeLeft.hours   },
                     { label: 'Minutes', value: timeLeft.minutes },
                     { label: 'Seconds', value: timeLeft.seconds },
                   ].map((u, i) => (
-                    <div key={i}>
+                    <div
+                      key={i}
+                      className="flex flex-col items-center justify-center gap-1 px-4 py-3 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-sm min-w-[60px] sm:min-w-[72px]"
+                    >
                       <div
-                        className="text-[2.8rem] sm:text-[3.5rem] font-extrabold text-white leading-none tabular-nums"
+                        className="text-3xl sm:text-4xl font-extrabold text-white leading-none tabular-nums"
                         style={{ fontFamily: 'var(--font-roboto-condensed)' }}
                       >
                         {String(u.value).padStart(2, '0')}
                       </div>
-                      <div className="text-white/35 text-[9px] uppercase tracking-[0.3em] mt-1.5">
+                      <div className="text-[#B80013] text-[8px] uppercase tracking-[0.35em] font-bold">
                         {u.label}
                       </div>
                     </div>
@@ -177,13 +175,6 @@ export default function HomeHero() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.9, delay: 0.1 }}
         >
-          <div className="relative flex-[3] rounded-2xl overflow-hidden">
-            <KenBurns duration={13} dy={-10}>
-              <Image src="/images/hero1.jpg" alt="" fill sizes="25vw" className="object-cover" priority />
-            </KenBurns>
-            <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
-          </div>
-
           <div className="relative flex-[5] rounded-2xl overflow-hidden">
             <video
               src="/videos/hero1.mp4"
@@ -197,8 +188,15 @@ export default function HomeHero() {
           </div>
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
+            <KenBurns duration={13} dy={-10}>
+              <Image src="/images/brand/one.JPG" alt="" fill sizes="25vw" className="object-cover" priority />
+            </KenBurns>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
+          </div>
+
+          <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={16} dy={10} delay={4}>
-              <Image src="/images/dough.jpg" alt="" fill sizes="25vw" className="object-cover" />
+              <Image src="/images/brand/two.JPG" alt="" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
@@ -218,9 +216,16 @@ export default function HomeHero() {
         >
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={15} dx={-10} delay={2}>
-              <Image src="/images/pie-rolling.jpg" alt="" fill sizes="25vw" className="object-cover" />
+              <Image src="/images/brand/three.JPG" alt="" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
+          </div>
+
+          <div className="relative flex-[3] rounded-2xl overflow-hidden">
+            <KenBurns duration={12} dx={10} delay={6}>
+              <Image src="/images/brand/four.JPG" alt="" fill sizes="25vw" className="object-cover" />
+            </KenBurns>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
 
           <div className="relative flex-[5] rounded-2xl overflow-hidden">
@@ -234,20 +239,13 @@ export default function HomeHero() {
             />
             <div className="absolute inset-0 bg-black/10 z-10" />
           </div>
-
-          <div className="relative flex-[3] rounded-2xl overflow-hidden">
-            <KenBurns duration={12} dx={10} delay={6}>
-              <Image src="/images/hero2.jpg" alt="" fill sizes="25vw" className="object-cover" />
-            </KenBurns>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
-          </div>
         </motion.div>
       </div>
 
       {/* Mobile background image */}
       <div className="absolute inset-0 md:hidden" style={{ minHeight: '100dvh' }}>
         <Image
-          src="/images/hero1.jpg"
+          src="/images/brand/one.JPG"
           alt=""
           fill
           sizes="100vw"
