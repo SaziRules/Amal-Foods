@@ -12,6 +12,7 @@ import { SlidersHorizontal, X, ChevronDown, ChevronUp } from 'lucide-react';
 /* ─────────────────────────── constants ─────────────────────────────────── */
 
 const ORDER_DATE = new Date('2026-10-01T00:00:00');
+const CLOSE_DATE = new Date('2026-11-15T00:00:00');
 
 const CATEGORY_LABELS: Record<string, string> = {
   samoosas:              'Samoosas',
@@ -613,7 +614,8 @@ function ContactPage({ region, onBack }: { region: 'joburg' | 'capetown'; onBack
 export default function ProductsPage() {
   const [region, setRegion]             = useState<Region | null>(null);
   const [timeLeft, setTimeLeft]         = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [launched, setLaunched]         = useState(false);
+  const [phase, setPhase]               = useState<'pre' | 'open' | 'closed'>('pre');
+  const launched                        = phase === 'open';
   const [products, setProducts]         = useState<Product[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
@@ -636,14 +638,28 @@ export default function ProductsPage() {
   /* countdown */
   useEffect(() => {
     function tick() {
-      const dist = ORDER_DATE.getTime() - Date.now();
-      if (dist <= 0) { setLaunched(true); return; }
-      setTimeLeft({
-        days:    Math.floor(dist / 86400000),
-        hours:   Math.floor((dist / 3600000) % 24),
-        minutes: Math.floor((dist / 60000) % 60),
-        seconds: Math.floor((dist / 1000) % 60),
-      });
+      const now = Date.now();
+      if (now < ORDER_DATE.getTime()) {
+        const dist = ORDER_DATE.getTime() - now;
+        setPhase('pre');
+        setTimeLeft({
+          days:    Math.floor(dist / 86400000),
+          hours:   Math.floor((dist / 3600000) % 24),
+          minutes: Math.floor((dist / 60000) % 60),
+          seconds: Math.floor((dist / 1000) % 60),
+        });
+      } else if (now < CLOSE_DATE.getTime()) {
+        const dist = CLOSE_DATE.getTime() - now;
+        setPhase('open');
+        setTimeLeft({
+          days:    Math.floor(dist / 86400000),
+          hours:   Math.floor((dist / 3600000) % 24),
+          minutes: Math.floor((dist / 60000) % 60),
+          seconds: Math.floor((dist / 1000) % 60),
+        });
+      } else {
+        setPhase('closed');
+      }
     }
     tick();
     const id = setInterval(tick, 1000);
@@ -791,14 +807,14 @@ export default function ProductsPage() {
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
                 className="text-[#B80013] text-xs uppercase tracking-[0.4em] mb-4 font-bold"
               >
-                {launched ? 'Our Full Range' : 'Orders Opening · 1 October 2026'}
+                {phase === 'open' ? 'Orders Close · 15 November 2026' : phase === 'closed' ? 'Ordering Season Closed' : 'Orders Opening · 1 October 2026'}
               </motion.p>
               <motion.h1
                 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }}
                 className="text-5xl md:text-7xl lg:text-8xl font-extrabold uppercase leading-[1.0]"
                 style={{ fontFamily: 'var(--font-roboto-condensed)' }}
               >
-                {launched
+                {phase === 'open'
                   ? <>The Full<br /><span className="text-[#B80013]">Collection.</span></>
                   : <>Browse<br /><span className="text-[#B80013]">the Range.</span></>
                 }
@@ -806,12 +822,14 @@ export default function ProductsPage() {
             </div>
 
             {/* Countdown pill cards — below heading on mobile, right-aligned on desktop */}
-            {!launched && (
+            {phase !== 'closed' && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }}
                 className="flex flex-col items-start md:items-end flex-shrink-0"
               >
-                <p className="text-[#B80013] text-[9px] uppercase tracking-[0.4em] font-bold mb-4">Orders open in</p>
+                <p className="text-[#B80013] text-[9px] uppercase tracking-[0.4em] font-bold mb-4">
+                  {phase === 'open' ? 'Orders close in' : 'Orders open in'}
+                </p>
                 <div className="flex items-stretch gap-2">
                   {([
                     { label: 'Days',    value: timeLeft.days    },

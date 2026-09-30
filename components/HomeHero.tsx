@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 const ORDER_DATE = new Date('2026-10-01T00:00:00');
+const CLOSE_DATE = new Date('2026-11-15T00:00:00');
 
 function KenBurns({
   children,
@@ -35,21 +36,32 @@ const TICKER =
 
 export default function HomeHero() {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [launched, setLaunched] = useState(false);
+  const [phase, setPhase] = useState<'pre' | 'open' | 'closed'>('pre');
 
   useEffect(() => {
     function tick() {
-      const dist = ORDER_DATE.getTime() - Date.now();
-      if (dist <= 0) {
-        setLaunched(true);
-        return;
+      const now = Date.now();
+      if (now < ORDER_DATE.getTime()) {
+        const dist = ORDER_DATE.getTime() - now;
+        setPhase('pre');
+        setTimeLeft({
+          days:    Math.floor(dist / 86400000),
+          hours:   Math.floor((dist / 3600000) % 24),
+          minutes: Math.floor((dist / 60000) % 60),
+          seconds: Math.floor((dist / 1000) % 60),
+        });
+      } else if (now < CLOSE_DATE.getTime()) {
+        const dist = CLOSE_DATE.getTime() - now;
+        setPhase('open');
+        setTimeLeft({
+          days:    Math.floor(dist / 86400000),
+          hours:   Math.floor((dist / 3600000) % 24),
+          minutes: Math.floor((dist / 60000) % 60),
+          seconds: Math.floor((dist / 1000) % 60),
+        });
+      } else {
+        setPhase('closed');
       }
-      setTimeLeft({
-        days:    Math.floor(dist / 86400000),
-        hours:   Math.floor((dist / 3600000) % 24),
-        minutes: Math.floor((dist / 60000) % 60),
-        seconds: Math.floor((dist / 1000) % 60),
-      });
     }
     tick();
     const id = setInterval(tick, 1000);
@@ -66,10 +78,9 @@ export default function HomeHero() {
           transition={{ duration: 1 }}
           className="w-full max-w-[900px] pt-10"
         >
-          {launched ? (
-            /* ── POST-LAUNCH: original messaging ── */
+          {phase === 'closed' ? (
+            /* ── SEASON CLOSED: original brand messaging ── */
             <>
-              {/* Padded content */}
               <div className="px-6 sm:px-12 lg:px-24 xl:px-32">
                 <div className="flex items-center gap-3 mb-6">
                   <span className="w-6 h-px bg-[#B80013]" />
@@ -90,8 +101,6 @@ export default function HomeHero() {
                   and a passion for quality.
                 </p>
               </div>
-
-              {/* Full-width buttons on mobile, padded + pill on desktop */}
               <div className="mt-8 flex flex-col gap-3 px-6 sm:px-12 lg:px-24 xl:px-32 md:flex-row md:flex-wrap md:gap-4">
                 <a href="/products" className="block w-full md:w-auto text-center px-10 py-3.5 bg-[#B80013] text-white rounded-full font-bold uppercase text-sm tracking-wide hover:bg-[#a20010] transition-all duration-200">
                   Explore Range
@@ -102,14 +111,13 @@ export default function HomeHero() {
               </div>
             </>
           ) : (
-            /* ── PRE-LAUNCH: countdown messaging ── */
+            /* ── PRE-LAUNCH & ORDERS OPEN: countdown messaging ── */
             <>
-              {/* Padded content */}
               <div className="px-6 sm:px-12 lg:px-24 xl:px-32">
                 <div className="flex items-center gap-3 mb-6">
                   <span className="w-6 h-px bg-[#B80013]" />
                   <p className="text-[#B80013] text-xs uppercase tracking-[0.4em] font-bold">
-                    Orders Opening · 1 October 2026
+                    {phase === 'open' ? 'Orders Close · 15 November 2026' : 'Orders Opening · 1 October 2026'}
                   </p>
                 </div>
 
@@ -117,13 +125,26 @@ export default function HomeHero() {
                   className="uppercase font-extrabold leading-[1.0] text-[2.6rem] sm:text-[3.5rem] md:text-[3.2rem] lg:text-[4.2rem] xl:text-[4.5rem] 2xl:text-[5rem]"
                   style={{ fontFamily: 'var(--font-roboto-condensed)', letterSpacing: '1px' }}
                 >
-                  The Wait Is
-                  <span className="block text-[#B80013]">Almost Over.</span>
-                  <span className="block whitespace-nowrap">Orders Open Soon.</span>
+                  {phase === 'open' ? (
+                    <>
+                      Orders Are
+                      <span className="block text-[#B80013]">Open Now.</span>
+                      <span className="block whitespace-nowrap">Don&apos;t Miss Out.</span>
+                    </>
+                  ) : (
+                    <>
+                      The Wait Is
+                      <span className="block text-[#B80013]">Almost Over.</span>
+                      <span className="block whitespace-nowrap">Orders Open Soon.</span>
+                    </>
+                  )}
                 </h1>
 
                 {/* Countdown */}
-                <div className="flex items-stretch gap-2 mt-10">
+                <p className="text-white/35 text-[10px] uppercase tracking-[0.3em] font-bold mt-8 mb-3">
+                  {phase === 'open' ? 'Orders close in' : 'Orders open in'}
+                </p>
+                <div className="flex items-stretch gap-2">
                   {[
                     { label: 'Days',    value: timeLeft.days    },
                     { label: 'Hours',   value: timeLeft.hours   },
@@ -148,10 +169,9 @@ export default function HomeHero() {
                 </div>
               </div>
 
-              {/* Full-width buttons on mobile, padded + pill on desktop */}
               <div className="mt-8 flex flex-col gap-3 px-6 sm:px-12 lg:px-24 xl:px-32 md:flex-row md:flex-wrap md:gap-4">
                 <a href="/products" className="block w-full md:w-auto text-center px-10 py-3.5 bg-[#B80013] text-white rounded-full font-bold uppercase text-sm tracking-wide hover:bg-[#a20010] transition-all duration-200">
-                  Explore Range
+                  {phase === 'open' ? 'Order Now' : 'Explore Range'}
                 </a>
                 <a href="/about" className="block w-full md:w-auto text-center px-10 py-3.5 border border-white/25 text-white/90 rounded-full font-bold uppercase text-sm tracking-wide hover:border-white/60 hover:text-white transition-all duration-200">
                   Our Story
