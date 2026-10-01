@@ -796,7 +796,7 @@ export default function ProductsPage() {
 
       {/* ── HERO ── */}
       <section className="relative h-[60vh] flex items-end overflow-hidden">
-        <Image src="/images/brand/products-hero.JPG" fill alt="" className="object-cover" priority sizes="100vw" />
+        <Image src="/images/brand/products-hero.JPG" fill alt="Amal Foods product range – samoosas, spring rolls, parathas and more" className="object-cover" priority sizes="100vw" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-black/45 to-transparent" />
         <div className="relative z-10 w-full pb-14 px-6 md:px-16 lg:px-24">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end md:justify-between gap-6 md:gap-10">

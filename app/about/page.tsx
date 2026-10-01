@@ -161,7 +161,7 @@ export default function AboutPage() {
         <Image
           src="/images/brand/about-hero.JPG"
           fill
-          alt=""
+          alt="Amal Foods production kitchen – handcrafted pastries being prepared"
           className="object-cover"
           priority
           sizes="100vw"
@@ -292,7 +292,7 @@ export default function AboutPage() {
                   <Image
                     src={src}
                     fill
-                    alt=""
+                    alt="Amal Foods handcrafted food photography"
                     className="object-cover"
                     sizes="(max-width: 768px) 40vw, 20vw"
                     quality={90}

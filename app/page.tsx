@@ -162,12 +162,12 @@ export default function HomePage() {
           className="mt-20 grid grid-cols-2 md:grid-cols-5 gap-3"
         >
           {[
-            '/images/brand/P64A2825.JPG',
-            '/images/brand/P64A2912.jpg',
-            '/images/brand/P64A2977.JPG',
-            '/images/brand/P64A3087.JPG',
-            '/images/brand/P64A3148.JPG',
-          ].map((src, i) => (
+            { src: '/images/brand/P64A2825.JPG', alt: 'Amal Foods golden samoosas fresh from the kitchen' },
+            { src: '/images/brand/P64A2912.jpg', alt: 'Amal Foods spring rolls crispy and handcrafted' },
+            { src: '/images/brand/P64A2977.JPG', alt: 'Amal Foods pies and pastries assortment' },
+            { src: '/images/brand/P64A3087.JPG', alt: 'Amal Foods parathas soft and flaky' },
+            { src: '/images/brand/P64A3148.JPG', alt: 'Amal Foods frozen meals ready to heat' },
+          ].map(({ src, alt }, i) => (
             <div
               key={i}
               className={`relative aspect-[3/4] rounded-xl overflow-hidden${i === 4 ? ' col-span-2 md:col-span-1' : ''}`}
@@ -175,7 +175,7 @@ export default function HomePage() {
               <Image
                 src={src}
                 fill
-                alt=""
+                alt={alt}
                 className="object-cover hover:scale-105 transition-transform duration-700"
                 sizes="(max-width: 768px) 50vw, 20vw"
               />

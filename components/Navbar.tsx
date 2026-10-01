@@ -288,6 +288,7 @@ export default function Navbar() {
                   alt="User"
                   width={46}
                   height={46}
+                  priority
                   className="h-11 w-11 md:h-14 md:w-14"
                 />
               </button>

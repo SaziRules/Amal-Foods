@@ -54,7 +54,7 @@ export default function ContactPage() {
         <Image
           src="/images/brand/contact-hero.JPG"
           fill
-          alt=""
+          alt="Amal Foods Durban branch – contact us"
           className="object-cover"
           priority
           sizes="100vw"

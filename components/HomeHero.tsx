@@ -127,8 +127,8 @@ export default function HomeHero() {
                 >
                   {phase === 'open' ? (
                     <>
-                      Orders Are
-                      <span className="block text-[#B80013]">Open Now.</span>
+                      <span className="block whitespace-nowrap">Ramadaan Orders</span>
+                      <span className="block text-[#B80013]">Are Open Now.</span>
                       <span className="block whitespace-nowrap">Don&apos;t Miss Out.</span>
                     </>
                   ) : (
@@ -209,14 +209,14 @@ export default function HomeHero() {
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={13} dy={-10}>
-              <Image src="/images/brand/one.JPG" alt="" fill sizes="25vw" className="object-cover" priority />
+              <Image src="/images/brand/one.JPG" alt="Amal Foods samoosas golden and crispy" fill sizes="25vw" className="object-cover" priority />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
           </div>
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={16} dy={10} delay={4}>
-              <Image src="/images/brand/two.JPG" alt="" fill sizes="25vw" className="object-cover" />
+              <Image src="/images/brand/two.JPG" alt="Amal Foods freshly made pastries" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
@@ -236,14 +236,14 @@ export default function HomeHero() {
         >
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={15} dx={-10} delay={2}>
-              <Image src="/images/brand/three.JPG" alt="" fill sizes="25vw" className="object-cover" />
+              <Image src="/images/brand/three.JPG" alt="Amal Foods handcrafted spring rolls" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent z-10" />
           </div>
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={12} dx={10} delay={6}>
-              <Image src="/images/brand/four.JPG" alt="" fill sizes="25vw" className="object-cover" />
+              <Image src="/images/brand/four.JPG" alt="Amal Foods parathas soft and flaky" fill sizes="25vw" className="object-cover" />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
@@ -266,7 +266,7 @@ export default function HomeHero() {
       <div className="absolute inset-0 md:hidden" style={{ minHeight: '100dvh' }}>
         <Image
           src="/images/brand/one.JPG"
-          alt=""
+          alt="Amal Foods samoosas golden and crispy"
           fill
           sizes="100vw"
           className="object-cover object-center"
