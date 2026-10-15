@@ -6,7 +6,6 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-/* ✅ Sanity client setup */
 const sanity = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: "production",
@@ -27,7 +26,6 @@ export default function OrderPrepDisplay({
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  /* ───────────── Fetch Sanity products ───────────── */
   useEffect(() => {
     const fetchSanityProducts = async () => {
       try {
@@ -48,7 +46,6 @@ export default function OrderPrepDisplay({
     fetchSanityProducts();
   }, []);
 
-  /* ───────────── Category map ───────────── */
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};
     products.forEach((p) => {
@@ -57,7 +54,6 @@ export default function OrderPrepDisplay({
     return map;
   }, [products]);
 
-  /* ───────────── Totals per item ───────────── */
   const itemTotals = useMemo(() => {
     const activeOrders = orders.filter((o) =>
       ["pending", "processed", "packed"].includes(o.status)
@@ -80,22 +76,14 @@ export default function OrderPrepDisplay({
         const quantity = Number(item.quantity || 0);
 
         if (!totals[name]) {
-          totals[name] = {
-            qty: 0,
-            orders: 0,
-            statuses: {},
-            payments: {},
-          };
+          totals[name] = { qty: 0, orders: 0, statuses: {}, payments: {} };
         }
 
         totals[name].qty += quantity;
         totals[name].orders++;
-
-        // Count statuses
         totals[name].statuses[order.status] =
           (totals[name].statuses[order.status] || 0) + 1;
 
-        // Count payment statuses
         const p = order.payment_status || "unknown";
         totals[name].payments[p] = (totals[name].payments[p] || 0) + 1;
       });
@@ -104,7 +92,6 @@ export default function OrderPrepDisplay({
     return totals;
   }, [orders]);
 
-  /* ───────────── Group per category ───────────── */
   const groupedByCategory = useMemo(() => {
     const grouped: Record<string, any[]> = {};
     Object.entries(itemTotals).forEach(([itemName, data]) => {
@@ -121,7 +108,6 @@ export default function OrderPrepDisplay({
     return grouped;
   }, [itemTotals, categoryMap]);
 
-  /* ───────────── PDF Export (Statuses + Payments) ───────────── */
   const generatePDF = (category: string, items: any[]) => {
     const doc = new jsPDF("p", "mm", "a4");
     let y = 15;
@@ -138,18 +124,10 @@ export default function OrderPrepDisplay({
       const statusSummary = Object.entries(i.statuses)
         .map(([s, v]) => `${s}: ${v}`)
         .join(", ");
-
       const paymentSummary = Object.entries(i.payments)
         .map(([s, v]) => `${s}: ${v}`)
         .join(", ");
-
-      return [
-        i.name,
-        i.qty,
-        i.orders,
-        statusSummary || "-",
-        paymentSummary || "-",
-      ];
+      return [i.name, i.qty, i.orders, statusSummary || "-", paymentSummary || "-"];
     });
 
     autoTable(doc, {
@@ -167,17 +145,14 @@ export default function OrderPrepDisplay({
     );
   };
 
-  /* ───────────── Excel Export (Statuses + Payments) ───────────── */
   const generateExcel = (category: string, items: any[]) => {
     const data = items.map((i: any) => {
       const statusSummary = Object.entries(i.statuses)
         .map(([s, v]) => `${s}: ${v}`)
         .join(", ");
-
       const paymentSummary = Object.entries(i.payments)
         .map(([s, v]) => `${s}: ${v}`)
         .join(", ");
-
       return {
         Item: i.name,
         "Total Qty": i.qty,
@@ -189,7 +164,6 @@ export default function OrderPrepDisplay({
 
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-
     XLSX.utils.book_append_sheet(wb, ws, category);
     XLSX.writeFile(
       wb,
@@ -197,12 +171,11 @@ export default function OrderPrepDisplay({
     );
   };
 
-  /* ───────────── UI ───────────── */
-
   if (loading) {
     return (
-      <div className="flex justify-center items-center py-16 text-gray-400">
-        <Loader2 className="animate-spin mr-2" /> Loading product categories...
+      <div className="flex items-center gap-2 py-12 text-white/25 text-[13px]">
+        <Loader2 size={14} className="animate-spin" />
+        Loading product categories...
       </div>
     );
   }
@@ -211,55 +184,126 @@ export default function OrderPrepDisplay({
 
   return (
     <section className="mt-10">
-      <h2 className="text-3xl font-semibold text-[#B80013] mb-6">
-        Order Prep by Category
-      </h2>
+      {/* Section header */}
+      <div className="flex items-center gap-3 mb-5">
+        <p
+          className="text-[11px] text-white/25 tracking-[0.14em] uppercase"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          Order Prep by Category
+        </p>
+        {categories.length > 0 && (
+          <span className="text-[10px] text-white/25 bg-white/[0.06] border border-white/[0.07] rounded-[4px] px-1.5 py-0.5">
+            {categories.length}
+          </span>
+        )}
+      </div>
 
       {categories.length === 0 ? (
-        <p className="text-gray-400 text-sm italic">
+        <p className="text-[13px] text-white/25">
           No active items to prepare right now.
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {categories.map(([category, items]) => {
             const isExpanded = expanded[category];
             const visibleItems = isExpanded ? items : items.slice(0, 5);
 
+            const statusTotals = items.reduce((acc: any, i: any) => {
+              Object.entries(i.statuses).forEach(([s, v]) => {
+                acc[s] = (acc[s] || 0) + (v as number);
+              });
+              return acc;
+            }, {});
+
+            const paymentTotals = items.reduce((acc: any, i: any) => {
+              Object.entries(i.payments).forEach(([s, v]) => {
+                acc[s] = (acc[s] || 0) + (v as number);
+              });
+              return acc;
+            }, {});
+
+            const statusLine = Object.entries(statusTotals)
+              .map(([s, v]) => `${s}: ${v}`)
+              .join(" · ");
+
+            const paymentLine = Object.entries(paymentTotals)
+              .map(([s, v]) => `${s}: ${v}`)
+              .join(" · ");
+
             return (
               <div
                 key={category}
-                className="bg-[#141414]/80 rounded-3xl border border-white/10 p-5 shadow-lg flex flex-col hover:bg-[#1b1b1b]/80 transition-all duration-200"
+                className="bg-[#111111] border border-white/[0.07] rounded-[8px] p-4 flex flex-col"
               >
-                {/* Header */}
-                <div className="flex justify-between items-center border-b border-white/10 pb-2 mb-3">
-                  <h3 className="text-[#B80013] font-bold text-sm uppercase tracking-wider">
-                    {category.replace(/-/g, " ")}
-                  </h3>
-                  <span className="text-xs text-gray-500">
-                    {items.length} item{items.length !== 1 && "s"}
-                  </span>
+                {/* Card header */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-[11px] text-white tracking-[0.1em] uppercase"
+                      style={{ fontFamily: "var(--font-heading)" }}
+                    >
+                      {category.replace(/-/g, " ")}
+                    </span>
+                    <span className="text-[10px] text-white/25 bg-white/[0.06] border border-white/[0.07] rounded-[4px] px-1.5 py-0.5">
+                      {items.length}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => generatePDF(category, items)}
+                      className="flex items-center gap-1 text-[11px] text-white/25 hover:text-white transition-colors px-1.5 py-1 rounded-[4px] hover:bg-white/[0.06]"
+                    >
+                      <FileDown size={12} /> PDF
+                    </button>
+                    <button
+                      onClick={() => generateExcel(category, items)}
+                      className="flex items-center gap-1 text-[11px] text-white/25 hover:text-white transition-colors px-1.5 py-1 rounded-[4px] hover:bg-white/[0.06]"
+                    >
+                      <FileSpreadsheet size={12} /> Excel
+                    </button>
+                  </div>
                 </div>
 
                 {/* Table */}
-                <table className="w-full text-xs md:text-sm text-gray-300 border-collapse">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr className="text-gray-400 border-b border-white/10">
-                      <th className="py-2 px-2 text-left">Item</th>
-                      <th className="py-2 px-2 text-right">Qty</th>
-                      <th className="py-2 px-2 text-right">Orders</th>
+                    <tr>
+                      <th
+                        className="pb-2 text-left text-[11px] text-white/25 tracking-[0.1em] uppercase font-medium"
+                        style={{ fontFamily: "var(--font-heading)" }}
+                      >
+                        Item
+                      </th>
+                      <th
+                        className="pb-2 text-right text-[11px] text-white/25 tracking-[0.1em] uppercase font-medium"
+                        style={{ fontFamily: "var(--font-heading)" }}
+                      >
+                        Qty
+                      </th>
+                      <th
+                        className="pb-2 text-right text-[11px] text-white/25 tracking-[0.1em] uppercase font-medium"
+                        style={{ fontFamily: "var(--font-heading)" }}
+                      >
+                        Orders
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {visibleItems.map((i, idx) => (
                       <tr
                         key={idx}
-                        className="border-b border-white/5 hover:bg-white/5 transition"
+                        className="border-t border-white/[0.05]"
                       >
-                        <td className="py-2 px-2">{i.name}</td>
-                        <td className="py-2 px-2 text-right text-[#B80013] font-semibold">
+                        <td className="py-2 text-[13px] text-white/70">
+                          {i.name}
+                        </td>
+                        <td className="py-2 text-right text-[13px] text-[#B80013]"
+                          style={{ fontFamily: "var(--font-heading)" }}
+                        >
                           {i.qty}
                         </td>
-                        <td className="py-2 px-2 text-right text-gray-400">
+                        <td className="py-2 text-right text-[13px] text-white/25">
                           {i.orders}
                         </td>
                       </tr>
@@ -267,68 +311,35 @@ export default function OrderPrepDisplay({
                   </tbody>
                 </table>
 
-                {/* Status Summary */}
-                <div className="mt-3 pt-3 border-t border-white/10 text-[11px] text-gray-400">
-                  {items.length > 0 && (
-                    <>
-                      <p>
-                        <span className="text-gray-500">Statuses:</span>{" "}
-                        {Object.entries(
-                          items.reduce((acc: any, i: any) => {
-                            Object.entries(i.statuses).forEach(([s, v]) => {
-                              acc[s] = (acc[s] || 0) + v;
-                            });
-                            return acc;
-                          }, {})
-                        )
-                          .map(([s, v]) => `${s}: ${v}`)
-                          .join(", ")}
-                      </p>
-
-                      <p className="mt-1">
-                        <span className="text-gray-500">Payment:</span>{" "}
-                        {Object.entries(
-                          items.reduce((acc: any, i: any) => {
-                            Object.entries(i.payments).forEach(([s, v]) => {
-                              acc[s] = (acc[s] || 0) + v;
-                            });
-                            return acc;
-                          }, {})
-                        )
-                          .map(([s, v]) => `${s}: ${v}`)
-                          .join(", ")}
-                      </p>
-                    </>
+                {/* Summary + expand */}
+                <div className="mt-3 pt-3 border-t border-white/[0.07] space-y-0.5">
+                  {statusLine && (
+                    <p className="text-[11px] text-white/25 truncate">
+                      <span className="text-white/15 mr-1">Status</span>
+                      {statusLine}
+                    </p>
                   )}
-                </div>
-
-                {/* Buttons */}
-                <div className="flex justify-between items-center gap-2 mt-5 border-t border-white/10 pt-4">
-                  <button
-                    onClick={() =>
-                      setExpanded((prev) => ({
-                        ...prev,
-                        [category]: !isExpanded,
-                      }))
-                    }
-                    className="flex-1 text-xs font-semibold text-[#B80013] border border-[#B80013] rounded-lg py-2 hover:bg-[#B80013] hover:text-white transition text-center"
-                  >
-                    {isExpanded ? "Collapse" : "View All"}
-                  </button>
-
-                  <button
-                    onClick={() => generatePDF(category, items)}
-                    className="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-xs bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-gray-200"
-                  >
-                    <FileDown size={14} /> PDF
-                  </button>
-
-                  <button
-                    onClick={() => generateExcel(category, items)}
-                    className="flex items-center justify-center flex-1 gap-2 px-3 py-2 text-xs bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition text-gray-200"
-                  >
-                    <FileSpreadsheet size={14} /> Excel
-                  </button>
+                  {paymentLine && (
+                    <p className="text-[11px] text-white/25 truncate">
+                      <span className="text-white/15 mr-1">Payment</span>
+                      {paymentLine}
+                    </p>
+                  )}
+                  {items.length > 5 && (
+                    <button
+                      onClick={() =>
+                        setExpanded((prev) => ({
+                          ...prev,
+                          [category]: !isExpanded,
+                        }))
+                      }
+                      className="text-[11px] text-white/25 hover:text-white transition-colors mt-1"
+                    >
+                      {isExpanded
+                        ? "Show less"
+                        : `+${items.length - 5} more`}
+                    </button>
+                  )}
                 </div>
               </div>
             );

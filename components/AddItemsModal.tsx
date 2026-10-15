@@ -170,7 +170,7 @@ export default function AddItemsModal({
       </div>
 
       {/* Product Grid */}
-      <div className="flex-1 overflow-y-auto bg-linear-to-b from-[#0b0b0b]/95 to-[#151515]/95 p-8 pb-24">
+      <div className="flex-1 overflow-y-auto bg-linear-to-b from-[#0b0b0b]/95 to-[#151515]/95 p-4 sm:p-8 pb-24">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="animate-spin w-8 h-8 text-[#B80013]" />
@@ -180,7 +180,7 @@ export default function AddItemsModal({
             No available products found.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
             {filtered.map((product) => (
               <div
                 key={product._id}
@@ -193,10 +193,10 @@ export default function AddItemsModal({
                       alt={product.title}
                       width={60}
                       height={60}
-                      className="rounded-xl object-cover border border-white/10"
+                      className="rounded-xl object-cover border border-white/10 shrink-0"
                     />
                   )}
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-100 text-[14px] leading-tight mb-1">
                       {product.title}
                     </h3>
@@ -210,8 +210,8 @@ export default function AddItemsModal({
                 </div>
 
                 {/* Quantity + Add */}
-                <div className="mt-5 flex items-center justify-between">
-                  <div className="flex items-center bg-black/40 border border-white/10 rounded-full px-2 py-1">
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center bg-black/40 border border-white/10 rounded-full px-1 py-0.5">
                     <button
                       onClick={() =>
                         setQuantities((q) => ({
@@ -219,7 +219,7 @@ export default function AddItemsModal({
                           [product._id]: Math.max(1, (q[product._id] || 1) - 1),
                         }))
                       }
-                      className="p-1 text-gray-400 hover:text-[#B80013]"
+                      className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-[#B80013] transition"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
@@ -233,7 +233,7 @@ export default function AddItemsModal({
                           [product._id]: Math.max(1, Number(e.target.value)),
                         }))
                       }
-                      className="w-10 text-center text-sm bg-transparent text-gray-200 outline-none"
+                      className="w-10 text-center text-[16px] sm:text-sm bg-transparent text-gray-200 outline-none"
                     />
                     <button
                       onClick={() =>
@@ -242,7 +242,7 @@ export default function AddItemsModal({
                           [product._id]: (q[product._id] || 1) + 1,
                         }))
                       }
-                      className="p-1 text-gray-400 hover:text-[#B80013]"
+                      className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-[#B80013] transition"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -251,7 +251,7 @@ export default function AddItemsModal({
                   <button
                     onClick={() => handleAdd(product)}
                     disabled={!!adding}
-                    className="bg-[#B80013] text-white px-4 py-2 rounded-full text-xs font-semibold flex items-center gap-1 hover:bg-[#90000f] disabled:opacity-50 transition"
+                    className="flex-1 bg-[#B80013] text-white h-10 rounded-full text-xs font-semibold flex items-center justify-center gap-1 hover:bg-[#90000f] disabled:opacity-50 active:scale-[0.97] transition"
                   >
                     {adding === product._id ? (
                       <Loader2 className="animate-spin w-4 h-4" />

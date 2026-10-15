@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Plus, Minus, Loader2, Trash2, ShoppingCart, Search } from "lucide-react";
+import { X, Plus, Minus, Loader2, Trash2, Search, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import { sanityClient } from "@/lib/sanityClient";
 
@@ -39,8 +39,8 @@ export default function CreateOrderModal({
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [cartSheetOpen, setCartSheetOpen] = useState(false);
 
-  // ───────── FETCH PRODUCTS FROM SANITY ─────────
   useEffect(() => {
     async function fetchProducts() {
       if (!branch) {
@@ -50,9 +50,8 @@ export default function CreateOrderModal({
 
       setLoading(true);
       try {
-        // Normalize branch to lowercase for query
         const normalizedBranch = branch.toLowerCase();
-        
+
         const query = `
           *[_type == "product" && active == true]{
             _id,
@@ -67,16 +66,12 @@ export default function CreateOrderModal({
             "imageUrl": image.asset->url
           } | order(title asc)
         `;
-        
+
         const result = await sanityClient.fetch(query, { region: normalizedBranch });
-        
-        console.log("Fetched products:", result); // Debug log
-        console.log("Branch:", branch, "Normalized:", normalizedBranch); // Debug log
 
         const q: Record<string, number> = {};
         result.forEach((p: Product) => {
           q[p._id] = 1;
-          // Fallback: if price is not set, try to get it from pricing object
           if (!p.price && p.pricing) {
             if (normalizedBranch === "joburg" && p.pricing.joburg) {
               p.price = p.pricing.joburg;
@@ -99,22 +94,20 @@ export default function CreateOrderModal({
     fetchProducts();
   }, [branch]);
 
-  // ───────── ADD ITEM TO CART ─────────
   function addToCart(product: Product) {
     const qty = quantities[product._id] || 1;
-    
-    const existingIndex = cart.findIndex(item => item.product_id === product._id);
-    
+    const existingIndex = cart.findIndex((item) => item.product_id === product._id);
+
     if (existingIndex !== -1) {
-      // Update existing item
-      setCart(prev => prev.map((item, idx) => 
-        idx === existingIndex 
-          ? { ...item, quantity: item.quantity + qty }
-          : item
-      ));
+      setCart((prev) =>
+        prev.map((item, idx) =>
+          idx === existingIndex
+            ? { ...item, quantity: item.quantity + qty }
+            : item
+        )
+      );
     } else {
-      // Add new item
-      setCart(prev => [
+      setCart((prev) => [
         ...prev,
         {
           product_id: product._id,
@@ -125,285 +118,419 @@ export default function CreateOrderModal({
         },
       ]);
     }
-    
-    // Reset quantity selector to 1
-    setQuantities(prev => ({ ...prev, [product._id]: 1 }));
+
+    setQuantities((prev) => ({ ...prev, [product._id]: 1 }));
   }
 
-  // ───────── UPDATE CART ITEM QUANTITY ─────────
   function updateCartQuantity(productId: string, delta: number) {
-    setCart(prev => prev.map(item => {
-      if (item.product_id === productId) {
-        const newQty = Math.max(1, item.quantity + delta);
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    }));
+    setCart((prev) =>
+      prev.map((item) =>
+        item.product_id === productId
+          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
+          : item
+      )
+    );
   }
 
-  // ───────── REMOVE FROM CART ─────────
   function removeFromCart(productId: string) {
-    setCart(prev => prev.filter(item => item.product_id !== productId));
+    setCart((prev) => prev.filter((item) => item.product_id !== productId));
   }
 
-  // ───────── CALCULATE TOTAL ─────────
   function calculateTotal() {
-    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   }
 
-  // ───────── FILTER PRODUCTS ─────────
-  const filteredProducts = products.filter(p =>
+  const filteredProducts = products.filter((p) =>
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="h-full flex flex-col lg:flex-row">
-        
-        {/* ═══════════ LEFT: PRODUCT SELECTION ═══════════ */}
-        <div className="flex-1 flex flex-col bg-linear-to-br from-[#1a1a1a] to-[#0a0a0a]">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-            <div>
-              <h2 className="text-2xl font-bold text-white">Select Products</h2>
-              <p className="text-sm text-gray-400 mt-1">
-                Branch: <span className="text-[#B80013] font-semibold">{branch || "Unknown"}</span>
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition text-white"
+  const categoryLetter = (title: string) => title.charAt(0).toUpperCase();
+
+  /* ── Shared: product grid ── */
+  const productGrid = (
+    <div className="flex-1 overflow-y-auto p-4 sm:p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {!branch ? (
+        <p className="text-[13px] text-white/25 py-12 text-center">
+          Branch information not available.
+        </p>
+      ) : loading ? (
+        <div className="flex items-center justify-center gap-2 py-12 text-white/25 text-[13px]">
+          <Loader2 size={14} className="animate-spin" />
+          Loading products...
+        </div>
+      ) : filteredProducts.length === 0 ? (
+        <p className="text-[13px] text-white/25 py-12 text-center">
+          No products found.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+          {filteredProducts.map((product) => (
+            <div
+              key={product._id}
+              className="bg-[#111111] border border-white/[0.07] rounded-[8px] flex flex-col overflow-hidden"
             >
-              <X size={24} />
-            </button>
-          </div>
-
-          {/* Search Bar */}
-          <div className="px-6 py-4 border-b border-white/10">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-white/5 border border-white/20 rounded-xl pl-10 pr-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-[#B80013] focus:bg-white/10 transition"
-                placeholder="Search products..."
-              />
-            </div>
-          </div>
-
-          {/* Products Grid */}
-          <div className="flex-1 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {!branch ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <p>Branch information not available</p>
-              </div>
-            ) : loading ? (
-              <div className="flex flex-col items-center justify-center h-full">
-                <Loader2 className="animate-spin text-[#B80013] mb-4" size={48} />
-                <p className="text-gray-400">Loading products...</p>
-              </div>
-            ) : filteredProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <Search size={48} className="mb-4 opacity-50" />
-                <p>No products found</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product._id}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-4 hover:bg-white/10 hover:border-[#B80013]/50 transition-all duration-200"
+              {product.imageUrl ? (
+                <div className="relative w-full aspect-[4/3] bg-[#1a1a1a]">
+                  <Image
+                    src={product.imageUrl}
+                    alt={product.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-full aspect-[4/3] bg-[#1a1a1a] flex items-center justify-center">
+                  <span
+                    className="text-[28px] text-white/10 font-bold"
+                    style={{ fontFamily: "var(--font-heading)" }}
                   >
-                    {/* Product Image & Info */}
-                    <div className="flex flex-col items-center mb-4">
-                      {product.imageUrl ? (
-                        <div className="w-full h-32 relative mb-3 rounded-lg overflow-hidden bg-black/20">
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.title}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-full h-32 mb-3 rounded-lg bg-linear-to-br from-[#B80013]/20 to-[#B80013]/5 flex items-center justify-center">
-                          <ShoppingCart size={32} className="text-[#B80013]/50" />
-                        </div>
-                      )}
-                      
-                      <h3 className="font-semibold text-white text-center text-sm line-clamp-2 mb-1">
-                        {product.title}
-                      </h3>
-                      
-                      <div className="text-center">
-                        <p className="text-[#B80013] font-bold text-lg">
-                          {product.price ? `R${product.price.toFixed(2)}` : "Price TBA"}
-                        </p>
-                        {product.unit && (
-                          <p className="text-xs text-gray-400">per {product.unit}</p>
-                        )}
-                      </div>
-                    </div>
+                    {categoryLetter(product.title)}
+                  </span>
+                </div>
+              )}
 
-                    {/* Quantity Controls */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-1.5">
-                        <button
-                          onClick={() =>
-                            setQuantities((q) => ({
-                              ...q,
-                              [product._id]: Math.max(1, (q[product._id] || 1) - 1),
-                            }))
-                          }
-                          className="text-white hover:text-[#B80013] transition p-1"
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <span className="text-white font-bold w-8 text-center">
-                          {quantities[product._id] || 1}
-                        </span>
-                        <button
-                          onClick={() =>
-                            setQuantities((q) => ({
-                              ...q,
-                              [product._id]: (q[product._id] || 1) + 1,
-                            }))
-                          }
-                          className="text-white hover:text-[#B80013] transition p-1"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
+              <div className="p-3 flex flex-col gap-2 flex-1">
+                <p className="text-[13px] text-white leading-tight line-clamp-2">
+                  {product.title}
+                </p>
+                <p
+                  className="text-[14px] font-bold text-[#B80013]"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  {product.price ? `R${product.price.toFixed(2)}` : "—"}
+                  {product.unit && (
+                    <span className="text-[11px] text-white/25 ml-1 font-normal">
+                      / {product.unit}
+                    </span>
+                  )}
+                </p>
 
-                      <button
-                        onClick={() => addToCart(product)}
-                        disabled={!product.price}
-                        className="flex-1 bg-[#B80013] hover:bg-[#960010] px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Plus size={16} />
-                        {product.price ? "Add" : "Unavailable"}
-                      </button>
-                    </div>
+                <div className="flex items-center gap-2 mt-auto">
+                  <div className="flex items-center border border-white/[0.1] rounded-[4px]">
+                    <button
+                      onClick={() =>
+                        setQuantities((q) => ({
+                          ...q,
+                          [product._id]: Math.max(1, (q[product._id] || 1) - 1),
+                        }))
+                      }
+                      className="px-2 py-1.5 text-white/40 hover:text-white transition-colors"
+                    >
+                      <Minus size={11} />
+                    </button>
+                    <span className="text-[13px] text-white w-6 text-center">
+                      {quantities[product._id] || 1}
+                    </span>
+                    <button
+                      onClick={() =>
+                        setQuantities((q) => ({
+                          ...q,
+                          [product._id]: (q[product._id] || 1) + 1,
+                        }))
+                      }
+                      className="px-2 py-1.5 text-white/40 hover:text-white transition-colors"
+                    >
+                      <Plus size={11} />
+                    </button>
                   </div>
-                ))}
+
+                  <button
+                    onClick={() => addToCart(product)}
+                    disabled={!product.price}
+                    className="flex-1 h-[30px] bg-[#B80013] text-white text-[11px] tracking-[0.08em] uppercase font-medium rounded-[4px] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#a30011] active:scale-[0.97] transition-colors"
+                    style={{ fontFamily: "var(--font-heading)" }}
+                  >
+                    {product.price ? "Add" : "N/A"}
+                  </button>
+                </div>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  /* ── Shared: cart items list ── */
+  const cartItems = (
+    <div className="flex-1 overflow-y-auto p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {cart.length === 0 ? (
+        <p className="text-[13px] text-white/25 text-center py-12">
+          Cart is empty.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {cart.map((item) => (
+            <div
+              key={item.product_id}
+              className="bg-[#0a0a0a] border border-white/[0.07] rounded-[8px] p-3"
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="text-[13px] text-white leading-tight line-clamp-2 flex-1">
+                  {item.title}
+                </p>
+                <button
+                  onClick={() => removeFromCart(item.product_id)}
+                  className="text-white/20 hover:text-white/60 transition-colors mt-0.5 shrink-0 p-1"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center border border-white/[0.1] rounded-[4px]">
+                  <button
+                    onClick={() => updateCartQuantity(item.product_id, -1)}
+                    className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                  >
+                    <Minus size={11} />
+                  </button>
+                  <span className="text-[13px] text-white w-7 text-center">
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => updateCartQuantity(item.product_id, 1)}
+                    className="w-8 h-8 flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                  >
+                    <Plus size={11} />
+                  </button>
+                </div>
+
+                <span
+                  className="text-[15px] font-bold text-[#B80013]"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  R{(item.price * item.quantity).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-[#0a0a0a] flex flex-col lg:flex-row overflow-hidden">
+
+      {/* ── PRODUCT PANEL (shared) ── */}
+      <div className="flex-1 flex flex-col min-h-0">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 h-14 border-b border-white/[0.07] shrink-0">
+          <div className="flex items-center gap-3">
+            <span
+              className="text-[13px] font-medium tracking-[0.1em] uppercase text-white"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Select Products
+            </span>
+            {branch && (
+              <span className="text-[11px] text-white/25">
+                — {branch}
+              </span>
             )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-white/40 hover:text-white transition-colors rounded-[4px] hover:bg-white/[0.06]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="px-5 py-3 border-b border-white/[0.07] shrink-0">
+          <div className="relative">
+            <Search
+              size={13}
+              className="absolute left-0 top-1/2 -translate-y-1/2 text-white/25"
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-transparent border-none pl-5 text-[16px] md:text-[13px] text-white placeholder-white/25 focus:outline-none"
+              placeholder="Search products..."
+            />
           </div>
         </div>
 
-        {/* ═══════════ RIGHT: CART SIDEBAR ═══════════ */}
-        <div className="lg:w-96 xl:w-md bg-[#0a0a0a] border-l border-white/10 flex flex-col">
-          
-          {/* Cart Header */}
-          <div className="px-6 py-4 border-b border-white/10">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 bg-[#B80013]/20 rounded-lg">
-                <ShoppingCart size={20} className="text-[#B80013]" />
-              </div>
-              <h3 className="text-xl font-bold text-white">Order Cart</h3>
-            </div>
-            <p className="text-sm text-gray-400">
-              {cart.length} {cart.length === 1 ? 'item' : 'items'} added
-            </p>
-          </div>
+        {/* Product grid */}
+        {productGrid}
+      </div>
 
-          {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="p-4 bg-white/5 rounded-full mb-4">
-                  <ShoppingCart size={48} className="text-gray-600" />
-                </div>
-                <p className="text-gray-400 mb-2">Your cart is empty</p>
-                <p className="text-sm text-gray-500">
-                  Add products from the left to get started
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cart.map((item) => (
-                  <div
-                    key={item.product_id}
-                    className="bg-white/5 border border-white/10 rounded-xl p-4"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <h4 className="text-white font-semibold text-sm line-clamp-2 mb-1">
-                          {item.title}
-                        </h4>
-                        <p className="text-xs text-gray-400">
-                          {item.price ? `R${item.price.toFixed(2)}` : "Price TBA"} {item.unit && `/ ${item.unit}`}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => removeFromCart(item.product_id)}
-                        className="text-red-500 hover:text-red-400 transition p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2 bg-white/10 rounded-lg px-2 py-1">
-                        <button
-                          onClick={() => updateCartQuantity(item.product_id, -1)}
-                          className="text-white hover:text-[#B80013] transition p-1"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span className="text-white font-bold w-8 text-center text-sm">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateCartQuantity(item.product_id, 1)}
-                          className="text-white hover:text-[#B80013] transition p-1"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-
-                      {/* Subtotal */}
-                      <div className="text-right">
-                        <p className="text-[#B80013] font-bold">
-                          R{(item.price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Cart Footer */}
-          <div className="border-t border-white/10 p-6 space-y-4">
-            {/* Total */}
-            <div className="flex items-center justify-between text-lg">
-              <span className="text-gray-400 font-semibold">Total</span>
-              <span className="text-[#B80013] font-bold text-2xl">
-                R{calculateTotal().toFixed(2)}
+      {/* ── MOBILE: Cart trigger bar (shown when cart has items) ── */}
+      {cart.length > 0 && (
+        <button
+          onClick={() => setCartSheetOpen(true)}
+          className="lg:hidden shrink-0 bg-[#111111] border-t border-white/[0.07] px-5 py-4 flex items-center justify-between active:bg-[#161616] transition"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 bg-[#B80013] rounded-full flex items-center justify-center shrink-0">
+              <span className="text-[11px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
+                {cart.length}
               </span>
             </div>
+            <span className="text-[13px] text-white/70">View Cart</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[18px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>
+              R{calculateTotal().toFixed(2)}
+            </span>
+            <ChevronRight size={14} className="text-white/30" />
+          </div>
+        </button>
+      )}
 
-            {/* Action Buttons */}
-            <div className="flex gap-3">
-              <button
-                onClick={onClose}
-                className="flex-1 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white font-semibold transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => onComplete(cart)}
-                disabled={cart.length === 0}
-                className="flex-1 px-6 py-3 bg-[#B80013] hover:bg-[#960010] rounded-xl text-white font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Continue
-              </button>
+      {/* ── MOBILE: Cancel bar (when cart empty) ── */}
+      {cart.length === 0 && (
+        <div className="lg:hidden shrink-0 border-t border-white/[0.07]">
+          <button
+            onClick={onClose}
+            className="w-full h-14 text-[11px] tracking-[0.1em] uppercase text-white/35 hover:text-white transition"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* ── MOBILE: Cart bottom sheet ── */}
+      {cartSheetOpen && (
+        <>
+          <div
+            className="lg:hidden fixed inset-0 z-[51] bg-black/60"
+            onClick={() => setCartSheetOpen(false)}
+          />
+          <div
+            className="lg:hidden fixed inset-x-0 bottom-0 z-[52] bg-[#0a0a0a] rounded-t-[20px] border-t border-white/[0.07] flex flex-col"
+            style={{
+              maxHeight: "85dvh",
+              boxShadow: "0 -8px 48px rgba(0,0,0,0.7)",
+            }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 bg-white/[0.1] rounded-full" />
             </div>
+
+            {/* Sheet header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.07] shrink-0">
+              <span
+                className="text-[13px] tracking-[0.1em] uppercase text-white"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Cart
+              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] text-white/25">
+                  {cart.length} {cart.length === 1 ? "item" : "items"}
+                </span>
+                <button
+                  onClick={() => setCartSheetOpen(false)}
+                  className="w-7 h-7 flex items-center justify-center rounded-[6px] text-white/25 hover:text-white hover:bg-white/[0.06] transition"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+
+            {/* Cart items */}
+            {cartItems}
+
+            {/* Total + actions */}
+            <div className="border-t border-white/[0.07] shrink-0">
+              <div className="flex items-baseline justify-between px-5 py-4">
+                <span
+                  className="text-[11px] text-white/25 tracking-[0.1em] uppercase"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Total
+                </span>
+                <span
+                  className="text-[26px] font-bold text-white"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  <span className="text-[14px] text-white/40 mr-0.5">R</span>
+                  {calculateTotal().toFixed(2)}
+                </span>
+              </div>
+              <div className="flex border-t border-white/[0.07]">
+                <button
+                  onClick={() => setCartSheetOpen(false)}
+                  className="flex-1 h-[56px] text-[11px] tracking-[0.1em] uppercase text-white/40 hover:text-white border-r border-white/[0.07] transition-colors"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Browse More
+                </button>
+                <button
+                  onClick={() => { setCartSheetOpen(false); onComplete(cart); }}
+                  disabled={cart.length === 0}
+                  className="flex-1 h-[56px] text-[11px] tracking-[0.1em] uppercase bg-[#B80013] text-white font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#a30011] transition-colors"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── DESKTOP: Cart sidebar ── */}
+      <div className="hidden lg:flex lg:w-80 xl:w-96 bg-[#111111] border-l border-white/[0.07] flex-col shrink-0">
+
+        {/* Cart header */}
+        <div className="h-14 px-6 border-b border-white/[0.07] flex items-center justify-between shrink-0">
+          <span
+            className="text-[13px] tracking-[0.1em] uppercase text-white"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            Cart
+          </span>
+          <span className="text-[11px] text-white/25">
+            {cart.length} {cart.length === 1 ? "item" : "items"}
+          </span>
+        </div>
+
+        {/* Cart items */}
+        {cartItems}
+
+        {/* Footer */}
+        <div className="border-t border-white/[0.07] shrink-0">
+          <div className="flex items-baseline justify-between px-6 py-4">
+            <span
+              className="text-[11px] text-white/25 tracking-[0.1em] uppercase"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Total
+            </span>
+            <span
+              className="text-[24px] font-bold text-white"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              <span className="text-[14px] text-white/40 mr-0.5">R</span>
+              {calculateTotal().toFixed(2)}
+            </span>
+          </div>
+
+          <div className="flex border-t border-white/[0.07]">
+            <button
+              onClick={onClose}
+              className="flex-1 h-[52px] text-[11px] tracking-[0.1em] uppercase text-white/40 hover:text-white border-r border-white/[0.07] transition-colors"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onComplete(cart)}
+              disabled={cart.length === 0}
+              className="flex-1 h-[52px] text-[11px] tracking-[0.1em] uppercase bg-[#B80013] text-white font-medium disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#a30011] transition-colors"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              Continue
+            </button>
           </div>
         </div>
       </div>

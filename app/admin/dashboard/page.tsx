@@ -1,24 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
-  User,
-  Settings,
-  LogOut,
-  Clock,
+  useRouter,
+} from "next/navigation";
+import {
   TrendingUp,
-  ShoppingBag,
   PlusCircle,
   Users,
   X,
   ExternalLink,
   Download,
   FileText,
+  ShoppingBag,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -28,13 +26,12 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
-  PieChart,
-  Pie,
+  BarChart,
+  Bar,
   Cell,
-  Legend,
 } from "recharts";
-import ManageOrdersModal from "@/components/ManageOrdersModal";
 import CustomerAnalytics from "@/components/CustomerAnalytics";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -42,20 +39,12 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("All");
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [showReportModal, setShowReportModal] = useState(false);  
-  // 🗑️ Local state for delete confirmation
+  const [showReportModal, setShowReportModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [managerToDelete, setManagerToDelete] = useState<any>(null);
-
-  const [showOrderModal, setShowOrderModal] = useState(false);
-
-  // Manage Orders modal visibility
-  const [showManageOrders, setShowManageOrders] = useState(false);
-
   const [showManagerModal, setShowManagerModal] = useState(false);
   const [isGeneratingInvoices, setIsGeneratingInvoices] = useState(false);
+  const [selectedManager, setSelectedManager] = useState<any>(null);
   const [managerForm, setManagerForm] = useState({
     name: "",
     email: "",
@@ -63,30 +52,25 @@ export default function AdminDashboard() {
     branch: "Durban",
   });
 
-    useEffect(() => {
+  const staffRef = useRef<HTMLDivElement>(null);
+  const analyticsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
     const init = async () => {
       const { data } = await supabase.auth.getUser();
-
-      // ✅ Auth check: if no user, force redirect immediately
       if (!data.user) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/admin/login";
-        }
+        if (typeof window !== "undefined") window.location.href = "/admin/login";
         return;
       }
-
       setUser(data.user);
-
       const { data: allOrders } = await supabase
         .from("orders")
         .select("*")
         .order("created_at", { ascending: false });
-
       const { data: allManagers } = await supabase
         .from("managers")
         .select("*")
         .order("created_at", { ascending: false });
-
       setOrders(allOrders || []);
       setManagers(allManagers || []);
       setLoading(false);
@@ -94,64 +78,47 @@ export default function AdminDashboard() {
     init();
   }, []);
 
+  const handleUpdateManager = async (manager: any) => {
+    try {
+      const { error } = await supabase
+        .from("managers")
+        .update({
+          name: manager.name,
+          email: manager.email,
+          branch: manager.branch,
+          ...(manager.password && { password: manager.password }),
+        })
+        .eq("id", manager.id);
+      if (error) throw error;
+      alert("Manager updated!");
+      setSelectedManager(null);
+      const { data: updated } = await supabase.from("managers").select("*");
+      setManagers(updated || []);
+    } catch (err: any) {
+      alert("Error updating manager: " + err.message);
+    }
+  };
 
-  const [selectedManager, setSelectedManager] = useState<any>(null);
-
-const handleUpdateManager = async (manager: any) => {
-  try {
-    const { error } = await supabase
-      .from("managers")
-      .update({
-        name: manager.name,
-        email: manager.email,
-        branch: manager.branch,
-        ...(manager.password && { password: manager.password }),
-      })
-      .eq("id", manager.id);
-
-    if (error) throw error;
-    alert("✅ Manager updated!");
-    setSelectedManager(null);
-    const { data: updated } = await supabase.from("managers").select("*");
-    setManagers(updated || []);
-  } catch (err: any) {
-    alert("Error updating manager: " + err.message);
-  }
-};
-
-const handleDeleteManager = async (id: string) => {
-  if (!confirm("Are you sure you want to delete this manager?")) return;
-  try {
-    const { error } = await supabase.from("managers").delete().eq("id", id);
-    if (error) throw error;
-    alert("🗑️ Manager deleted");
-    setSelectedManager(null);
-    const { data: updated } = await supabase.from("managers").select("*");
-    setManagers(updated || []);
-  } catch (err: any) {
-    alert("Error deleting manager: " + err.message);
-  }
-};
-
+  const handleDeleteManager = async (id: string) => {
+    try {
+      const { error } = await supabase.from("managers").delete().eq("id", id);
+      if (error) throw error;
+      alert("Manager deleted");
+      setSelectedManager(null);
+      const { data: updated } = await supabase.from("managers").select("*");
+      setManagers(updated || []);
+    } catch (err: any) {
+      alert("Error deleting manager: " + err.message);
+    }
+  };
 
   const totalRevenue = orders.reduce((a, b) => a + b.total, 0);
-  //  Payment stats (matches ManageOrdersModal logic)
-const paidOrders = orders.filter((o) => o.payment_status === "paid");
-const unpaidOrders = orders.filter((o) => o.payment_status === "unpaid");
-
-const paidCount = paidOrders.length;
-const unpaidCount = unpaidOrders.length;
-
-const paidTotal = paidOrders.reduce(
-  (sum, o) => sum + Number(o.total || 0),
-  0
-);
-
-const unpaidTotal = unpaidOrders.reduce(
-  (sum, o) => sum + Number(o.total || 0),
-  0
-);
-
+  const paidOrders = orders.filter((o) => o.payment_status === "paid");
+  const unpaidOrders = orders.filter((o) => o.payment_status === "unpaid");
+  const paidCount = paidOrders.length;
+  const unpaidCount = unpaidOrders.length;
+  const paidTotal = paidOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const unpaidTotal = unpaidOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
   const pending = orders.filter((o) => o.status === "pending").length;
   const completed = orders.filter((o) => o.status === "completed").length;
 
@@ -162,114 +129,81 @@ const unpaidTotal = unpaidOrders.reduce(
     const dayOrders = orders.filter(
       (o) => new Date(o.created_at).toDateString() === day.toDateString()
     );
-    const revenue = dayOrders.reduce((a, b) => a + b.total, 0);
-    return { day: label, revenue, count: dayOrders.length };
+    return { day: label, revenue: dayOrders.reduce((a, b) => a + b.total, 0), count: dayOrders.length };
   });
 
-  const branches = ["Durban", "Joburg"];
-  const branchData = branches.map((b) => {
-    const branchOrders = orders.filter(
-      (o) => o.branch?.toLowerCase() === b.toLowerCase()
-    );
-    const revenue = branchOrders.reduce((a, b) => a + b.total, 0);
-    return { name: b, value: revenue };
-  });
+  const statusBreakdown = [
+    { name: "Pending", value: orders.filter(o => o.status === "pending").length, color: "#EAB308" },
+    { name: "Processed", value: orders.filter(o => o.status === "processed").length, color: "#A855F7" },
+    { name: "Packed", value: orders.filter(o => o.status === "packed").length, color: "#3B82F6" },
+    { name: "Collected", value: orders.filter(o => o.status === "collected").length, color: "#14B8A6" },
+    { name: "Cancelled", value: orders.filter(o => o.status === "cancelled").length, color: "#EF4444" },
+  ];
 
-  const COLORS = ["url(#gradientRed)", "url(#gradientGold)"];
-
-    const handleLogout = () => {
-  try {
-    // Kick off sign-out in background (don’t await)
-    supabase.auth.signOut();
-
-    // Immediately clear local/session storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Add a slight visual feedback
-    document.body.style.opacity = "0.5";
-    document.body.style.pointerEvents = "none";
-
-    // 🔥 Force reload regardless of Supabase completion
-    setTimeout(() => {
-      window.location.reload();
-    }, 200); // non-blocking, guaranteed execution
-  } catch (error) {
-    console.error("Logout error:", error);
-    alert("Logout failed. Please refresh manually.");
-  }
-};
-
+  const handleLogout = () => {
+    try {
+      supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+      document.body.style.opacity = "0.5";
+      document.body.style.pointerEvents = "none";
+      setTimeout(() => window.location.reload(), 200);
+    } catch (error) {
+      console.error("Logout error:", error);
+      alert("Logout failed. Please refresh manually.");
+    }
+  };
 
   const handleExportToExcel = () => {
     const rows: Record<string, any>[] = [];
-
     orders.forEach((order) => {
       let items: any[] = [];
       try {
         if (typeof order.items === "string") {
           const parsed = JSON.parse(order.items);
-          items = Array.isArray(parsed)
-            ? parsed
-            : parsed.items
-            ? parsed.items
-            : Object.values(parsed);
+          items = Array.isArray(parsed) ? parsed : parsed.items ? parsed.items : Object.values(parsed);
         } else if (Array.isArray(order.items)) {
           items = order.items;
         } else if (order.items && typeof order.items === "object") {
           items = Object.values(order.items);
         }
-      } catch {
-        items = [];
-      }
-
+      } catch { items = []; }
       const base = {
         "Order ID": order.id,
-        "Date": new Date(order.created_at).toLocaleString("en-ZA", {
-          dateStyle: "short",
-          timeStyle: "short",
-        }),
-        "Customer": order.customer_name || "",
-        "Phone": order.phone_number || "",
-        "Email": order.email || "",
-        "Branch": order.branch || "",
+        Date: new Date(order.created_at).toLocaleString("en-ZA", { dateStyle: "short", timeStyle: "short" }),
+        Customer: order.customer_name || "",
+        Phone: order.phone_number || "",
+        Email: order.email || "",
+        Branch: order.branch || "",
         "Order Total (R)": Number(order.total || 0).toFixed(2),
-        "Status": order.status || "",
-        "Payment": order.payment_status || "",
+        Status: order.status || "",
+        Payment: order.payment_status || "",
       };
-
       if (items.length === 0) {
-        rows.push({ ...base, "Item": "", "Variant": "", "Qty": "", "Item Price (R)": "" });
+        rows.push({ ...base, Item: "", Variant: "", Qty: "", "Item Price (R)": "" });
       } else {
         items.forEach((item: any, idx: number) => {
           rows.push({
-            // repeat order-level fields only on the first item row for readability
             "Order ID": idx === 0 ? order.id : "",
-            "Date": idx === 0 ? base["Date"] : "",
-            "Customer": idx === 0 ? base["Customer"] : "",
-            "Phone": idx === 0 ? base["Phone"] : "",
-            "Email": idx === 0 ? base["Email"] : "",
-            "Branch": idx === 0 ? base["Branch"] : "",
-            "Item": item.name || item.title || item.product || item.item_name || "",
-            "Variant": item.variant || "",
-            "Qty": item.quantity ?? 1,
+            Date: idx === 0 ? base["Date"] : "",
+            Customer: idx === 0 ? base["Customer"] : "",
+            Phone: idx === 0 ? base["Phone"] : "",
+            Email: idx === 0 ? base["Email"] : "",
+            Branch: idx === 0 ? base["Branch"] : "",
+            Item: item.name || item.title || item.product || item.item_name || "",
+            Variant: item.variant || "",
+            Qty: item.quantity ?? 1,
             "Item Price (R)": Number(item.price || item.total || 0).toFixed(2),
             "Order Total (R)": idx === 0 ? base["Order Total (R)"] : "",
-            "Status": idx === 0 ? base["Status"] : "",
-            "Payment": idx === 0 ? base["Payment"] : "",
+            Status: idx === 0 ? base["Status"] : "",
+            Payment: idx === 0 ? base["Payment"] : "",
           });
         });
       }
     });
-
     const ws = XLSX.utils.json_to_sheet(rows);
-
-    // auto-size columns
     const colKeys = Object.keys(rows[0] || {});
-    ws["!cols"] = colKeys.map((key) => ({
-      wch: Math.max(key.length, ...rows.map((r) => String(r[key] ?? "").length)) + 2,
-    }));
-
+    ws["!cols"] = colKeys.map((key) => ({ wch: Math.max(key.length, ...rows.map((r) => String(r[key] ?? "").length)) + 2 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "All Orders");
     XLSX.writeFile(wb, `amal-foods-orders-${new Date().toISOString().split("T")[0]}.xlsx`);
@@ -287,38 +221,25 @@ const unpaidTotal = unpaidOrders.reduce(
         reader.onerror = reject;
         reader.readAsDataURL(logoBlob);
       });
-
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-
       for (let idx = 0; idx < orders.length; idx++) {
         const order = orders[idx];
         if (idx > 0) doc.addPage();
-
-        // Parse items (handles JSON string, array, object)
         let items: any[] = [];
         try {
           if (typeof order.items === "string") {
             const parsed = JSON.parse(order.items);
-            items = Array.isArray(parsed)
-              ? parsed
-              : parsed.items
-              ? parsed.items
-              : Object.values(parsed);
+            items = Array.isArray(parsed) ? parsed : parsed.items ? parsed.items : Object.values(parsed);
           } else if (Array.isArray(order.items)) {
             items = order.items;
           } else if (order.items && typeof order.items === "object") {
             items = Object.values(order.items);
           }
-        } catch {
-          items = [];
-        }
-
+        } catch { items = []; }
         doc.addImage(logoDataUrl, "PNG", pageWidth / 2 - 25, 10, 50, 20);
-
         doc.setFontSize(16);
         doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
-
         doc.setFontSize(10);
         const paymentStatus = (order.payment_status || "unpaid").toUpperCase();
         const infoLines = [
@@ -333,27 +254,23 @@ const unpaidTotal = unpaidOrders.reduce(
           `Payment Status: ${paymentStatus}`,
         ];
         infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
-
-        const rows = items.map((item: any) => [
+        const tableRows = items.map((item: any) => [
           item.title || item.name || item.product || "-",
           item.quantity ?? 1,
           `R${Number(item.price || 0).toFixed(2)}`,
           `R${(Number(item.price || 0) * (item.quantity ?? 1)).toFixed(2)}`,
         ]);
-
         autoTable(doc, {
           startY: 55 + infoLines.length * 6 + 5,
           head: [["Item", "Qty", "Price", "Subtotal"]],
-          body: rows.length > 0 ? rows : [["-", "-", "-", "-"]],
+          body: tableRows.length > 0 ? tableRows : [["-", "-", "-", "-"]],
           theme: "grid",
           styles: { fontSize: 9 },
           headStyles: { fillColor: [184, 0, 19] },
         });
-
         const lastY = (doc as any).lastAutoTable?.finalY ?? 100;
         doc.setFontSize(11);
         doc.text(`Total: R${Number(order.total || 0).toFixed(2)}`, 14, lastY + 10);
-
         doc.setFontSize(10);
         const bankY = lastY + 25;
         doc.text("EFT Banking Details:", 14, bankY);
@@ -361,13 +278,8 @@ const unpaidTotal = unpaidOrders.reduce(
         doc.text("Account Name: Amal Holdings", 14, bankY + 12);
         doc.text("Account Number: 1169327818", 14, bankY + 18);
         doc.text("Reference: Your Full Name", 14, bankY + 24);
-        doc.text(
-          "Please send proof of payment to your nearest branch before collection.",
-          14,
-          bankY + 30
-        );
+        doc.text("Please send proof of payment to your nearest branch before collection.", 14, bankY + 30);
       }
-
       doc.save(`amal-foods-all-invoices-${new Date().toISOString().split("T")[0]}.pdf`);
     } catch (err: any) {
       alert("Failed to generate invoices: " + err.message);
@@ -379,719 +291,417 @@ const unpaidTotal = unpaidOrders.reduce(
   const handleAddManager = async () => {
     const { name, email, password, branch } = managerForm;
     if (!name || !email || !password) return alert("Please fill in all fields");
-
     const res = await fetch("/api/create-manager", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, branch }),
     });
-
     const result = await res.json();
     if (!result.success) return alert("Error: " + result.error);
-
-    alert("✅ Manager added successfully!");
+    alert("Manager added successfully!");
     setShowManagerModal(false);
     setManagerForm({ name: "", email: "", password: "", branch: "Durban" });
-    const { data: updated } = await supabase
-      .from("managers")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data: updated } = await supabase.from("managers").select("*").order("created_at", { ascending: false });
     setManagers(updated || []);
   };
 
   if (loading)
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b0b0b] text-white">
-        Loading dashboard...
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white text-sm tracking-widest uppercase">
+        Loading…
       </div>
     );
 
-  // Filtered Orders
-  const displayedOrders = orders.filter((order) => {
-    if (filter === "All") return true;
-    if (["Durban", "Joburg"].includes(filter))
-      return order.branch?.toLowerCase() === filter.toLowerCase();
-    return order.status?.toLowerCase() === filter.toLowerCase();
-  });
+  const actionBtnClass =
+    "flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[12px] border border-white/10 rounded-[8px] text-white/60 hover:text-white hover:border-white/20 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <main
-      className="min-h-screen bg-cover bg-center bg-no-repeat text-white p-6 md:p-10 relative"
-      style={{ backgroundImage: "url('/images/checkout.png')" }}
-    >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md"></div>
-
-      {/* Manager Modal */}
-      {showManagerModal && (
-        <Modal onClose={() => setShowManagerModal(false)} title="Add Manager">
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={managerForm.name}
-              onChange={(e) =>
-                setManagerForm({ ...managerForm, name: e.target.value })
-              }
-              className="input"
-            />
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={managerForm.email}
-              onChange={(e) =>
-                setManagerForm({ ...managerForm, email: e.target.value })
-              }
-              className="input"
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={managerForm.password}
-              onChange={(e) =>
-                setManagerForm({ ...managerForm, password: e.target.value })
-              }
-              className="input"
-            />
-            <select
-              value={managerForm.branch}
-              onChange={(e) =>
-                setManagerForm({ ...managerForm, branch: e.target.value })
-              }
-              className="input"
-            >
-              <option value="Durban">Durban</option>
-              <option value="Joburg">Joburg</option>
-            </select>
-            <button
-              onClick={handleAddManager}
-              className="w-full py-2 bg-[#B80013] hover:bg-red-800 rounded-lg font-medium transition"
-            >
-              Add Manager
-            </button>
-          </div>
-        </Modal>
-      )}
-
-     {/* 🧾 Order Details Modal */}
-{selectedOrder && (
-  <Modal
-    onClose={() => setSelectedOrder(null)}
-    title={`Order #${selectedOrder.id.slice(0, 8)}`}
-  >
-    {(() => {
-      // ✅ normalize any item format (JSON string, object, array)
-      let items = [];
-      try {
-        if (typeof selectedOrder.items === "string") {
-          const parsed = JSON.parse(selectedOrder.items);
-          items = Array.isArray(parsed)
-            ? parsed
-            : parsed.items
-            ? parsed.items
-            : Object.values(parsed);
-        } else if (Array.isArray(selectedOrder.items)) {
-          items = selectedOrder.items;
-        } else if (selectedOrder.items && typeof selectedOrder.items === "object") {
-          items = Object.values(selectedOrder.items);
-        }
-      } catch {
-        items = [];
+    <DashboardShell
+      role="admin"
+      userEmail={user?.email || ""}
+      pageTitle="Admin Dashboard"
+      onLogout={handleLogout}
+      onRefresh={() => window.location.reload()}
+      onReports={() => setShowReportModal(true)}
+      onStaff={() => staffRef.current?.scrollIntoView({ behavior: "smooth" })}
+      onAnalytics={() => analyticsRef.current?.scrollIntoView({ behavior: "smooth" })}
+      sidebarActions={
+        <>
+          <button
+            onClick={() => setShowReportModal(true)}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-[6px] border border-white/[0.07] transition cursor-pointer"
+          >
+            <TrendingUp size={14} /> Generate Report
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-[6px] border border-white/[0.07] transition cursor-pointer"
+          >
+            <Download size={14} /> Export to Excel
+          </button>
+          <button
+            onClick={handleGenerateAllInvoices}
+            disabled={isGeneratingInvoices}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-[6px] border border-white/[0.07] disabled:opacity-40 transition cursor-pointer"
+          >
+            <FileText size={14} /> {isGeneratingInvoices ? "Generating…" : "Generate All Invoices"}
+          </button>
+          <button
+            onClick={() => window.open("/studio", "_blank")}
+            className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-[6px] border border-white/[0.07] transition cursor-pointer"
+          >
+            <ExternalLink size={14} /> Open Studio
+          </button>
+        </>
       }
-
-      return (
-        <div className="space-y-3">
-          <p className="text-sm text-gray-300">
-            <strong>Customer:</strong> {selectedOrder.customer_name || "N/A"}
-          </p>
-          <p className="text-sm text-gray-300">
-            <strong>Total:</strong> R{selectedOrder.total?.toFixed(2)}
-          </p>
-          <p className="text-sm text-gray-400">
-            <strong>Status:</strong>{" "}
-            <span
-              className={`px-2 py-0.5 rounded-full text-xs ${
-                selectedOrder.status === "completed"
-                  ? "bg-green-700/40 text-green-300"
-                  : selectedOrder.status === "pending"
-                  ? "bg-yellow-700/40 text-yellow-300"
-                  : "bg-red-700/40 text-red-300"
-              }`}
+      topBarActions={
+        <>
+          <button onClick={() => router.push("/admin/orders")} className={actionBtnClass}>
+            <ShoppingBag size={13} /><span className="hidden sm:inline">Orders</span>
+          </button>
+          <button onClick={() => setShowReportModal(true)} className={actionBtnClass}>
+            <TrendingUp size={13} /><span className="hidden sm:inline">Report</span>
+          </button>
+          <button onClick={handleExportToExcel} className={actionBtnClass}>
+            <Download size={13} /><span className="hidden sm:inline">Export</span>
+          </button>
+          <button onClick={() => window.open("/studio", "_blank")} className={actionBtnClass}>
+            <ExternalLink size={13} /><span className="hidden sm:inline">Studio</span>
+          </button>
+        </>
+      }
+    >
+      {/* ── Add Manager Modal ── */}
+      {showManagerModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111111] border border-white/[0.07] rounded-[12px] w-full max-w-md p-4 sm:p-6 relative">
+            <button
+              className="absolute top-4 right-4 text-white/30 hover:text-white"
+              onClick={() => setShowManagerModal(false)}
             >
-              {selectedOrder.status}
-            </span>
-          </p>
-          <p className="text-sm text-gray-400">
-            <strong>Branch:</strong> {selectedOrder.branch}
-          </p>
-          <p className="text-xs text-gray-500">
-            Created:{" "}
-            {new Date(selectedOrder.created_at).toLocaleString("en-ZA", {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </p>
-
-          {/* 🧾 Ordered Items Section */}
-          <div className="mt-5">
-            <h3 className="text-[#B80013] text-sm font-semibold mb-3">
-              Ordered Items
-            </h3>
-
-            {items.length > 0 ? (
-              <div className="space-y-2">
-                {items.map((item: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="bg-white/5 border border-white/10 rounded-lg p-3 text-sm flex justify-between items-center hover:bg-white/10 transition"
+              <X size={20} />
+            </button>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/50 mb-5" style={{ fontFamily: "var(--font-heading)" }}>
+              Add Manager
+            </p>
+            <div className="space-y-5">
+              {[
+                { placeholder: "Full Name", type: "text", value: managerForm.name, onChange: (v: string) => setManagerForm({ ...managerForm, name: v }) },
+                { placeholder: "Email Address", type: "email", value: managerForm.email, onChange: (v: string) => setManagerForm({ ...managerForm, email: v }) },
+                { placeholder: "Password", type: "password", value: managerForm.password, onChange: (v: string) => setManagerForm({ ...managerForm, password: v }) },
+              ].map(({ placeholder, type, value, onChange }) => (
+                <input
+                  key={placeholder}
+                  type={type}
+                  placeholder={placeholder}
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  className="w-full bg-transparent border-b border-white/[0.1] focus:border-[#B80013] outline-none text-[14px] text-white py-2 placeholder-white/25 transition-colors"
+                />
+              ))}
+              <div className="flex gap-3">
+                {["Durban", "Joburg"].map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setManagerForm({ ...managerForm, branch: b })}
+                    className={`flex-1 py-2 text-[13px] border rounded-[4px] transition ${managerForm.branch === b ? "border-[#B80013] text-white bg-[#B80013]/10" : "border-white/[0.07] text-white/50 hover:text-white hover:border-white/20"}`}
                   >
-                    <div>
-                      <p className="font-medium text-gray-200">
-                        {item.name ||
-                          item.title ||
-                          item.product ||
-                          item.item_name ||
-                          "Unnamed"}
-                      </p>
-                      {item.variant && (
-                        <p className="text-xs text-gray-400">
-                          Variant: {item.variant}
-                        </p>
-                      )}
-                      {item.quantity && (
-                        <p className="text-xs text-gray-500">
-                          Qty: {item.quantity}
-                        </p>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-300 font-semibold">
-                      R{Number(item.price || item.total || 0).toFixed(2)}
-                    </p>
-                  </div>
+                    {b}
+                  </button>
                 ))}
               </div>
-            ) : (
-              <p className="text-gray-500 text-xs italic">
-                No items found for this order.
-              </p>
-            )}
+              <button
+                onClick={handleAddManager}
+                className="w-full h-[48px] bg-[#B80013] hover:bg-[#960010] text-white font-bold text-[13px] uppercase tracking-[0.1em] transition rounded-[4px]"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Add Manager
+              </button>
+            </div>
           </div>
         </div>
-      );
-    })()}
-  </Modal>
-)}
-
-
-
-      <div className="relative z-10 grid grid-cols-1 lg:grid-cols-4 gap-8 mt-[5%] md:mt-[2%] items-start">
-
-       {/* 🧑‍💼 Left Sidebar */}
-<aside className="col-span-1 bg-[#141414]/90 rounded-3xl border border-white/10 p-6 shadow-2xl flex flex-col text-center relative">
-  {/* Top Section */}
-  <div className="flex flex-col items-center">
-    <img
-      src="https://cdn-icons-png.flaticon.com/512/9131/9131529.png"
-      alt="Admin"
-      className="w-28 h-28 rounded-full border-4 border-[#B80013] object-cover mb-4 shadow-md"
-    />
-    <h3 className="font-semibold text-lg text-white">{user?.email}</h3>
-    <p className="text-xs text-gray-400 mt-1 mb-6">Owner</p>
-
-    {/* Buttons */}
-    <div className="w-full flex flex-col gap-2">
-      <button
-        onClick={() => alert("Edit profile coming soon")}
-        className="flex items-center justify-center gap-2 w-full py-2 bg-white/5 hover:bg-white/15 rounded-lg text-sm transition"
-      >
-        <Settings size={16} /> Edit Profile
-      </button>
-
-      {/* Manage Orders Button */}
-<button
-  onClick={() => setShowManageOrders(true)}
-  className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
->
-  <ShoppingBag size={16} /> Manage Orders
-</button>
-
-
-      <button
-        onClick={() => setShowReportModal(true)}
-        className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition"
-      >
-        <TrendingUp size={16} /> Generate Report
-      </button>
-
-      <button
-        onClick={handleExportToExcel}
-        className="flex items-center justify-center gap-2 w-full py-2 bg-emerald-700/80 hover:bg-emerald-700 rounded-lg text-sm transition"
-      >
-        <Download size={16} /> Export to Excel
-      </button>
-
-      <button
-        onClick={handleGenerateAllInvoices}
-        disabled={isGeneratingInvoices}
-        className="flex items-center justify-center gap-2 w-full py-2 bg-blue-700/80 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm transition"
-      >
-        <FileText size={16} />
-        {isGeneratingInvoices ? "Generating…" : "Generate All Invoices"}
-      </button>
-
-      <button
-        onClick={() => window.open("/studio", "_blank")}
-        className="flex items-center justify-center gap-2 w-full py-2 bg-[#B80013] hover:bg-red-800 rounded-lg text-sm transition"
-      >
-        <ExternalLink size={16} /> Open Studio
-      </button>
-    </div>
-  </div>
-
-  {/* Divider */}
-  <div className="w-full h-px bg-white/10 my-6"></div>
-
-  {/* 👥 Managers Section */}
-  <div className="flex-1">
-    <div className="flex justify-between items-center mb-3">
-      <h4 className="text-[#B80013] font-semibold uppercase tracking-wide text-sm">
-        Manage Staff
-      </h4>
-      <button
-        onClick={() => setShowManagerModal(true)}
-        className="p-1 bg-[#B80013] hover:bg-red-800 rounded-lg transition"
-      >
-        <PlusCircle size={18} />
-      </button>
-    </div>
-
-    <div className="w-full space-y-2">
-      {managers.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center">No managers yet.</p>
-      ) : (
-        managers.map((m) => (
-          <div
-            key={m.id}
-            onClick={() => setSelectedManager(m)}
-            className="bg-white/5 p-2 rounded-lg flex items-center justify-between text-sm hover:bg-white/10 transition cursor-pointer"
-          >
-            <span className="text-gray-200 truncate">{m.name}</span>
-            <Users size={16} className="text-[#B80013]" />
-          </div>
-        ))
       )}
-    </div>
-  </div>
 
-    {/* Bottom Section (Logout pinned) */}
-  <div className="mt-8 pt-4 border-t border-white/10 space-y-2">
-    {/* 🔄 Refresh Button */}
-    <button
-      onClick={() => window.location.reload()}
-      className="flex items-center justify-center gap-2 w-full py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition text-gray-200"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M4 4v6h6M20 20v-6h-6M20 4l-3.5 3.5a9 9 0 00-13 9.5"
-        />
-      </svg>
-      Refresh Dashboard
-    </button>
-
-    {/* 🚪 Logout Button */}
-    <button
-      onClick={handleLogout}
-      className="flex items-center justify-center gap-2 w-full py-2 bg-red-700/70 hover:bg-red-800 rounded-lg text-sm transition"
-    >
-      <LogOut size={16} /> Logout
-    </button>
-
-  </div>
-
-
-  {/* ✏️ Edit Manager Modal */}
-  {selectedManager && (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-[#141414]/95 border border-white/10 rounded-3xl w-full max-w-md p-6 relative shadow-xl">
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
-          onClick={() => setSelectedManager(null)}
-        >
-          <X size={20} />
-        </button>
-
-        <h2 className="text-xl font-semibold text-[#B80013] mb-4">
-          Edit Manager
-        </h2>
-
-        <div className="space-y-4">
-          <input
-            type="text"
-            placeholder="Full Name"
-            value={selectedManager.name}
-            onChange={(e) =>
-              setSelectedManager({ ...selectedManager, name: e.target.value })
-            }
-            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013]"
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={selectedManager.email}
-            onChange={(e) =>
-              setSelectedManager({ ...selectedManager, email: e.target.value })
-            }
-            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013]"
-          />
-          {/* Password Input with Show/Hide Toggle */}
-<div className="relative">
-  <input
-    type={selectedManager.showPassword ? "text" : "password"}
-    placeholder="New Password (optional)"
-    value={selectedManager.password || ""}
-    onChange={(e) =>
-      setSelectedManager({
-        ...selectedManager,
-        password: e.target.value,
-      })
-    }
-    className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013] pr-10"
-  />
-
-  {/* 👁️ Eye Toggle */}
-  <button
-    type="button"
-    onClick={() =>
-      setSelectedManager({
-        ...selectedManager,
-        showPassword: !selectedManager.showPassword,
-      })
-    }
-    className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white"
-  >
-    {selectedManager.showPassword ? (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={1.8}
-        stroke="currentColor"
-        className="w-5 h-5"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.008 9.962 7.182.07.204.07.433 0 .637C20.573 16.49 16.638 19.5 12 19.5c-4.64 0-8.577-3.01-9.964-7.178z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-        />
-      </svg>
-    ) : (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        strokeWidth={1.8}
-        stroke="currentColor"
-        className="w-5 h-5"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c1.757 0 3.414-.416 4.879-1.155M21 21L3 3"
-        />
-      </svg>
-    )}
-  </button>
-</div>
-
-          {/* Branch Toggle Buttons */}
-<div className="flex gap-3 mt-2">
-  {["Durban", "Joburg"].map((b) => (
-    <button
-      key={b}
-      type="button"
-      onClick={() =>
-        setSelectedManager({ ...selectedManager, branch: b })
-      }
-      className={`flex-1 py-2 rounded-lg text-sm font-medium transition border border-white/10 ${
-        selectedManager.branch === b
-          ? "bg-[#B80013] text-white"
-          : "bg-white/10 text-gray-300 hover:bg-white/20"
-      }`}
-    >
-      {b}
-    </button>
-  ))}
-</div>
-
-        </div>
-
-        {/* Action Buttons */}
-{/* Action Buttons */}
-<div className="flex gap-3 mt-8">
-  <button
-    onClick={() => handleUpdateManager(selectedManager)}
-    className="flex-1 py-2.5 bg-[#B80013] hover:bg-red-800 rounded-lg font-medium transition text-sm text-white"
-  >
-    Save Changes
-  </button>
-
-  <button
-    onClick={() => {
-      setManagerToDelete(selectedManager);
-      setShowDeleteConfirm(true);
-    }}
-    className="flex-1 py-2.5 bg-red-700/70 hover:bg-red-800 rounded-lg font-medium transition text-sm text-white"
-  >
-    Delete This Manager
-  </button>
-</div>
-
-
-      </div>
-    </div>
-  )}
-
-  {/* 📊 Generate Report Modal (UI Only) */}
-  {showReportModal && (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-[#141414]/95 border border-white/10 rounded-3xl w-full max-w-md p-6 relative shadow-xl">
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
-          onClick={() => setShowReportModal(false)}
-        >
-          <X size={20} />
-        </button>
-
-        <h2 className="text-xl font-semibold text-[#B80013] mb-4">
-          Generate Report
-        </h2>
-
-        <div className="space-y-4">
-          <select className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-[#B80013]">
-            <option value="">Select Timespan</option>
-            <option value="7days">Last 7 Days</option>
-            <option value="30days">Last 30 Days</option>
-            <option value="90days">Last 90 Days</option>
-            <option value="custom">Custom Range</option>
-          </select>
-
-          <div className="flex justify-end">
+      {/* ── Edit Manager Modal ── */}
+      {selectedManager && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111111] border border-white/[0.07] rounded-[12px] w-full max-w-md p-4 sm:p-6 relative">
             <button
-              className="px-4 py-2 bg-[#B80013] hover:bg-red-800 rounded-lg text-sm font-medium"
+              className="absolute top-4 right-4 text-white/30 hover:text-white"
+              onClick={() => setSelectedManager(null)}
+            >
+              <X size={20} />
+            </button>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/50 mb-5" style={{ fontFamily: "var(--font-heading)" }}>
+              Edit Manager
+            </p>
+            <div className="space-y-5">
+              <input
+                type="text"
+                placeholder="Full Name"
+                value={selectedManager.name}
+                onChange={(e) => setSelectedManager({ ...selectedManager, name: e.target.value })}
+                className="w-full bg-transparent border-b border-white/[0.1] focus:border-[#B80013] outline-none text-[14px] text-white py-2 placeholder-white/25 transition-colors"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={selectedManager.email}
+                onChange={(e) => setSelectedManager({ ...selectedManager, email: e.target.value })}
+                className="w-full bg-transparent border-b border-white/[0.1] focus:border-[#B80013] outline-none text-[14px] text-white py-2 placeholder-white/25 transition-colors"
+              />
+              <input
+                type="password"
+                placeholder="New Password (optional)"
+                value={selectedManager.password || ""}
+                onChange={(e) => setSelectedManager({ ...selectedManager, password: e.target.value })}
+                className="w-full bg-transparent border-b border-white/[0.1] focus:border-[#B80013] outline-none text-[14px] text-white py-2 placeholder-white/25 transition-colors"
+              />
+              <div className="flex gap-3">
+                {["Durban", "Joburg"].map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setSelectedManager({ ...selectedManager, branch: b })}
+                    className={`flex-1 py-2 text-[13px] border rounded-[4px] transition ${selectedManager.branch === b ? "border-[#B80013] text-white bg-[#B80013]/10" : "border-white/[0.07] text-white/50 hover:text-white hover:border-white/20"}`}
+                  >
+                    {b}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => handleUpdateManager(selectedManager)}
+                  className="flex-1 h-[44px] bg-[#B80013] hover:bg-[#960010] text-white font-bold text-[12px] uppercase tracking-[0.1em] transition rounded-[4px]"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => { setManagerToDelete(selectedManager); setShowDeleteConfirm(true); }}
+                  className="flex-1 h-[44px] border border-red-700/60 text-red-400 hover:bg-red-700/20 text-[12px] uppercase tracking-[0.1em] transition rounded-[4px]"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Report Modal ── */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#111111] border border-white/[0.07] rounded-[12px] w-full max-w-md p-4 sm:p-6 relative">
+            <button
+              className="absolute top-4 right-4 text-white/30 hover:text-white"
+              onClick={() => setShowReportModal(false)}
+            >
+              <X size={20} />
+            </button>
+            <p className="text-[11px] uppercase tracking-[0.12em] text-white/50 mb-5" style={{ fontFamily: "var(--font-heading)" }}>
+              Generate Report
+            </p>
+            <select className="w-full bg-transparent border-b border-white/[0.1] focus:border-[#B80013] outline-none text-[14px] text-white py-2 mb-6 transition-colors">
+              <option value="" className="bg-[#111]">Select Timespan</option>
+              <option value="7days" className="bg-[#111]">Last 7 Days</option>
+              <option value="30days" className="bg-[#111]">Last 30 Days</option>
+              <option value="90days" className="bg-[#111]">Last 90 Days</option>
+              <option value="custom" className="bg-[#111]">Custom Range</option>
+            </select>
+            <button
               onClick={() => alert("Report generation coming soon")}
+              className="w-full h-[44px] bg-[#B80013] hover:bg-[#960010] text-white font-bold text-[12px] uppercase tracking-[0.1em] transition rounded-[4px]"
+              style={{ fontFamily: "var(--font-heading)" }}
             >
               Generate
             </button>
           </div>
         </div>
+      )}
+
+      {/* ── Delete Confirmation ── */}
+      {showDeleteConfirm && managerToDelete && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[999] p-4">
+          <div className="bg-[#111111] border border-white/[0.07] rounded-[12px] w-full max-w-sm p-6 sm:p-8 text-center">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[#B80013] mb-4" style={{ fontFamily: "var(--font-heading)" }}>
+              Confirm Deletion
+            </p>
+            <p className="text-[13px] text-white/60 mb-8">
+              Permanently delete{" "}
+              <span className="text-white font-medium">{managerToDelete.name}</span>?
+              This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 py-2.5 border border-white/[0.07] text-[13px] text-white/60 hover:text-white transition rounded-[4px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { handleDeleteManager(managerToDelete.id); setShowDeleteConfirm(false); }}
+                className="flex-1 py-2.5 bg-red-700 hover:bg-red-800 text-[13px] text-white font-medium transition rounded-[4px]"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Stats Row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 border border-white/[0.07] rounded-[8px] overflow-hidden mb-8">
+        <RevenueStatItem label="Total Revenue" value={totalRevenue} />
+        <RevenueStatItem label={`${paidCount} Paid`} value={paidTotal} valueClass="text-green-500" />
+        <RevenueStatItem label={`${unpaidCount} Unpaid`} value={unpaidTotal} valueClass="text-yellow-400" />
+        <AdminStatItem label="Pending" value={pending} valueClass="text-yellow-400" />
+        <AdminStatItem label="Completed" value={completed} valueClass="text-green-500" />
+        <AdminStatItem label="Managers" value={managers.length} />
       </div>
-    </div>
-  )}
 
-  {/* 🗑️ Delete Confirmation Modal */}
-{showDeleteConfirm && managerToDelete && (
-  <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-999">
-    <div className="bg-[#141414]/95 border border-white/10 rounded-3xl w-[90%] max-w-sm p-8 text-center shadow-2xl">
-      <h2 className="text-xl font-semibold text-[#B80013] mb-4">
-        Confirm Deletion
-      </h2>
-      <p className="text-gray-300 text-sm mb-6">
-        Are you sure you want to permanently delete{" "}
-        <span className="font-semibold text-white">
-          {managerToDelete.name}
-        </span>
-        ? This action cannot be undone.
-      </p>
-
-      <div className="flex gap-3">
-        <button
-          onClick={() => setShowDeleteConfirm(false)}
-          className="flex-1 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-medium transition text-gray-200"
-        >
-          Cancel
-        </button>
-
-        <button
-          onClick={() => {
-            handleDeleteManager(managerToDelete.id);
-            setShowDeleteConfirm(false);
-          }}
-          className="flex-1 py-2 bg-red-700 hover:bg-red-800 rounded-lg text-sm font-medium transition text-white"
-        >
-          Yes, Delete
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
-{/* 🗃️ Manage Orders Modal (All Branches) */}
-{showManageOrders && (
-  <ManageOrdersModal
-    branch={null}
-    onClose={async () => {
-      setShowManageOrders(false);
-
-      // ✅ Re-fetch orders so stats stay up-to-date
-      const { data: refreshedOrders } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (refreshedOrders) setOrders(refreshedOrders);
-    }}
-  />
-)}
-
-
-</aside>
-
-
-
-
-        {/* Main */}
-        <section className="col-span-3 space-y-8">
-          <h1 className="text-4xl font-bold text-[#B80013]">
-            Welcome, {user?.email?.split("@")[0]}
-          </h1>
-          <p className="text-gray-300">
-            Manage your operations, monitor performance, and analyze growth.
+      {/* ── Charts ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
+        <div className="bg-[#111111] border border-white/[0.07] rounded-[8px] p-6">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-white/50 mb-5" style={{ fontFamily: "var(--font-heading)" }}>
+            Weekly Revenue Trend
           </p>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={weeklyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="day" stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 11 }} />
+              <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fontSize: 11 }} />
+              <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px", fontSize: "12px" }} />
+              <Line type="monotone" dataKey="revenue" stroke="#B80013" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-6">
-            <StatCard title="Total Revenue" value={`R${totalRevenue.toLocaleString()}`} icon={<TrendingUp size={22} />} color="emerald" />
-            <StatCard
-  title={`${paidCount} Paid Orders`}
-  value={`R${paidTotal.toLocaleString()}`}
-  icon={<TrendingUp size={22} />}
-  color="emerald"
-/>
-<StatCard
-  title={`${unpaidCount} Unpaid Orders`}
-  value={`R${unpaidTotal.toLocaleString()}`}
-  icon={<Clock size={22} />}
-  color="yellow"
-/>
-
-
-            <StatCard title="Pending Orders" value={pending} icon={<Clock size={22} />} color="yellow" />
-            <StatCard title="Completed Orders" value={completed} icon={<ShoppingBag size={22} />} color="green" />
-            <StatCard title="Managers" value={`${managers.length} Active`} icon={<User size={22} />} color="red" />
-          </div>
-
-          {/* Charts */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-            <ChartCard title="Weekly Revenue Trend">
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={weeklyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                  <XAxis dataKey="day" stroke="#aaa" />
-                  <YAxis stroke="#aaa" />
-                  <Tooltip contentStyle={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: "8px" }} />
-                  <Line type="monotone" dataKey="revenue" stroke="#B80013" strokeWidth={3} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard title="Revenue by Branch">
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <defs>
-                    <linearGradient id="gradientRed" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#B80013" />
-                      <stop offset="100%" stopColor="#ff5f5f" />
-                    </linearGradient>
-                    <linearGradient id="gradientGold" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#FFD700" />
-                      <stop offset="100%" stopColor="#FACC15" />
-                    </linearGradient>
-                  </defs>
-                  <Pie
-                    data={branchData}
-                    dataKey="value"
-                    nameKey="name"
-                    outerRadius={110}
-                    label={({ name, percent }) => `${name}: ${Math.round(Number(percent ?? 0) * 100)}%`}
-                  >
-                    {branchData.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </div>
-
-          {/* Orders Section */}
-          <CustomerAnalytics />
-        </section>
-      </div>
-    </main>
-  );
-}
-
-/* ───────────── Reusable Components ───────────── */
-function Modal({ children, title, onClose }: any) {
-  return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-[#141414]/95 border border-white/10 rounded-3xl w-full max-w-md p-6 relative">
-        <button
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
-          onClick={onClose}
-        >
-          <X size={20} />
-        </button>
-        <h2 className="text-xl font-semibold text-[#B80013] mb-4">{title}</h2>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function ChartCard({ title, children }: any) {
-  return (
-    <div className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-      <h2 className="text-lg font-semibold mb-4 text-[#B80013]">{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-function StatCard({ title, value, icon, color }: any) {
-  const colorMap: Record<string, string> = {
-    red: "text-red-500",
-    yellow: "text-yellow-400",
-    green: "text-green-500",
-    emerald: "text-emerald-400",
-  };
-  return (
-    <div className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-gray-400">{title}</p>
-        <div className={`p-2 bg-white/5 rounded-lg ${colorMap[color]}`}>
-          {icon}
+        <div className="bg-[#111111] border border-white/[0.07] rounded-[8px] p-6">
+          <p className="text-[11px] uppercase tracking-[0.12em] text-white/50 mb-5" style={{ fontFamily: "var(--font-heading)" }}>
+            Order Status Breakdown
+          </p>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={statusBreakdown} layout="vertical" margin={{ left: 0, right: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+              <XAxis type="number" stroke="rgba(255,255,255,0.25)" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis type="category" dataKey="name" stroke="rgba(255,255,255,0.25)" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={72} />
+              <Tooltip
+                cursor={{ fill: "rgba(255,255,255,0.03)" }}
+                contentStyle={{ background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "8px", fontSize: "12px" }}
+              />
+              <Bar dataKey="value" radius={[0, 4, 4, 0]} maxBarSize={28}>
+                {statusBreakdown.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} fillOpacity={0.75} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
-      <p className={`text-2xl font-bold ${colorMap[color]}`}>{value}</p>
+
+      {/* ── Customer Analytics ── */}
+      <div ref={analyticsRef} id="analytics">
+        <CustomerAnalytics />
+      </div>
+
+      {/* ── Staff Management ── */}
+      <div ref={staffRef} id="staff" className="mt-10">
+        <div className="flex items-center justify-between mb-5">
+          <p
+            className="text-[11px] uppercase tracking-[0.12em] text-white/50"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            — Staff Management —
+          </p>
+          <button
+            onClick={() => setShowManagerModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-[12px] border border-white/10 rounded-[8px] text-white/60 hover:text-white hover:border-white/20 transition cursor-pointer"
+          >
+            <PlusCircle size={14} /> Add Manager
+          </button>
+        </div>
+        {managers.length === 0 ? (
+          <p className="text-white/25 text-sm italic">No managers yet.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+            {managers.map((m) => (
+              <button
+                key={m.id}
+                onClick={() => setSelectedManager(m)}
+                className="bg-[#111111] border border-white/[0.07] rounded-[8px] p-4 text-left hover:border-white/[0.14] transition cursor-pointer"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[13px] font-medium text-white truncate">{m.name}</p>
+                  <Users size={14} className="text-white/25 flex-shrink-0 ml-2" />
+                </div>
+                <p className="text-[11px] text-white/40 truncate">{m.email}</p>
+                <p className="text-[10px] text-white/25 mt-1 uppercase tracking-wider">{m.branch}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </DashboardShell>
+  );
+}
+
+/* ── Local UI Components ── */
+
+function AdminStatItem({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: number;
+  valueClass?: string;
+}) {
+  return (
+    <div className="flex flex-col px-5 py-5 border-r border-b border-white/[0.07]">
+      <span
+        className={`text-[30px] font-bold leading-none ${valueClass || "text-white"}`}
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        {value}
+      </span>
+      <span
+        className="text-[10px] uppercase tracking-[0.1em] text-white/50 mt-2"
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        {label}
+      </span>
     </div>
   );
 }
 
-/* ───────────── Utility Styles ───────────── */
-const inputClass =
-  "w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#B80013]";
+function RevenueStatItem({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: number;
+  valueClass?: string;
+}) {
+  const formatted = value.toLocaleString("en-ZA", { maximumFractionDigits: 0 });
+  return (
+    <div className="flex flex-col px-5 py-5 border-r border-b border-white/[0.07]">
+      <span
+        className={`text-[28px] font-bold leading-none ${valueClass || "text-white"}`}
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        <span className="text-[18px]">R</span>
+        {formatted}
+      </span>
+      <span
+        className="text-[10px] uppercase tracking-[0.1em] text-white/50 mt-2"
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}

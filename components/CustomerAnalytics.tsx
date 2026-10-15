@@ -12,8 +12,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { Loader2 } from "lucide-react";
 
-/* ───────────── Types ───────────── */
 interface Order {
   id: string;
   email: string | null;
@@ -31,7 +31,6 @@ interface Customer {
   created_at: string;
 }
 
-/* ───────────── CustomerAnalytics Component ───────────── */
 export default function CustomerAnalytics() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -47,7 +46,6 @@ export default function CustomerAnalytics() {
       const authRes = await fetch("/api/get-auth-users");
       const { users: allCustomers } = await authRes.json();
 
-
       setOrders((allOrders as Order[]) || []);
       setCustomers((allCustomers as Customer[]) || []);
       setLoading(false);
@@ -55,14 +53,16 @@ export default function CustomerAnalytics() {
     fetchData();
   }, []);
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="text-center text-gray-400 py-10">
+      <div className="flex items-center gap-2 py-12 text-white/25 text-[13px]">
+        <Loader2 size={14} className="animate-spin" />
         Loading analytics...
       </div>
     );
+  }
 
-  /* ───────────── Data Computations ───────────── */
+  /* ── Computations ── */
   const signedUpCount = customers.length;
   const signedUpEmails = new Set(
     customers.map((c) => c.email?.toLowerCase()).filter(Boolean)
@@ -89,9 +89,7 @@ export default function CustomerAnalytics() {
 
   const repeatCustomers = Array.from(
     ordersFromSignedUp.reduce<Map<string, number>>((map, order) => {
-      if (order.email) {
-        map.set(order.email, (map.get(order.email) || 0) + 1);
-      }
+      if (order.email) map.set(order.email, (map.get(order.email) || 0) + 1);
       return map;
     }, new Map())
   ).filter(([_, count]: [string, number]) => count > 1).length;
@@ -122,166 +120,135 @@ export default function CustomerAnalytics() {
 
   const newCustomers30Days = customers.filter((c) => {
     const created = new Date(c.created_at);
-    const now = new Date();
-    const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    const diffDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
     return diffDays <= 30;
   }).length;
 
-  /* ───────────── Chart Data ───────────── */
-  const chartData = [
+  const insights: { title: string; value: string | number }[] = [
+    { title: "Total Registered Customers", value: signedUpCount },
+    { title: "Orders From Registered", value: ordersFromSignedUp.length },
+    { title: "Orders From Guests", value: ordersFromGuests.length },
+    { title: "Repeat Customers", value: repeatCustomers },
     {
-      name: "Registered Customers",
-      Orders: ordersFromSignedUp.length,
-      "Avg Order Value": avgOrderValueSignedUp,
+      title: "Avg Order Value (Registered)",
+      value: `R${avgOrderValueSignedUp.toFixed(2)}`,
     },
     {
-      name: "Guest Customers",
+      title: "Avg Order Value (Guests)",
+      value: `R${avgOrderValueGuests.toFixed(2)}`,
+    },
+    {
+      title: "Most Active Customer",
+      value: mostActiveCustomer ? mostActiveCustomer[0] : "—",
+    },
+    {
+      title: "Highest Spender",
+      value: highestSpender ? highestSpender[0] : "—",
+    },
+    { title: "New Customers (30 days)", value: newCustomers30Days },
+  ];
+
+  const chartData = [
+    {
+      name: "Registered",
+      Orders: ordersFromSignedUp.length,
+      "Avg Value": Math.round(avgOrderValueSignedUp),
+    },
+    {
+      name: "Guests",
       Orders: ordersFromGuests.length,
-      "Avg Order Value": avgOrderValueGuests,
+      "Avg Value": Math.round(avgOrderValueGuests),
     },
   ];
 
-  /* ───────────── Render ───────────── */
   return (
-    <section className="bg-[#141414]/80 rounded-3xl border border-white/10 p-6 shadow-lg space-y-8">
-      <h2 className="text-lg font-semibold text-[#B80013] mb-2">
-        Customer Insights & Behavioral Analytics
-      </h2>
+    <section className="space-y-8">
 
-      {/* Overview Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        <InsightCard
-          title="Total Registered Customers"
-          value={signedUpCount}
-          description="All users with Supabase profiles or magic link logins."
-        />
-        <InsightCard
-          title="Orders From Registered Customers"
-          value={ordersFromSignedUp.length}
-          description="Orders tied to verified profiles."
-        />
-        <InsightCard
-          title="Orders From Guests"
-          value={ordersFromGuests.length}
-          description="Orders placed without login."
-        />
-        <InsightCard
-          title="Repeat Customers"
-          value={repeatCustomers}
-          description="Customers with more than one order."
-        />
-        <InsightCard
-          title="Average Order Value (Registered)"
-          value={`R${avgOrderValueSignedUp.toFixed(2)}`}
-          description="Average value per order for logged-in customers."
-        />
-        <InsightCard
-          title="Average Order Value (Guests)"
-          value={`R${avgOrderValueGuests.toFixed(2)}`}
-          description="Average value per order for guest checkouts."
-        />
-        <InsightCard
-          title="Most Active Customer"
-          value={mostActiveCustomer ? mostActiveCustomer[0] : "-"}
-          description={`Orders placed: ${
-            mostActiveCustomer ? mostActiveCustomer[1] : 0
-          }`}
-        />
-        <InsightCard
-          title="Highest Total Spender"
-          value={highestSpender ? highestSpender[0] : "-"}
-          description={`Spent R${
-            highestSpender ? highestSpender[1].toFixed(2) : 0
-          } total`}
-        />
-        <InsightCard
-          title="New Customers (Last 30 Days)"
-          value={newCustomers30Days}
-          description="Recent sign-ups within the last month."
-        />
+      {/* Section label */}
+      <p
+        className="text-[11px] text-white/25 tracking-[0.14em] uppercase"
+        style={{ fontFamily: "var(--font-heading)" }}
+      >
+        Customer Insights
+      </p>
+
+      {/* Insight rows */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+        {insights.map(({ title, value }, idx) => (
+          <div
+            key={title}
+            className="border-b border-white/[0.07] py-4 pr-4"
+          >
+            <p className="text-[11px] text-white/25 mb-1.5">{title}</p>
+            <p
+              className="text-[18px] font-bold text-white leading-none truncate"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              {String(value)}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Orders by Region */}
       <div>
-        <h3 className="text-[#B80013] font-semibold mt-6 mb-3 text-sm uppercase">
+        <p
+          className="text-[11px] text-white/25 tracking-[0.14em] uppercase mb-4"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
           Orders by Region
-        </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {Object.entries(regionStats).map(([region, count]) => (
-            <div
-              key={region}
-              className="bg-white/5 rounded-lg border border-white/10 p-3 text-center hover:bg-white/10 transition"
-            >
-              <p className="text-white font-semibold">{region}</p>
-              <p className="text-[#B80013] text-sm">{count} orders</p>
-            </div>
-          ))}
+        </p>
+        <div className="space-y-0">
+          {Object.entries(regionStats)
+            .sort((a, b) => b[1] - a[1])
+            .map(([region, count], idx, arr) => (
+              <div
+                key={region}
+                className={`flex items-center justify-between py-2.5 ${
+                  idx < arr.length - 1 ? "border-b border-white/[0.07]" : ""
+                }`}
+              >
+                <span className="text-[13px] text-white/70">{region}</span>
+                <span
+                  className="text-[13px] font-bold text-white"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  {count}
+                </span>
+              </div>
+            ))}
         </div>
       </div>
 
-      {/* Bar Chart */}
-      <div className="mt-10">
-        <h3 className="text-[#B80013] font-semibold mb-3 text-sm uppercase">
-          Orders & Avg Value, Registered vs Guests
-        </h3>
-        <div className="h-[300px] w-full">
+      {/* Bar chart */}
+      <div>
+        <p
+          className="text-[11px] text-white/25 tracking-[0.14em] uppercase mb-4"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          Orders & Avg Value — Registered vs Guests
+        </p>
+        <div className="h-[260px] w-full">
           <ResponsiveContainer>
-            <BarChart data={chartData} barSize={50}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="name" stroke="#aaa" />
-              <YAxis stroke="#aaa" />
+            <BarChart data={chartData} barSize={40}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="name" stroke="rgba(255,255,255,0.25)" tick={{ fontSize: 12 }} />
+              <YAxis stroke="rgba(255,255,255,0.25)" tick={{ fontSize: 11 }} />
               <Tooltip
                 contentStyle={{
-                  background: "#1a1a1a",
-                  border: "1px solid #333",
+                  background: "#111111",
+                  border: "1px solid rgba(255,255,255,0.07)",
                   borderRadius: "8px",
+                  fontSize: "12px",
                 }}
               />
-              <Legend />
-              <Bar dataKey="Orders" fill="#B80013" radius={[6, 6, 0, 0]} />
-              <Bar
-                dataKey="Avg Order Value"
-                fill="#FFD700"
-                radius={[6, 6, 0, 0]}
-              />
+              <Legend wrapperStyle={{ fontSize: "11px", color: "rgba(255,255,255,0.4)" }} />
+              <Bar dataKey="Orders" fill="#B80013" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Avg Value" fill="#c9a227" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
     </section>
-  );
-}
-
-/* ───────────── Subcomponent ───────────── */
-function InsightCard({
-  title,
-  value,
-  description,
-}: {
-  title: string;
-  value: unknown;
-  description?: string;
-}) {
-  const displayValue =
-    value === null || value === undefined
-      ? "-"
-      : typeof value === "string" || typeof value === "number"
-      ? value
-      : Array.isArray(value)
-      ? value.join(", ")
-      : typeof value === "object"
-      ? JSON.stringify(value)
-      : String(value);
-
-  return (
-    <div className="bg-white/5 rounded-2xl border border-white/10 p-5 hover:bg-white/10 transition">
-      <h3 className="text-sm font-semibold text-[#B80013] mb-2">{title}</h3>
-      <p className="text-2xl font-bold text-white mb-1">
-        {String(displayValue)}
-      </p>
-      {description && (
-        <p className="text-xs text-gray-400 leading-snug">{description}</p>
-      )}
-    </div>
   );
 }

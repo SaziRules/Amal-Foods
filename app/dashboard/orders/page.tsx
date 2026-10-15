@@ -1,0 +1,875 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import AddItemsModal from "@/components/AddItemsModal";
+import CreateOrderModal from "@/components/CreateOrderModal";
+import CustomerDetailsModal from "@/components/CustomerDetailsModal.tsx";
+import {
+  Search, X, FileDown, FileSpreadsheet, Plus, Minus, ChevronDown,
+  LayoutList, LayoutGrid, Pencil, FileText,
+} from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+
+const STATUSES = ["pending", "processed", "packed", "collected", "cancelled"];
+
+const STATUS_STYLE: Record<string, string> = {
+  pending: "bg-yellow-500/15 text-yellow-400",
+  processed: "bg-purple-500/15 text-purple-400",
+  packed: "bg-blue-500/15 text-blue-400",
+  collected: "bg-teal-500/15 text-teal-400",
+  cancelled: "bg-red-500/15 text-red-400",
+};
+
+const STATUS_DOT: Record<string, string> = {
+  pending: "bg-yellow-400",
+  processed: "bg-purple-400",
+  packed: "bg-blue-400",
+  collected: "bg-teal-400",
+  cancelled: "bg-red-400",
+};
+
+const STATUS_TINT: Record<string, string> = {
+  pending:   "bg-yellow-500/[0.12] text-yellow-300/70",
+  processed: "bg-purple-500/[0.12] text-purple-300/70",
+  packed:    "bg-blue-500/[0.12] text-blue-300/70",
+  collected: "bg-teal-500/[0.12] text-teal-300/70",
+  cancelled: "bg-red-500/[0.12] text-red-300/70",
+};
+
+const STATUS_TEXT: Record<string, string> = {
+  pending:   "text-yellow-300/70",
+  processed: "text-purple-300/70",
+  packed:    "text-blue-300/70",
+  collected: "text-teal-300/70",
+  cancelled: "text-red-300/70",
+};
+
+
+export default function ManagerOrdersPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [branch, setBranch] = useState<string | null>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [dateFilter, setDateFilter] = useState<"today" | "week" | "month" | "lastMonth" | "all">("today");
+  const [paymentFilter, setPaymentFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [viewingOrder, setViewingOrder] = useState<any | null>(null);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [viewDrawerOpen, setViewDrawerOpen] = useState(false);
+  const [editDrawerOpen, setEditDrawerOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [showAddItems, setShowAddItems] = useState(false);
+  const [statusModalOrder, setStatusModalOrder] = useState<any>(null);
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [showCustomerDetails, setShowCustomerDetails] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<any[]>([]);
+
+  const parseItems = (raw: any) => {
+    try {
+      if (!raw) return [];
+      if (Array.isArray(raw)) return raw;
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed.items)) return parsed.items;
+      if (typeof parsed === "object") return Object.values(parsed);
+    } catch {}
+    return [];
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!data.user) { router.push("/dashboard/login"); return; }
+      setUser(data.user);
+      const { data: manager } = await supabase.from("managers").select("branch").eq("email", data.user.email).single();
+      if (!manager?.branch) { alert("Unable to determine branch."); setLoading(false); return; }
+      const branchName = manager.branch.trim();
+      setBranch(branchName);
+      await fetchOrders(branchName);
+    };
+    init();
+  }, []);
+
+  const fetchOrders = async (branchName?: string) => {
+    const b = branchName ?? branch;
+    if (!b) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.from("orders").select("*").eq("branch", b).order("created_at", { ascending: false });
+      if (error) throw error;
+      setOrders(data || []);
+    } catch (err) {
+      console.error("Error fetching orders:", err);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    supabase.auth.signOut();
+    localStorage.clear();
+    sessionStorage.clear();
+    document.body.style.opacity = "0.5";
+    document.body.style.pointerEvents = "none";
+    setTimeout(() => window.location.reload(), 200);
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: string) => {
+    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", id);
+    if (error) alert("Failed to update status: " + error.message);
+    else setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o)));
+  };
+
+  const handleUpdatePaymentStatus = async (id: string, newVal: string) => {
+    const { error } = await supabase.from("orders").update({ payment_status: newVal }).eq("id", id);
+    if (error) alert("Failed to update payment: " + error.message);
+    else setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, payment_status: newVal } : o)));
+  };
+
+  const handleDeleteOrder = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from("orders").delete().eq("id", deleteTarget.id);
+    setDeleting(false);
+    if (error) { alert("Failed to delete: " + error.message); return; }
+    setOrders((prev) => prev.filter((o) => o.id !== deleteTarget.id));
+    setDeleteTarget(null);
+  };
+
+  const applyDateFilter = (list: any[]) => {
+    if (dateFilter === "all") return list;
+    const now = new Date();
+    return list.filter((o) => {
+      const d = new Date(o.created_at);
+      if (dateFilter === "today") return d.toDateString() === now.toDateString();
+      if (dateFilter === "week") { const w = new Date(); w.setDate(now.getDate() - 7); return d >= w && d <= now; }
+      if (dateFilter === "month") return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      if (dateFilter === "lastMonth") { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const me = new Date(now.getFullYear(), now.getMonth(), 0); return d >= lm && d <= me; }
+      return true;
+    });
+  };
+
+  const filteredOrders = applyDateFilter(
+    orders.filter((o) => {
+      const q = search.toLowerCase();
+      return (
+        (o.customer_name?.toLowerCase().includes(q) || o.order_number?.toLowerCase().includes(q) || o.id?.toLowerCase().includes(q)) &&
+        (statusFilter === "all" || o.status === statusFilter) &&
+        (paymentFilter === "all" || o.payment_status === paymentFilter)
+      );
+    })
+  );
+
+  const statusCounts = STATUSES.reduce((acc, s) => {
+    acc[s] = orders.filter((o) => o.status === s).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const generateOrderReport = async (order: any, format: "pdf" | "xlsx") => {
+    const items = Array.isArray(order.items) ? order.items : [];
+    const filename = `AmalFoods_${order.order_number || order.id}_${new Date().toISOString().slice(0, 10)}.${format}`;
+    if (format === "pdf") {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const logo = await fetch("/images/logo-light.png").then((r) => r.blob()).then((b) => URL.createObjectURL(b));
+      doc.addImage(logo, "PNG", pageWidth / 2 - 25, 10, 50, 20);
+      doc.setFontSize(16);
+      doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
+      doc.setFontSize(10);
+      const infoLines = [`Date: ${new Date(order.created_at).toLocaleDateString()}`, `Order Number: ${order.order_number || order.id}`, `Customer: ${order.customer_name || "-"}`, `Cell: ${order.cell_number || order.phone_number || "-"}`, `Email: ${order.email || "-"}`, `Region: ${order.region || "-"}`, `Branch: ${order.branch || "-"}`, `Payment Method: ${order.payment_method || order.payment_status || "-"}`];
+      infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
+      const rows = items.map((i: any) => [i.title, i.quantity, `R${Number(i.price).toFixed(2)}`, `R${(i.price * i.quantity).toFixed(2)}`]);
+      autoTable(doc, { startY: 55 + infoLines.length * 6 + 5, head: [["Item", "Qty", "Price", "Subtotal"]], body: rows, theme: "grid", styles: { fontSize: 9 }, headStyles: { fillColor: [184, 0, 19] } });
+      const lastY = (doc as any).lastAutoTable?.finalY ?? 100;
+      doc.setFontSize(11);
+      doc.text(`Total: R${Number(order.total || 0).toFixed(2)}`, 14, lastY + 10);
+      doc.setFontSize(10);
+      const bankY = lastY + 25;
+      ["EFT Banking Details:", "Bank: Nedbank", "Account Name: Amal Holdings", "Account Number: 1169327818", "Reference: Your Full Name", "Please send proof of payment to your nearest branch before collection."].forEach((l, i) => doc.text(l, 14, bankY + i * 6));
+      doc.save(filename);
+    } else {
+      type Row = { Item: string; Quantity: number; Price: string; Subtotal: string };
+      const rows: Row[] = items.map((i: any) => ({ Item: i.title || i.name || "-", Quantity: Number(i.quantity) || 0, Price: `R${Number(i.price || 0).toFixed(2)}`, Subtotal: `R${(Number(i.price || 0) * (Number(i.quantity) || 0)).toFixed(2)}` }));
+      const ws = XLSX.utils.aoa_to_sheet([["Amal Foods - Order Summary"], [], ["Order #", order.order_number || order.id], ["Customer", order.customer_name || "-"], ["Total", `R${Number(order.total || 0).toFixed(2)}`], [], ["Item", "Quantity", "Price", "Subtotal"], ...rows.map((r: Row) => Object.values(r))]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Order");
+      XLSX.writeFile(wb, filename);
+    }
+  };
+
+  const generateKitchenPDF = () => {
+    if (!orders.length) return alert("No orders available.");
+    const kitchenOrders = orders.filter((o) => o.status === "pending" || o.status === "processed");
+    if (!kitchenOrders.length) return alert("No pending or processed orders found.");
+    const doc = new jsPDF("p", "mm", "a4");
+    let y = 20;
+    doc.setFontSize(18); doc.setTextColor(184, 0, 19);
+    doc.text(`Kitchen Report - ${branch}`, 14, y); y += 8;
+    doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 14, y); y += 12;
+    const summary: Record<string, { quantity: number; orders: number; statuses: Record<string, number> }> = {};
+    kitchenOrders.forEach((order) => {
+      parseItems(order.items).forEach((item: any) => {
+        const name = item.title || item.name || "Unnamed";
+        if (!summary[name]) summary[name] = { quantity: 0, orders: 0, statuses: {} };
+        summary[name].quantity += Number(item.quantity) || 0;
+        summary[name].orders += 1;
+        summary[name].statuses[order.status] = (summary[name].statuses[order.status] || 0) + 1;
+      });
+    });
+    const rows = Object.entries(summary).sort((a, b) => a[0].localeCompare(b[0])).map(([name, data]) => [name, data.quantity, data.orders, Object.entries(data.statuses).map(([s, c]) => `${s}: ${c}`).join(", ")]);
+    autoTable(doc, { startY: y, head: [["Item", "Qty", "Orders", "Statuses"]], body: rows, theme: "grid", headStyles: { fillColor: [184, 0, 19], textColor: 255 }, styles: { fontSize: 9, cellPadding: 2 }, margin: { left: 14, right: 14 } });
+    doc.save(`Kitchen_Report_${branch}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const generateKitchenExcel = () => {
+    if (!orders.length) return alert("No orders available.");
+    const kitchenOrders = orders.filter((o) => o.status === "pending" || o.status === "processed");
+    if (!kitchenOrders.length) return alert("No pending or processed orders found.");
+    const summary: Record<string, { quantity: number; orders: number; statuses: Record<string, number> }> = {};
+    kitchenOrders.forEach((order) => {
+      parseItems(order.items).forEach((item: any) => {
+        const name = item.title || item.name || "Unnamed";
+        if (!summary[name]) summary[name] = { quantity: 0, orders: 0, statuses: {} };
+        summary[name].quantity += Number(item.quantity) || 0;
+        summary[name].orders += 1;
+        summary[name].statuses[order.status] = (summary[name].statuses[order.status] || 0) + 1;
+      });
+    });
+    const rows = Object.entries(summary).sort((a, b) => a[0].localeCompare(b[0])).map(([name, data]) => ({ Item: name, Qty: data.quantity, Orders: data.orders, Statuses: Object.entries(data.statuses).map(([s, c]) => `${s}: ${c}`).join(", ") }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Kitchen Report");
+    XLSX.writeFile(wb, `Kitchen_Report_${branch}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const generateOrderPrepPDF = () => {
+    const prepOrders = orders.filter((o) => ["pending", "processed", "packed"].includes(o.status));
+    if (!prepOrders.length) return alert("No active orders to prepare.");
+    const doc = new jsPDF("p", "mm", "a4");
+    let y = 20;
+    doc.setFontSize(18); doc.setTextColor(184, 0, 19);
+    doc.text(`Order Prep Sheet — ${branch}`, 14, y); y += 8;
+    doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    doc.text(`${new Date().toLocaleDateString()} · ${prepOrders.length} active orders`, 14, y); y += 12;
+    prepOrders.forEach((order, idx) => {
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(11); doc.setTextColor(0, 0, 0);
+      doc.text(`${idx + 1}. ${order.customer_name || "N/A"} · ${order.order_number || order.id.slice(0, 6)}`, 14, y); y += 5;
+      doc.setFontSize(9); doc.setTextColor(100, 100, 100);
+      doc.text(`${order.status} · ${order.cell_number || order.phone_number || "—"} · R${Number(order.total || 0).toFixed(2)}`, 14, y); y += 5;
+      const rows = parseItems(order.items).map((i: any) => [i.title || i.name || "—", i.quantity, `R${Number(i.price || 0).toFixed(2)}`]);
+      autoTable(doc, { startY: y, body: rows, theme: "plain", styles: { fontSize: 8, cellPadding: 1.5 }, columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 20, halign: "center" as const }, 2: { cellWidth: 30, halign: "right" as const } }, margin: { left: 20, right: 14 } });
+      y = ((doc as any).lastAutoTable?.finalY ?? y) + 6;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(14, y, 195, y); y += 6;
+    });
+    doc.save(`OrderPrep_${branch}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const generateOrderPrepExcel = () => {
+    const prepOrders = orders.filter((o) => ["pending", "processed", "packed"].includes(o.status));
+    if (!prepOrders.length) return alert("No active orders to prepare.");
+    const rows: any[] = [];
+    prepOrders.forEach((order) => {
+      parseItems(order.items).forEach((item: any) => {
+        rows.push({ "Order #": order.order_number || order.id.slice(0, 6), Customer: order.customer_name || "N/A", Status: order.status, Cell: order.cell_number || order.phone_number || "—", Item: item.title || item.name || "—", Qty: Number(item.quantity) || 0, Price: `R${Number(item.price || 0).toFixed(2)}`, Subtotal: `R${(Number(item.price || 0) * (Number(item.quantity) || 0)).toFixed(2)}` });
+      });
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Order Prep");
+    XLSX.writeFile(wb, `OrderPrep_${branch}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const generatePDFOrderReport = () => {
+    if (!orders.length) return alert("No orders available.");
+    const doc = new jsPDF("p", "mm", "a4");
+    let y = 20;
+    doc.setFontSize(18); doc.setTextColor(184, 0, 19);
+    doc.text(`Order Report — ${branch}`, 14, y); y += 8;
+    doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    const totalRevenue = orders.reduce((a, b) => a + Number(b.total || 0), 0);
+    doc.text(`Generated: ${new Date().toLocaleDateString()} · Orders: ${orders.length} · Revenue: R${totalRevenue.toFixed(2)}`, 14, y); y += 12;
+    const rows = orders.map((o) => [o.order_number || o.id.slice(0, 6), o.customer_name || "N/A", o.region || "—", `R${Number(o.total || 0).toFixed(2)}`, o.status, o.payment_status || "—", new Date(o.created_at).toLocaleDateString()]);
+    autoTable(doc, { startY: y, head: [["Order #", "Customer", "Region", "Total", "Status", "Payment", "Date"]], body: rows, theme: "grid", headStyles: { fillColor: [184, 0, 19], textColor: 255 }, styles: { fontSize: 8, cellPadding: 2 }, margin: { left: 14, right: 14 } });
+    doc.save(`OrderReport_${branch}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  };
+
+  const generateExcelOrderReport = () => {
+    if (!orders.length) return alert("No orders available.");
+    const rows = orders.map((o) => ({ "Order #": o.order_number || o.id.slice(0, 6), Customer: o.customer_name || "N/A", Cell: o.cell_number || o.phone_number || "—", Region: o.region || "—", Total: `R${Number(o.total || 0).toFixed(2)}`, Status: o.status, Payment: o.payment_status || "—", Branch: o.branch || "—", Date: new Date(o.created_at).toLocaleDateString() }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Order Report");
+    XLSX.writeFile(wb, `OrderReport_${branch}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  /* ── Drawer helpers ── */
+  const openViewDrawer = (order: any) => { setViewingOrder(order); requestAnimationFrame(() => setViewDrawerOpen(true)); };
+  const closeViewDrawer = () => { setViewDrawerOpen(false); setTimeout(() => setViewingOrder(null), 300); };
+  const openEditDrawer = (order: any) => { setEditingOrder(order); requestAnimationFrame(() => setEditDrawerOpen(true)); };
+  const closeEditDrawer = () => { setEditDrawerOpen(false); setTimeout(() => setEditingOrder(null), 300); };
+
+  const actionBtnClass = "flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-[12px] border border-white/10 rounded-[8px] text-white/60 hover:text-white hover:border-white/20 transition cursor-pointer";
+  const sidebarBtnClass = "w-full flex items-center gap-2.5 px-3 py-2.5 text-[13px] text-white/70 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-[6px] border border-white/[0.07] transition cursor-pointer";
+  const todayOrders = orders.filter((o) => new Date(o.created_at).toDateString() === new Date().toDateString());
+  const activeCount = orders.filter((o) => ["pending", "processed", "packed"].includes(o.status)).length;
+
+  if (!user) {
+    return <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white text-sm tracking-widest uppercase">Loading…</div>;
+  }
+
+  return (
+    <DashboardShell
+      role="manager"
+      userEmail={user?.email || ""}
+      pageTitle={`Orders · ${branch || "…"}`}
+      onLogout={handleLogout}
+      onRefresh={() => fetchOrders()}
+      sidebarActions={
+        <>
+          <button onClick={() => setShowCreateOrder(true)} className={sidebarBtnClass}><Pencil size={14} /> Manage Orders</button>
+          <p className="text-[9px] uppercase tracking-[0.14em] text-white/20 px-1 pt-1" style={{ fontFamily: "var(--font-heading)" }}>Reports</p>
+          <button onClick={generateKitchenPDF} className={sidebarBtnClass}><FileDown size={14} /> Kitchen PDF</button>
+          <button onClick={generateKitchenExcel} className={sidebarBtnClass}><FileSpreadsheet size={14} /> Kitchen Excel</button>
+          <button onClick={generateOrderPrepPDF} className={sidebarBtnClass}><FileDown size={14} /> Order Prep PDF</button>
+          <button onClick={generateOrderPrepExcel} className={sidebarBtnClass}><FileSpreadsheet size={14} /> Order Prep Excel</button>
+          <button onClick={generatePDFOrderReport} className={sidebarBtnClass}><FileText size={14} /> PDF Order Report</button>
+          <button onClick={generateExcelOrderReport} className={sidebarBtnClass}><FileSpreadsheet size={14} /> Excel Order Report</button>
+        </>
+      }
+    >
+      <div className="w-full overflow-x-hidden">
+      {/* ── Summary Strip ── */}
+      {/* Mobile: horizontal scroll cards */}
+      <div className="sm:hidden overflow-x-auto [&::-webkit-scrollbar]:hidden mb-6">
+        <div className="flex gap-2 w-max">
+          {[
+            { label: "Today's Orders", value: todayOrders.length },
+            { label: "Today's Revenue", value: `R${todayOrders.reduce((a, b) => a + Number(b.total || 0), 0).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}` },
+            { label: "Active", value: activeCount },
+            { label: "Total Orders", value: orders.length },
+          ].map(({ label, value }) => (
+            <div key={label} className="bg-[#111111] border border-white/[0.07] rounded-[8px] px-4 py-4 flex flex-col min-w-[110px]">
+              <p className="text-[26px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>{value}</p>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-white/40 mt-1.5" style={{ fontFamily: "var(--font-heading)" }}>{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Desktop: bordered grid */}
+      <div className="hidden sm:grid grid-cols-4 border border-white/[0.07] rounded-[8px] overflow-hidden mb-6">
+        {[
+          { label: "Today's Orders", value: todayOrders.length },
+          { label: "Today's Revenue", value: `R${todayOrders.reduce((a, b) => a + Number(b.total || 0), 0).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}` },
+          { label: "Active", value: activeCount },
+          { label: "Total Orders", value: orders.length },
+        ].map(({ label, value }, i) => (
+          <div key={label} className={`px-5 py-4 border-white/[0.07] ${["border-r","border-r","border-r",""][i]}`}>
+            <p className="text-[22px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>{value}</p>
+            <p className="text-[10px] uppercase tracking-[0.1em] text-white/40 mt-1.5" style={{ fontFamily: "var(--font-heading)" }}>{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Filters ── */}
+      <div className="mb-6 space-y-3">
+        {/* Row 1: Search + Date */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Search size={13} className="absolute left-0 top-1/2 -translate-y-1/2 text-white/30" />
+            <input type="text" placeholder="Search name, order #…" value={search} onChange={(e) => setSearch(e.target.value)} className="w-full bg-transparent border-b border-white/[0.07] focus:border-[#B80013] outline-none text-[13px] text-white/70 placeholder-white/25 py-1.5 pl-5 transition-colors" />
+          </div>
+          <div className="flex items-center bg-white/[0.04] rounded-[8px] p-1 gap-0.5 self-start sm:self-auto overflow-x-auto shrink-0 [&::-webkit-scrollbar]:hidden">
+            {(["today", "week", "month", "lastMonth", "all"] as const).map((key) => {
+              const label = key === "lastMonth" ? "Last Mo." : key.charAt(0).toUpperCase() + key.slice(1);
+              return <button key={key} onClick={() => setDateFilter(key)} className={`px-3 py-1.5 text-[11px] rounded-[6px] transition whitespace-nowrap cursor-pointer ${dateFilter === key ? "bg-[#1a1a1a] text-white font-medium" : "text-white/40 hover:text-white/70"}`} style={dateFilter === key ? { fontFamily: "var(--font-heading)" } : {}}>{label}</button>;
+            })}
+          </div>
+        </div>
+        {/* Row 2: Status+Payment pills (scrollable) + Count+Toggle (pinned right) */}
+        <div className="flex items-center gap-2">
+          <div className="flex-1 overflow-x-auto min-w-0 [&::-webkit-scrollbar]:hidden">
+            <div className="flex items-center gap-1.5 flex-nowrap pr-2">
+              <button onClick={() => setStatusFilter("all")} className={`px-3 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer whitespace-nowrap ${statusFilter === "all" ? "bg-[#1a1a1a] border-white/[0.12] text-white" : "border-white/[0.07] text-white/40 hover:text-white/70"}`}>All · {orders.length}</button>
+              {STATUSES.map((s) => (
+                <button key={s} onClick={() => setStatusFilter(s)} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer whitespace-nowrap ${statusFilter === s ? `${STATUS_STYLE[s]} border-transparent` : "border-white/[0.07] text-white/40 hover:text-white/70"}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[s]}`} />
+                  {s.charAt(0).toUpperCase() + s.slice(1)} · {statusCounts[s] || 0}
+                </button>
+              ))}
+              <div className="h-4 w-px bg-white/[0.1] shrink-0 mx-0.5" />
+              {[{ key: "all", label: "All Payments" }, { key: "paid", label: `Paid · ${orders.filter(o => o.payment_status === "paid").length}` }, { key: "unpaid", label: `Unpaid · ${orders.filter(o => o.payment_status === "unpaid").length}` }].map(({ key, label }) => (
+                <button key={key} onClick={() => setPaymentFilter(key as any)} className={`px-3 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer whitespace-nowrap ${paymentFilter === key ? (key === "paid" ? "bg-green-500/15 border-green-500/30 text-green-400" : key === "unpaid" ? "bg-orange-500/15 border-orange-500/30 text-orange-400" : "bg-[#1a1a1a] border-white/[0.12] text-white") : "border-white/[0.07] text-white/40 hover:text-white/70"}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[12px] text-white/30 hidden sm:block">{filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""}</span>
+            <div className="flex items-center bg-white/[0.04] rounded-[8px] p-1 gap-0.5">
+              <button onClick={() => setViewMode("table")} title="Table view" className={`p-1.5 rounded-[5px] transition cursor-pointer ${viewMode === "table" ? "bg-[#1a1a1a] text-white" : "text-white/35 hover:text-white/70"}`}>
+                <LayoutList size={13} />
+              </button>
+              <button onClick={() => setViewMode("grid")} title="Grid view" className={`p-1.5 rounded-[5px] transition cursor-pointer ${viewMode === "grid" ? "bg-[#1a1a1a] text-white" : "text-white/35 hover:text-white/70"}`}>
+                <LayoutGrid size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Orders ── */}
+      {loading ? (
+        <p className="text-white/30 text-[13px]">Loading orders…</p>
+      ) : filteredOrders.length === 0 ? (
+        <p className="text-white/25 text-[13px]">No matching orders found.</p>
+      ) : (
+        <>
+          {/* ── Mobile: compact cards — always shown regardless of viewMode ── */}
+          <div className="md:hidden space-y-2 w-full">
+            {filteredOrders.map((order) => (
+              <div key={order.id} className="bg-[#111111] rounded-[12px] overflow-hidden border border-white/[0.07]">
+                {/* Info */}
+                <div className="px-4 pt-4 pb-3">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[11px] font-bold tracking-[0.06em] text-[#B80013] shrink-0" style={{ fontFamily: "var(--font-heading)" }}>
+                        {order.order_number || `#${order.id.slice(0, 6)}`}
+                      </span>
+                      <span className="text-white/[0.10] text-[10px] shrink-0">·</span>
+                      <span className="text-[10px] text-white/25 shrink-0">
+                        {new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${STATUS_TINT[order.status] || "bg-white/[0.05] text-white/50"}`}>{order.status}</span>
+                      <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${order.payment_status === "paid" ? "bg-green-500/[0.12] text-green-300/70" : "bg-orange-500/[0.12] text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-[16px] font-semibold text-white leading-tight truncate flex-1 min-w-0">{order.customer_name || "N/A"}</p>
+                    <span className="text-[17px] font-bold text-white shrink-0" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</span>
+                  </div>
+                  <p className="text-[11px] text-white/35 mt-1 truncate">
+                    {order.cell_number || order.phone_number || "—"}
+                    {order.region ? <span className="text-white/15 mx-1.5">·</span> : null}
+                    {order.region || ""}
+                  </p>
+                </div>
+                {/* Stacked action buttons */}
+                <div className="border-t border-white/[0.06] px-3 py-3 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button onClick={() => openViewDrawer(order)} className="flex-1 h-11 text-[13px] font-medium bg-white/[0.05] hover:bg-white/[0.09] text-white/65 hover:text-white rounded-[8px] transition cursor-pointer active:scale-[0.97]">View</button>
+                    <button onClick={() => openEditDrawer(order)} className="flex-1 h-11 text-[13px] font-semibold bg-[#B80013] hover:bg-[#c8001a] text-white rounded-[8px] transition cursor-pointer active:scale-[0.97]">Edit</button>
+                  </div>
+                  <button onClick={() => setStatusModalOrder(order)} className="w-full h-11 flex items-center justify-between px-4 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-[8px] transition cursor-pointer active:scale-[0.97]">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[order.status] || "bg-white/30"}`} />
+                      <span className={`text-[13px] capitalize ${STATUS_TEXT[order.status] || "text-white/50"}`}>{order.status}</span>
+                      <span className="text-white/20 text-[12px]">·</span>
+                      <span className={`text-[13px] capitalize ${order.payment_status === "paid" ? "text-green-300/70" : "text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
+                    </div>
+                    <ChevronDown size={13} className="text-white/30 shrink-0" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Desktop: table or grid based on viewMode ── */}
+          {viewMode === "table" ? (
+            <div className="hidden md:block border border-white/[0.07] rounded-[8px] overflow-hidden">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.07] bg-[#111111]">
+                    {["Order #", "Customer", "Region", "Total", "Status", "Payment", "Date", "Actions"].map((h, i) => (
+                      <th key={h} className={`px-4 py-3 text-[10px] uppercase tracking-[0.1em] text-white/30 font-medium ${i >= 3 && i !== 7 ? "text-right" : i === 7 ? "text-center" : "text-left"}`} style={{ fontFamily: "var(--font-heading)" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.map((order) => (
+                    <tr key={order.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition last:border-0">
+                      <td className="px-4 py-3"><span className="text-[12px] font-medium text-[#B80013]" style={{ fontFamily: "var(--font-heading)" }}>{order.order_number || `#${order.id.slice(0, 6)}`}</span></td>
+                      <td className="px-4 py-3"><p className="text-[13px] text-white font-medium leading-snug">{order.customer_name || "N/A"}</p><p className="text-[11px] text-white/35">{order.cell_number || order.phone_number || "—"}</p></td>
+                      <td className="px-4 py-3 text-[13px] text-white/50">{order.region || "—"}</td>
+                      <td className="px-4 py-3 text-right"><span className="text-[14px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</span></td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end flex-wrap gap-1">
+                          {STATUSES.map((s) => <button key={s} onClick={() => handleUpdateStatus(order.id, s)} className={`text-[10px] px-2 py-0.5 rounded-full capitalize border transition cursor-pointer ${order.status === s ? `${STATUS_STYLE[s]} border-transparent font-medium` : "border-white/[0.07] text-white/25 hover:text-white/60"}`}>{s}</button>)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          {["paid", "unpaid"].map((p) => <button key={p} onClick={() => handleUpdatePaymentStatus(order.id, p)} className={`text-[10px] px-2 py-0.5 rounded-full capitalize border transition cursor-pointer ${order.payment_status === p ? (p === "paid" ? "bg-green-500/15 text-green-400 border-transparent font-medium" : "bg-orange-500/15 text-orange-400 border-transparent font-medium") : "border-white/[0.07] text-white/25 hover:text-white/60"}`}>{p}</button>)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right text-[12px] text-white/35">{new Date(order.created_at).toLocaleDateString()}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => openViewDrawer(order)} className="px-2.5 py-1 text-[11px] bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.12] text-white/60 hover:text-white rounded-[4px] transition cursor-pointer">View</button>
+                          <button onClick={() => openEditDrawer(order)} className="px-2.5 py-1 text-[11px] bg-[#B80013]/80 hover:bg-[#B80013] text-white rounded-[4px] transition cursor-pointer">Edit</button>
+                          <button onClick={() => generateOrderReport(order, "pdf")} className="text-white/20 hover:text-white/60 transition cursor-pointer"><FileDown size={13} /></button>
+                          <button onClick={() => generateOrderReport(order, "xlsx")} className="text-white/20 hover:text-white/60 transition cursor-pointer"><FileSpreadsheet size={13} /></button>
+                          {order.status === "cancelled" && <button onClick={() => setDeleteTarget(order)} className="text-red-500/40 hover:text-red-400 text-[11px] transition cursor-pointer">Del</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filteredOrders.map((order) => (
+                <div key={order.id} className="bg-[#111111] rounded-[12px] overflow-hidden border border-white/[0.07] hover:border-white/[0.11] hover:bg-[#131313] transition-all duration-200 flex flex-col">
+                  <div className="p-5 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[11px] font-bold tracking-[0.08em] text-[#B80013] shrink-0" style={{ fontFamily: "var(--font-heading)" }}>{order.order_number || `#${order.id.slice(0, 6)}`}</span>
+                        <span className="text-white/[0.10] text-[10px]">·</span>
+                        <span className="text-[10px] text-white/20 truncate">{new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${STATUS_TINT[order.status] || "bg-white/[0.05] text-white/50"}`}>{order.status}</span>
+                        <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${order.payment_status === "paid" ? "bg-green-500/[0.12] text-green-300/70" : "bg-orange-500/[0.12] text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
+                      </div>
+                    </div>
+                    <p className="text-[15px] font-semibold text-white leading-none mb-3">{order.customer_name || "N/A"}</p>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[9px] uppercase tracking-[0.1em] text-white/20 w-8 shrink-0" style={{ fontFamily: "var(--font-heading)" }}>Cell</span>
+                        <span className="text-[11px] text-white/45">{order.cell_number || order.phone_number || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-[9px] uppercase tracking-[0.1em] text-white/20 w-8 shrink-0" style={{ fontFamily: "var(--font-heading)" }}>Region</span>
+                        <span className="text-[11px] text-white/45">{order.region || "—"}</span>
+                      </div>
+                    </div>
+                    <div className="mt-auto pt-5">
+                      <p className="text-[9px] uppercase tracking-[0.1em] text-white/20 mb-1" style={{ fontFamily: "var(--font-heading)" }}>Total</p>
+                      <p className="text-[22px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 px-4 pb-4">
+                    <button onClick={() => openViewDrawer(order)} className="flex-1 h-11 text-[13px] font-medium bg-white/[0.05] hover:bg-white/[0.09] text-white/70 hover:text-white rounded-[8px] transition cursor-pointer active:scale-[0.98]">View</button>
+                    <button onClick={() => openEditDrawer(order)} className="flex-1 h-11 text-[13px] font-semibold bg-[#B80013] hover:bg-[#c8001a] text-white rounded-[8px] transition cursor-pointer active:scale-[0.98] shadow-sm shadow-[#B80013]/30">Edit</button>
+                  </div>
+                  <div className="border-t border-white/[0.06] px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setStatusModalOrder(order)} className="flex-1 flex items-center justify-between h-10 px-3 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.06] rounded-[8px] transition cursor-pointer group min-w-0 active:scale-[0.98]">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[order.status] || "bg-white/30"}`} />
+                          <span className={`text-[12px] capitalize truncate font-medium ${STATUS_TEXT[order.status] || "text-white/50"}`}>{order.status}</span>
+                          <span className="text-white/[0.15] text-[11px] shrink-0">·</span>
+                          <span className={`text-[12px] capitalize truncate ${order.payment_status === "paid" ? "text-green-300/80" : "text-orange-300/80"}`}>{order.payment_status || "unpaid"}</span>
+                        </div>
+                        <ChevronDown size={12} className="text-white/30 group-hover:text-white/60 transition shrink-0 ml-2" />
+                      </button>
+                      <button onClick={() => generateOrderReport(order, "pdf")} className="w-10 h-10 flex items-center justify-center text-white/30 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.08] rounded-[8px] transition cursor-pointer active:scale-[0.97]"><FileDown size={14} /></button>
+                      <button onClick={() => generateOrderReport(order, "xlsx")} className="w-10 h-10 flex items-center justify-center text-white/30 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.08] rounded-[8px] transition cursor-pointer active:scale-[0.97]"><FileSpreadsheet size={14} /></button>
+                      {order.status === "cancelled" && <button onClick={() => setDeleteTarget(order)} className="w-10 h-10 flex items-center justify-center text-red-500/40 hover:text-red-400 bg-white/[0.04] hover:bg-red-500/[0.06] rounded-[8px] transition cursor-pointer text-[11px] active:scale-[0.97]">Del</button>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── STATUS MODAL ── */}
+      {statusModalOrder && (
+        <>
+          <div className="fixed inset-0 z-[70] bg-black/40" onClick={() => setStatusModalOrder(null)} />
+          {/* Desktop: centered modal. Mobile: bottom sheet */}
+          <div className="fixed z-[75] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(280px,90vw)] inset-x-0 bottom-0 sm:inset-x-auto sm:bottom-auto bg-[#111111] border border-white/[0.12] sm:rounded-[14px] rounded-t-[20px] overflow-hidden" style={{ boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 4px 16px rgba(0,0,0,0.4)" }}>
+            {/* Drag handle (mobile only) */}
+            <div className="sm:hidden flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-white/[0.1] rounded-full" />
+            </div>
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-white/[0.06]">
+              <div>
+                <p className="text-[11px] font-bold tracking-[0.08em] text-[#B80013]" style={{ fontFamily: "var(--font-heading)" }}>{statusModalOrder.order_number || `#${statusModalOrder.id.slice(0, 6)}`}</p>
+                <p className="text-[12px] text-white/50 mt-0.5">{statusModalOrder.customer_name || "N/A"}</p>
+              </div>
+              <button onClick={() => setStatusModalOrder(null)} className="w-7 h-7 flex items-center justify-center rounded-[6px] text-white/25 hover:text-white hover:bg-white/[0.06] transition cursor-pointer shrink-0"><X size={13} /></button>
+            </div>
+            <div className="px-3 pt-3 pb-2">
+              <p className="text-[9px] uppercase tracking-[0.14em] text-white/25 px-1 mb-1.5" style={{ fontFamily: "var(--font-heading)" }}>Processing Status</p>
+              <div className="space-y-0.5">
+                {STATUSES.map((s) => (
+                  <button key={s} onClick={() => { handleUpdateStatus(statusModalOrder.id, s); setStatusModalOrder((prev: any) => ({ ...prev, status: s })); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-3 sm:py-2 rounded-[7px] text-[13px] sm:text-[12px] capitalize transition cursor-pointer text-left ${statusModalOrder.status === s ? "bg-white/[0.07] text-white font-medium" : "text-white/35 hover:text-white/70 hover:bg-white/[0.04]"}`}>
+                    <span className={`w-2 h-2 sm:w-1.5 sm:h-1.5 rounded-full shrink-0 ${STATUS_DOT[s]}`} />
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="px-3 pb-3 pt-2 border-t border-white/[0.05]">
+              <p className="text-[9px] uppercase tracking-[0.14em] text-white/25 px-1 mb-1.5" style={{ fontFamily: "var(--font-heading)" }}>Payment</p>
+              <div className="flex gap-1.5">
+                {["paid", "unpaid"].map((p) => (
+                  <button key={p} onClick={() => { handleUpdatePaymentStatus(statusModalOrder.id, p); setStatusModalOrder((prev: any) => ({ ...prev, payment_status: p })); }}
+                    className={`flex-1 py-3 sm:py-2 text-[13px] sm:text-[12px] capitalize rounded-[7px] font-medium transition cursor-pointer ${statusModalOrder.payment_status === p ? (p === "paid" ? "bg-green-500/[0.18] text-green-400" : "bg-orange-500/[0.18] text-orange-400") : "bg-white/[0.04] text-white/30 hover:text-white/60 hover:bg-white/[0.07]"}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── VIEW DRAWER ── */}
+      {viewingOrder && (
+        <>
+          <div
+            className={`fixed inset-0 z-[55] transition-opacity duration-300 ${viewDrawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            style={{ background: "rgba(0,0,0,0.5)" }}
+            onClick={closeViewDrawer}
+          />
+          <div className={`fixed inset-y-0 right-0 z-[60] bg-[#0a0a0a] flex flex-col shadow-2xl w-full md:w-[min(680px,50vw)] border-l border-white/[0.07] transition-transform duration-300 ease-out ${viewDrawerOpen ? "translate-x-0" : "translate-x-full"}`}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-[#B80013]" style={{ fontFamily: "var(--font-heading)" }}>{viewingOrder.order_number || `#${viewingOrder.id.slice(0, 6)}`}</p>
+                <p className="text-[14px] text-white font-medium mt-0.5">{viewingOrder.customer_name || "N/A"}</p>
+              </div>
+              <button onClick={closeViewDrawer} className="w-8 h-8 flex items-center justify-center rounded-[6px] text-white/30 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-4 border-b border-white/[0.07] shrink-0">
+              {[["Branch", viewingOrder.branch || "—"], ["Region", viewingOrder.region || "—"], ["Status", viewingOrder.status], ["Payment", viewingOrder.payment_status || "—"]].map(([label, val]) => (
+                <div key={label as string}>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-white/30 mb-1" style={{ fontFamily: "var(--font-heading)" }}>{label}</p>
+                  <p className="text-[13px] text-white capitalize">{val}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 mb-4" style={{ fontFamily: "var(--font-heading)" }}>Items Ordered</p>
+              {Array.isArray(viewingOrder.items) && viewingOrder.items.length > 0 ? (
+                <>
+                  {/* Mobile: card list */}
+                  <div className="md:hidden space-y-2">
+                    {viewingOrder.items.map((item: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-0 gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] text-white/80 leading-snug">{item.title || item.name}</p>
+                          <p className="text-[11px] text-white/35 mt-0.5">{item.quantity} × R{Number(item.price || 0).toFixed(2)}</p>
+                        </div>
+                        <span className="text-[15px] font-bold text-white shrink-0" style={{ fontFamily: "var(--font-heading)" }}>
+                          R{(item.price * item.quantity).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop: original table */}
+                  <div className="hidden md:block overflow-x-auto -mx-6 px-6">
+                    <table className="w-full border-collapse min-w-[320px]">
+                      <thead><tr className="border-b border-white/[0.07]">{["Item", "Qty", "Price", "Subtotal"].map((h, i) => <th key={h} className={`pb-2.5 ${i === 0 ? "text-left" : "text-right"} text-[10px] uppercase tracking-[0.1em] text-white/25 font-normal`} style={{ fontFamily: "var(--font-heading)" }}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {viewingOrder.items.map((item: any, idx: number) => (
+                          <tr key={idx} className="border-b border-white/[0.04] last:border-0">
+                            <td className="py-3 text-[13px] text-white/80">{item.title || item.name}</td>
+                            <td className="py-3 text-right text-[13px] text-white/55">{item.quantity}</td>
+                            <td className="py-3 text-right text-[13px] text-white/55">R{Number(item.price || 0).toFixed(2)}</td>
+                            <td className="py-3 text-right text-[13px] text-white font-medium">R{(item.price * item.quantity).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : <p className="text-white/25 text-[13px]">No items found.</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-white/[0.07] shrink-0 flex items-center justify-between">
+              <p className="text-[11px] text-white/35 uppercase tracking-[0.1em]" style={{ fontFamily: "var(--font-heading)" }}>Order Total</p>
+              <p className="text-[24px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>R{Number(viewingOrder.total || 0).toFixed(2)}</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── EDIT DRAWER ── */}
+      {editingOrder && (
+        <>
+          <div
+            className={`fixed inset-0 z-[55] transition-opacity duration-300 ${editDrawerOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+            style={{ background: "rgba(0,0,0,0.5)" }}
+            onClick={closeEditDrawer}
+          />
+          <div className={`fixed inset-y-0 right-0 z-[60] bg-[#0a0a0a] flex flex-col shadow-2xl w-full md:w-[min(680px,50vw)] border-l border-white/[0.07] transition-transform duration-300 ease-out ${editDrawerOpen ? "translate-x-0" : "translate-x-full"}`}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.07] shrink-0">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-[#B80013]" style={{ fontFamily: "var(--font-heading)" }}>Edit · {editingOrder.order_number || `#${editingOrder.id.slice(0, 6)}`}</p>
+                <p className="text-[14px] text-white font-medium mt-0.5">{editingOrder.customer_name || "N/A"}</p>
+              </div>
+              <button onClick={closeEditDrawer} className="w-8 h-8 flex items-center justify-center rounded-[6px] text-white/30 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-4 border-b border-white/[0.07] shrink-0">
+              {[["Branch", editingOrder.branch || "—"], ["Region", editingOrder.region || "—"], ["Payment", editingOrder.payment_status || "—"], ["Status", editingOrder.status]].map(([label, val]) => (
+                <div key={label as string}>
+                  <p className="text-[10px] uppercase tracking-[0.1em] text-white/30 mb-1" style={{ fontFamily: "var(--font-heading)" }}>{label}</p>
+                  <p className="text-[13px] text-white capitalize">{val}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              <p className="text-[11px] uppercase tracking-[0.12em] text-white/35 mb-4" style={{ fontFamily: "var(--font-heading)" }}>Edit Items</p>
+              {Array.isArray(editingOrder.items) && editingOrder.items.length > 0 ? (
+                <>
+                  {/* Mobile: card list */}
+                  <div className="md:hidden space-y-2">
+                    {editingOrder.items.map((item: any, idx: number) => (
+                      <div key={idx} className="bg-[#111111] border border-white/[0.07] rounded-[10px] p-4">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <p className="text-[13px] text-white/80 flex-1 leading-snug">{item.title || item.name}</p>
+                          <button
+                            onClick={() => setEditingOrder((prev: any) => { const u = prev.items.filter((_: any, i: number) => i !== idx); return { ...prev, items: u, total: u.reduce((a: number, i: any) => a + Number(i.price || 0) * Number(i.quantity || 0), 0) }; })}
+                            className="w-8 h-8 flex items-center justify-center rounded-[6px] text-red-500/40 hover:text-red-400 hover:bg-red-500/[0.06] transition shrink-0 cursor-pointer"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center border border-white/[0.1] rounded-[8px]">
+                            <button
+                              onClick={() => { const q = Math.max(1, item.quantity - 1); setEditingOrder((prev: any) => { const u = [...prev.items]; u[idx].quantity = q; return { ...prev, items: u, total: u.reduce((a: number, i: any) => a + Number(i.price || 0) * Number(i.quantity || 0), 0) }; }); }}
+                              className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition cursor-pointer"
+                            >
+                              <Minus size={13} />
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => { const q = Number(e.target.value); setEditingOrder((prev: any) => { const u = [...prev.items]; u[idx].quantity = q; return { ...prev, items: u, total: u.reduce((a: number, i: any) => a + Number(i.price || 0) * Number(i.quantity || 0), 0) }; }); }}
+                              className="w-12 text-center bg-transparent text-white focus:outline-none text-[16px]"
+                            />
+                            <button
+                              onClick={() => { const q = item.quantity + 1; setEditingOrder((prev: any) => { const u = [...prev.items]; u[idx].quantity = q; return { ...prev, items: u, total: u.reduce((a: number, i: any) => a + Number(i.price || 0) * Number(i.quantity || 0), 0) }; }); }}
+                              className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition cursor-pointer"
+                            >
+                              <Plus size={13} />
+                            </button>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[11px] text-white/25">R{Number(item.price || 0).toFixed(2)} ea.</p>
+                            <p className="text-[15px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>R{(item.price * item.quantity).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Desktop: original table */}
+                  <div className="hidden md:block overflow-x-auto -mx-6 px-6">
+                    <table className="w-full border-collapse min-w-[360px]">
+                      <thead><tr className="border-b border-white/[0.07]">{["Item", "Qty", "Price", "Subtotal", ""].map((h, i) => <th key={i} className={`pb-2.5 ${i === 0 ? "text-left" : "text-right"} text-[10px] uppercase tracking-[0.1em] text-white/25 font-normal`} style={{ fontFamily: "var(--font-heading)" }}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {editingOrder.items.map((item: any, idx: number) => (
+                          <tr key={idx} className="border-b border-white/[0.04] last:border-0">
+                            <td className="py-3 text-[13px] text-white/80">{item.title || item.name}</td>
+                            <td className="py-3 text-right">
+                              <input type="number" min="1" value={item.quantity} onChange={(e) => { const q = Number(e.target.value); setEditingOrder((prev: any) => { const u = [...prev.items]; u[idx].quantity = q; return { ...prev, items: u, total: u.reduce((a: number, i: any) => a + Number(i.price || 0) * Number(i.quantity || 0), 0) }; }); }} className="w-16 text-center bg-[#1a1a1a] border border-white/[0.07] rounded-[4px] text-white focus:border-[#B80013] outline-none text-[13px] py-1" />
+                            </td>
+                            <td className="py-3 text-right text-[13px] text-white/55">R{Number(item.price || 0).toFixed(2)}</td>
+                            <td className="py-3 text-right text-[13px] text-white font-medium">R{(item.price * item.quantity).toFixed(2)}</td>
+                            <td className="py-3 text-right">
+                              <button onClick={() => setEditingOrder((prev: any) => { const u = prev.items.filter((_: any, i: number) => i !== idx); return { ...prev, items: u, total: u.reduce((a: number, i: any) => a + Number(i.price || 0) * Number(i.quantity || 0), 0) }; })} className="text-red-500/50 hover:text-red-400 text-xs cursor-pointer">✕</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : <p className="text-white/25 text-[13px]">No items to edit.</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-white/[0.07] shrink-0">
+              <div className="flex items-center gap-3">
+                <p className="text-[22px] font-bold text-[#B80013] mr-auto" style={{ fontFamily: "var(--font-heading)" }}>R{Number(editingOrder.total || 0).toFixed(2)}</p>
+                {editingOrder.status === "pending" ? (
+                  <button onClick={() => setShowAddItems(true)} className="h-[40px] px-4 text-[12px] border border-white/[0.07] text-white/60 hover:text-white hover:border-white/20 transition rounded-[4px] cursor-pointer">Add Items</button>
+                ) : (
+                  <button disabled className="h-[40px] px-4 text-[12px] border border-white/[0.04] text-white/20 cursor-not-allowed rounded-[4px]">Add Items</button>
+                )}
+                <button
+                  onClick={async () => { try { const { error } = await supabase.from("orders").update({ items: editingOrder.items, total: editingOrder.total }).eq("id", editingOrder.id); if (error) throw error; alert("Order updated!"); closeEditDrawer(); fetchOrders(); } catch (err: any) { alert("Failed: " + err.message); } }}
+                  className="h-[40px] px-6 bg-[#B80013] hover:bg-[#960010] text-white text-[12px] font-bold uppercase tracking-wide transition rounded-[4px] cursor-pointer"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Add Items (above edit drawer) ── */}
+      {showAddItems && editingOrder && (
+        <AddItemsModal
+          orderId={editingOrder.id}
+          currentItems={Array.isArray(editingOrder.items) ? editingOrder.items.map((i: any) => i.product_id || i._id || i.id || i.title) : []}
+          region={editingOrder.region || "durban"}
+          onClose={() => setShowAddItems(false)}
+          onItemAdded={async () => { setShowAddItems(false); await fetchOrders(); const { data } = await supabase.from("orders").select("*").eq("id", editingOrder.id).single(); if (data) setEditingOrder(data); }}
+        />
+      )}
+
+      {/* ── Delete Confirm ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-[65] bg-black/80 flex items-center justify-center p-6">
+          <div className="bg-[#0a0a0a] border border-white/[0.07] rounded-[12px] w-[90%] max-w-md p-8">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-[#B80013] mb-4" style={{ fontFamily: "var(--font-heading)" }}>Delete Order?</p>
+            <p className="text-[13px] text-white/60 mb-8">This action is permanent and cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 border border-white/[0.07] text-[13px] text-white/60 hover:text-white transition rounded-[4px] cursor-pointer">Cancel</button>
+              <button onClick={handleDeleteOrder} disabled={deleting} className="flex-1 py-2.5 bg-red-700 hover:bg-red-800 text-[13px] font-medium text-white transition rounded-[4px] disabled:opacity-40 cursor-pointer">{deleting ? "Deleting…" : "Delete"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateOrder && (
+        <CreateOrderModal
+          branch={branch}
+          onClose={() => setShowCreateOrder(false)}
+          onComplete={(items) => { setSelectedItems(items); setShowCreateOrder(false); setShowCustomerDetails(true); }}
+        />
+      )}
+
+      {showCustomerDetails && (
+        <CustomerDetailsModal
+          items={selectedItems}
+          branch={branch || ""}
+          onClose={() => { setShowCustomerDetails(false); setSelectedItems([]); }}
+          onSuccess={() => { setShowCustomerDetails(false); setSelectedItems([]); fetchOrders(); }}
+        />
+      )}
+
+      </div>
+
+      {/* FAB */}
+      <button
+        onClick={() => setShowCreateOrder(true)}
+        className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50 w-14 h-14 md:w-12 md:h-12 bg-[#B80013] rounded-[12px] md:rounded-[8px] flex items-center justify-center hover:bg-[#960010] active:scale-95 transition cursor-pointer shadow-lg shadow-black/40"
+        title="Create Order"
+      >
+        <Plus size={22} />
+      </button>
+    </DashboardShell>
+  );
+}
