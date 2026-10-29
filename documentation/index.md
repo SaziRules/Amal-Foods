@@ -1,6 +1,6 @@
 # Amal Foods — System Documentation
 
-**Stack:** Next.js 15 · TypeScript · Tailwind CSS v4 · Sanity CMS · Supabase · Resend  
+**Stack:** Next.js 15 · TypeScript · Tailwind CSS v4 · Sanity CMS · Supabase · Brevo  
 **Last updated:** September 2026
 
 ---
@@ -15,6 +15,7 @@
 | [invoice.md](invoice.md) | PDF generation, `/api/send-invoice`, Resend email |
 | [products-page.md](products-page.md) | Products page, Sanity fetch, filters, sorting, countdown, cart stepper |
 | [admin.md](admin.md) | Admin dashboard, manager auth, order management |
+| [campaigns.md](campaigns.md) | Bulk email campaigns, Brevo sending, daily limit, CSV upload, email templates |
 
 ---
 

@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import DashboardShell from "@/components/dashboard/DashboardShell";
+import OrderCard from "@/components/dashboard/OrderCard";
 import AddItemsModal from "@/components/AddItemsModal";
 import CreateOrderModal from "@/components/CreateOrderModal";
 import CustomerDetailsModal from "@/components/CustomerDetailsModal.tsx";
 import {
   Search, X, FileDown, FileSpreadsheet, Plus, Minus, ChevronDown,
-  LayoutList, LayoutGrid, Pencil, FileText,
+  LayoutList, LayoutGrid, Pencil, FileText, Filter,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -69,6 +70,7 @@ export default function ManagerOrdersPage() {
   const [deleting, setDeleting] = useState(false);
   const [showAddItems, setShowAddItems] = useState(false);
   const [statusModalOrder, setStatusModalOrder] = useState<any>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [showCreateOrder, setShowCreateOrder] = useState(false);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
@@ -350,33 +352,16 @@ export default function ManagerOrdersPage() {
         </>
       }
     >
-      <div className="w-full overflow-x-hidden">
+      <div>
       {/* ── Summary Strip ── */}
-      {/* Mobile: horizontal scroll cards */}
-      <div className="sm:hidden overflow-x-auto [&::-webkit-scrollbar]:hidden mb-6">
-        <div className="flex gap-2 w-max">
-          {[
-            { label: "Today's Orders", value: todayOrders.length },
-            { label: "Today's Revenue", value: `R${todayOrders.reduce((a, b) => a + Number(b.total || 0), 0).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}` },
-            { label: "Active", value: activeCount },
-            { label: "Total Orders", value: orders.length },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-[#111111] border border-white/[0.07] rounded-[8px] px-4 py-4 flex flex-col min-w-[110px]">
-              <p className="text-[26px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>{value}</p>
-              <p className="text-[10px] uppercase tracking-[0.1em] text-white/40 mt-1.5" style={{ fontFamily: "var(--font-heading)" }}>{label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* Desktop: bordered grid */}
-      <div className="hidden sm:grid grid-cols-4 border border-white/[0.07] rounded-[8px] overflow-hidden mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 border border-white/[0.07] rounded-[8px] overflow-hidden mb-6">
         {[
           { label: "Today's Orders", value: todayOrders.length },
           { label: "Today's Revenue", value: `R${todayOrders.reduce((a, b) => a + Number(b.total || 0), 0).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}` },
           { label: "Active", value: activeCount },
           { label: "Total Orders", value: orders.length },
         ].map(({ label, value }, i) => (
-          <div key={label} className={`px-5 py-4 border-white/[0.07] ${["border-r","border-r","border-r",""][i]}`}>
+          <div key={label} className={`px-5 py-4 border-white/[0.07] ${["border-r border-b sm:border-b-0","border-b sm:border-b-0 sm:border-r","border-r",""][i] || ""}`}>
             <p className="text-[22px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>{value}</p>
             <p className="text-[10px] uppercase tracking-[0.1em] text-white/40 mt-1.5" style={{ fontFamily: "var(--font-heading)" }}>{label}</p>
           </div>
@@ -398,9 +383,10 @@ export default function ManagerOrdersPage() {
             })}
           </div>
         </div>
-        {/* Row 2: Status+Payment pills (scrollable) + Count+Toggle (pinned right) */}
-        <div className="flex items-center gap-2">
-          <div className="flex-1 overflow-x-auto min-w-0 [&::-webkit-scrollbar]:hidden">
+        {/* Row 2: Status+Payment pills (desktop) / Filter icon (mobile) + view toggle */}
+        <div className="flex items-center gap-2 min-w-0">
+          {/* Desktop pills */}
+          <div className="hidden sm:flex flex-1 overflow-x-auto min-w-0 [&::-webkit-scrollbar]:hidden">
             <div className="flex items-center gap-1.5 flex-nowrap pr-2">
               <button onClick={() => setStatusFilter("all")} className={`px-3 py-1 rounded-full text-[11px] font-medium border transition cursor-pointer whitespace-nowrap ${statusFilter === "all" ? "bg-[#1a1a1a] border-white/[0.12] text-white" : "border-white/[0.07] text-white/40 hover:text-white/70"}`}>All · {orders.length}</button>
               {STATUSES.map((s) => (
@@ -415,6 +401,19 @@ export default function ManagerOrdersPage() {
               ))}
             </div>
           </div>
+          {/* Mobile filter button */}
+          <div className="sm:hidden flex items-center gap-2 flex-1 min-w-0">
+            <button onClick={() => setFilterOpen(true)} className="flex items-center gap-1.5 h-8 px-3 bg-white/[0.04] border border-white/[0.07] rounded-[8px] text-[12px] text-white/50 hover:text-white transition cursor-pointer shrink-0">
+              <Filter size={12} />
+              <span>
+                {statusFilter === "all" ? "All" : statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
+                {paymentFilter !== "all" ? ` · ${paymentFilter}` : ""}
+              </span>
+              {statusFilter !== "all" && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[statusFilter]}`} />}
+            </button>
+            <span className="text-[11px] text-white/25">{filteredOrders.length}</span>
+          </div>
+          {/* View toggle (always visible) */}
           <div className="flex items-center gap-2 shrink-0">
             <span className="text-[12px] text-white/30 hidden sm:block">{filteredOrders.length} order{filteredOrders.length !== 1 ? "s" : ""}</span>
             <div className="flex items-center bg-white/[0.04] rounded-[8px] p-1 gap-0.5">
@@ -434,159 +433,122 @@ export default function ManagerOrdersPage() {
         <p className="text-white/30 text-[13px]">Loading orders…</p>
       ) : filteredOrders.length === 0 ? (
         <p className="text-white/25 text-[13px]">No matching orders found.</p>
-      ) : (
+      ) : viewMode === "table" ? (
         <>
-          {/* ── Mobile: compact cards — always shown regardless of viewMode ── */}
-          <div className="md:hidden space-y-2 w-full">
+          {/* Desktop table */}
+          <div className="hidden md:block border border-white/[0.07] rounded-[8px] overflow-hidden">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-white/[0.07] bg-[#111111]">
+                  {["Order #", "Customer", "Region", "Total", "Status", "Payment", "Date", "Actions"].map((h, i) => (
+                    <th key={h} className={`px-4 py-3 text-[10px] uppercase tracking-[0.1em] text-white/30 font-medium ${i >= 3 && i !== 7 ? "text-right" : i === 7 ? "text-center" : "text-left"}`} style={{ fontFamily: "var(--font-heading)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.map((order) => (
+                  <tr key={order.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition last:border-0">
+                    <td className="px-4 py-3"><span className="text-[12px] font-medium text-[#B80013]" style={{ fontFamily: "var(--font-heading)" }}>{order.order_number || `#${order.id.slice(0, 6)}`}</span></td>
+                    <td className="px-4 py-3"><p className="text-[13px] text-white font-medium leading-snug">{order.customer_name || "N/A"}</p><p className="text-[11px] text-white/35">{order.cell_number || order.phone_number || "—"}</p></td>
+                    <td className="px-4 py-3 text-[13px] text-white/50">{order.region || "—"}</td>
+                    <td className="px-4 py-3 text-right"><span className="text-[14px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</span></td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end flex-wrap gap-1">
+                        {STATUSES.map((s) => <button key={s} onClick={() => handleUpdateStatus(order.id, s)} className={`text-[10px] px-2 py-0.5 rounded-full capitalize border transition cursor-pointer ${order.status === s ? `${STATUS_STYLE[s]} border-transparent font-medium` : "border-white/[0.07] text-white/25 hover:text-white/60"}`}>{s}</button>)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        {["paid", "unpaid"].map((p) => <button key={p} onClick={() => handleUpdatePaymentStatus(order.id, p)} className={`text-[10px] px-2 py-0.5 rounded-full capitalize border transition cursor-pointer ${order.payment_status === p ? (p === "paid" ? "bg-green-500/15 text-green-400 border-transparent font-medium" : "bg-orange-500/15 text-orange-400 border-transparent font-medium") : "border-white/[0.07] text-white/25 hover:text-white/60"}`}>{p}</button>)}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-[12px] text-white/35">{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => openViewDrawer(order)} className="px-2.5 py-1 text-[11px] bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.12] text-white/60 hover:text-white rounded-[4px] transition cursor-pointer">View</button>
+                        <button onClick={() => openEditDrawer(order)} className="px-2.5 py-1 text-[11px] bg-[#B80013]/80 hover:bg-[#B80013] text-white rounded-[4px] transition cursor-pointer">Edit</button>
+                        <button onClick={() => generateOrderReport(order, "pdf")} className="text-white/20 hover:text-white/60 transition cursor-pointer"><FileDown size={13} /></button>
+                        <button onClick={() => generateOrderReport(order, "xlsx")} className="text-white/20 hover:text-white/60 transition cursor-pointer"><FileSpreadsheet size={13} /></button>
+                        {order.status === "cancelled" && <button onClick={() => setDeleteTarget(order)} className="text-red-500/40 hover:text-red-400 text-[11px] transition cursor-pointer">Del</button>}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile cards */}
+          <div className="md:hidden grid grid-cols-1 gap-3 w-full min-w-0">
             {filteredOrders.map((order) => (
-              <div key={order.id} className="bg-[#111111] rounded-[12px] overflow-hidden border border-white/[0.07]">
-                {/* Info */}
-                <div className="px-4 pt-4 pb-3">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[11px] font-bold tracking-[0.06em] text-[#B80013] shrink-0" style={{ fontFamily: "var(--font-heading)" }}>
-                        {order.order_number || `#${order.id.slice(0, 6)}`}
-                      </span>
-                      <span className="text-white/[0.10] text-[10px] shrink-0">·</span>
-                      <span className="text-[10px] text-white/25 shrink-0">
-                        {new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${STATUS_TINT[order.status] || "bg-white/[0.05] text-white/50"}`}>{order.status}</span>
-                      <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${order.payment_status === "paid" ? "bg-green-500/[0.12] text-green-300/70" : "bg-orange-500/[0.12] text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-[16px] font-semibold text-white leading-tight truncate flex-1 min-w-0">{order.customer_name || "N/A"}</p>
-                    <span className="text-[17px] font-bold text-white shrink-0" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</span>
-                  </div>
-                  <p className="text-[11px] text-white/35 mt-1 truncate">
-                    {order.cell_number || order.phone_number || "—"}
-                    {order.region ? <span className="text-white/15 mx-1.5">·</span> : null}
-                    {order.region || ""}
-                  </p>
-                </div>
-                {/* Stacked action buttons */}
-                <div className="border-t border-white/[0.06] px-3 py-3 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <button onClick={() => openViewDrawer(order)} className="flex-1 h-11 text-[13px] font-medium bg-white/[0.05] hover:bg-white/[0.09] text-white/65 hover:text-white rounded-[8px] transition cursor-pointer active:scale-[0.97]">View</button>
-                    <button onClick={() => openEditDrawer(order)} className="flex-1 h-11 text-[13px] font-semibold bg-[#B80013] hover:bg-[#c8001a] text-white rounded-[8px] transition cursor-pointer active:scale-[0.97]">Edit</button>
-                  </div>
-                  <button onClick={() => setStatusModalOrder(order)} className="w-full h-11 flex items-center justify-between px-4 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-[8px] transition cursor-pointer active:scale-[0.97]">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[order.status] || "bg-white/30"}`} />
-                      <span className={`text-[13px] capitalize ${STATUS_TEXT[order.status] || "text-white/50"}`}>{order.status}</span>
-                      <span className="text-white/20 text-[12px]">·</span>
-                      <span className={`text-[13px] capitalize ${order.payment_status === "paid" ? "text-green-300/70" : "text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
-                    </div>
-                    <ChevronDown size={13} className="text-white/30 shrink-0" />
-                  </button>
-                </div>
-              </div>
+              <OrderCard
+                key={order.id}
+                order={order}
+                onView={openViewDrawer}
+                onEdit={openEditDrawer}
+                onReport={generateOrderReport}
+                onStatus={setStatusModalOrder}
+                onDelete={setDeleteTarget}
+              />
             ))}
           </div>
-
-          {/* ── Desktop: table or grid based on viewMode ── */}
-          {viewMode === "table" ? (
-            <div className="hidden md:block border border-white/[0.07] rounded-[8px] overflow-hidden">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="border-b border-white/[0.07] bg-[#111111]">
-                    {["Order #", "Customer", "Region", "Total", "Status", "Payment", "Date", "Actions"].map((h, i) => (
-                      <th key={h} className={`px-4 py-3 text-[10px] uppercase tracking-[0.1em] text-white/30 font-medium ${i >= 3 && i !== 7 ? "text-right" : i === 7 ? "text-center" : "text-left"}`} style={{ fontFamily: "var(--font-heading)" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition last:border-0">
-                      <td className="px-4 py-3"><span className="text-[12px] font-medium text-[#B80013]" style={{ fontFamily: "var(--font-heading)" }}>{order.order_number || `#${order.id.slice(0, 6)}`}</span></td>
-                      <td className="px-4 py-3"><p className="text-[13px] text-white font-medium leading-snug">{order.customer_name || "N/A"}</p><p className="text-[11px] text-white/35">{order.cell_number || order.phone_number || "—"}</p></td>
-                      <td className="px-4 py-3 text-[13px] text-white/50">{order.region || "—"}</td>
-                      <td className="px-4 py-3 text-right"><span className="text-[14px] font-bold text-white" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</span></td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end flex-wrap gap-1">
-                          {STATUSES.map((s) => <button key={s} onClick={() => handleUpdateStatus(order.id, s)} className={`text-[10px] px-2 py-0.5 rounded-full capitalize border transition cursor-pointer ${order.status === s ? `${STATUS_STYLE[s]} border-transparent font-medium` : "border-white/[0.07] text-white/25 hover:text-white/60"}`}>{s}</button>)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex justify-end gap-1">
-                          {["paid", "unpaid"].map((p) => <button key={p} onClick={() => handleUpdatePaymentStatus(order.id, p)} className={`text-[10px] px-2 py-0.5 rounded-full capitalize border transition cursor-pointer ${order.payment_status === p ? (p === "paid" ? "bg-green-500/15 text-green-400 border-transparent font-medium" : "bg-orange-500/15 text-orange-400 border-transparent font-medium") : "border-white/[0.07] text-white/25 hover:text-white/60"}`}>{p}</button>)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right text-[12px] text-white/35">{new Date(order.created_at).toLocaleDateString()}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => openViewDrawer(order)} className="px-2.5 py-1 text-[11px] bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.12] text-white/60 hover:text-white rounded-[4px] transition cursor-pointer">View</button>
-                          <button onClick={() => openEditDrawer(order)} className="px-2.5 py-1 text-[11px] bg-[#B80013]/80 hover:bg-[#B80013] text-white rounded-[4px] transition cursor-pointer">Edit</button>
-                          <button onClick={() => generateOrderReport(order, "pdf")} className="text-white/20 hover:text-white/60 transition cursor-pointer"><FileDown size={13} /></button>
-                          <button onClick={() => generateOrderReport(order, "xlsx")} className="text-white/20 hover:text-white/60 transition cursor-pointer"><FileSpreadsheet size={13} /></button>
-                          {order.status === "cancelled" && <button onClick={() => setDeleteTarget(order)} className="text-red-500/40 hover:text-red-400 text-[11px] transition cursor-pointer">Del</button>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="bg-[#111111] rounded-[12px] overflow-hidden border border-white/[0.07] hover:border-white/[0.11] hover:bg-[#131313] transition-all duration-200 flex flex-col">
-                  <div className="p-5 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-[11px] font-bold tracking-[0.08em] text-[#B80013] shrink-0" style={{ fontFamily: "var(--font-heading)" }}>{order.order_number || `#${order.id.slice(0, 6)}`}</span>
-                        <span className="text-white/[0.10] text-[10px]">·</span>
-                        <span className="text-[10px] text-white/20 truncate">{new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${STATUS_TINT[order.status] || "bg-white/[0.05] text-white/50"}`}>{order.status}</span>
-                        <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${order.payment_status === "paid" ? "bg-green-500/[0.12] text-green-300/70" : "bg-orange-500/[0.12] text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
-                      </div>
-                    </div>
-                    <p className="text-[15px] font-semibold text-white leading-none mb-3">{order.customer_name || "N/A"}</p>
-                    <div className="space-y-1.5">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[9px] uppercase tracking-[0.1em] text-white/20 w-8 shrink-0" style={{ fontFamily: "var(--font-heading)" }}>Cell</span>
-                        <span className="text-[11px] text-white/45">{order.cell_number || order.phone_number || "—"}</span>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-[9px] uppercase tracking-[0.1em] text-white/20 w-8 shrink-0" style={{ fontFamily: "var(--font-heading)" }}>Region</span>
-                        <span className="text-[11px] text-white/45">{order.region || "—"}</span>
-                      </div>
-                    </div>
-                    <div className="mt-auto pt-5">
-                      <p className="text-[9px] uppercase tracking-[0.1em] text-white/20 mb-1" style={{ fontFamily: "var(--font-heading)" }}>Total</p>
-                      <p className="text-[22px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</p>
-                    </div>
+        </>
+      ) : (
+        /* Grid view */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {filteredOrders.map((order) => (
+            <div key={order.id} className="bg-[#111111] rounded-[12px] overflow-hidden border border-white/[0.07] hover:border-white/[0.11] hover:bg-[#131313] transition-all duration-200 flex flex-col">
+              {/* Info zone */}
+              <div className="p-5 flex-1 flex flex-col">
+                {/* Header row */}
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-[11px] font-bold tracking-[0.08em] text-[#B80013] shrink-0" style={{ fontFamily: "var(--font-heading)" }}>{order.order_number || `#${order.id.slice(0, 6)}`}</span>
+                    <span className="text-white/[0.10] text-[10px]">·</span>
+                    <span className="text-[10px] text-white/20 truncate">{new Date(order.created_at).toLocaleDateString("en-ZA", { day: "numeric", month: "short" })}</span>
                   </div>
-                  <div className="flex gap-2 px-4 pb-4">
-                    <button onClick={() => openViewDrawer(order)} className="flex-1 h-11 text-[13px] font-medium bg-white/[0.05] hover:bg-white/[0.09] text-white/70 hover:text-white rounded-[8px] transition cursor-pointer active:scale-[0.98]">View</button>
-                    <button onClick={() => openEditDrawer(order)} className="flex-1 h-11 text-[13px] font-semibold bg-[#B80013] hover:bg-[#c8001a] text-white rounded-[8px] transition cursor-pointer active:scale-[0.98] shadow-sm shadow-[#B80013]/30">Edit</button>
-                  </div>
-                  <div className="border-t border-white/[0.06] px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setStatusModalOrder(order)} className="flex-1 flex items-center justify-between h-10 px-3 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.06] rounded-[8px] transition cursor-pointer group min-w-0 active:scale-[0.98]">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[order.status] || "bg-white/30"}`} />
-                          <span className={`text-[12px] capitalize truncate font-medium ${STATUS_TEXT[order.status] || "text-white/50"}`}>{order.status}</span>
-                          <span className="text-white/[0.15] text-[11px] shrink-0">·</span>
-                          <span className={`text-[12px] capitalize truncate ${order.payment_status === "paid" ? "text-green-300/80" : "text-orange-300/80"}`}>{order.payment_status || "unpaid"}</span>
-                        </div>
-                        <ChevronDown size={12} className="text-white/30 group-hover:text-white/60 transition shrink-0 ml-2" />
-                      </button>
-                      <button onClick={() => generateOrderReport(order, "pdf")} className="w-10 h-10 flex items-center justify-center text-white/30 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.08] rounded-[8px] transition cursor-pointer active:scale-[0.97]"><FileDown size={14} /></button>
-                      <button onClick={() => generateOrderReport(order, "xlsx")} className="w-10 h-10 flex items-center justify-center text-white/30 hover:text-white/70 bg-white/[0.04] hover:bg-white/[0.08] rounded-[8px] transition cursor-pointer active:scale-[0.97]"><FileSpreadsheet size={14} /></button>
-                      {order.status === "cancelled" && <button onClick={() => setDeleteTarget(order)} className="w-10 h-10 flex items-center justify-center text-red-500/40 hover:text-red-400 bg-white/[0.04] hover:bg-red-500/[0.06] rounded-[8px] transition cursor-pointer text-[11px] active:scale-[0.97]">Del</button>}
-                    </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${STATUS_TINT[order.status] || "bg-white/[0.05] text-white/50"}`}>{order.status}</span>
+                    <span className={`px-2 py-[3px] rounded-full text-[10px] capitalize leading-none ${order.payment_status === "paid" ? "bg-green-500/[0.12] text-green-300/70" : "bg-orange-500/[0.12] text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
                   </div>
                 </div>
-              ))}
+                {/* Customer */}
+                <p className="text-[15px] font-semibold text-white leading-none mb-3">{order.customer_name || "N/A"}</p>
+                {/* Labelled fields */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[9px] uppercase tracking-[0.1em] text-white/20 w-8 shrink-0" style={{ fontFamily: "var(--font-heading)" }}>Cell</span>
+                    <span className="text-[11px] text-white/45">{order.cell_number || order.phone_number || "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[9px] uppercase tracking-[0.1em] text-white/20 w-8 shrink-0" style={{ fontFamily: "var(--font-heading)" }}>Region</span>
+                    <span className="text-[11px] text-white/45">{order.region || "—"}</span>
+                  </div>
+                </div>
+                {/* Total — pushed to bottom */}
+                <div className="mt-auto pt-5">
+                  <p className="text-[9px] uppercase tracking-[0.1em] text-white/20 mb-1" style={{ fontFamily: "var(--font-heading)" }}>Total</p>
+                  <p className="text-[22px] font-bold text-white leading-none" style={{ fontFamily: "var(--font-heading)" }}>R{Number(order.total || 0).toFixed(2)}</p>
+                </div>
+              </div>
+              {/* Stacked actions */}
+              <div className="border-t border-white/[0.05] px-4 py-3 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <button onClick={() => openViewDrawer(order)} className="flex-1 h-9 text-[12px] font-medium bg-white/[0.05] hover:bg-white/[0.09] text-white/60 hover:text-white rounded-[7px] transition cursor-pointer active:scale-[0.97]">View</button>
+                  <button onClick={() => openEditDrawer(order)} className="flex-1 h-9 text-[12px] font-semibold bg-[#B80013] hover:bg-[#c8001a] text-white rounded-[7px] transition cursor-pointer active:scale-[0.97]">Edit</button>
+                </div>
+                <button onClick={() => setStatusModalOrder(order)} className="w-full h-9 flex items-center justify-between px-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-[7px] transition cursor-pointer active:scale-[0.97]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[order.status] || "bg-white/30"}`} />
+                    <span className={`text-[13px] capitalize truncate ${STATUS_TEXT[order.status] || "text-white/50"}`}>{order.status}</span>
+                    <span className="text-white/20 shrink-0">·</span>
+                    <span className={`text-[13px] capitalize truncate ${order.payment_status === "paid" ? "text-green-300/70" : "text-orange-300/70"}`}>{order.payment_status || "unpaid"}</span>
+                  </div>
+                  <ChevronDown size={13} className="text-white/30 shrink-0 ml-2" />
+                </button>
+              </div>
             </div>
-          )}
-        </>
+          ))}
+        </div>
       )}
 
       {/* ── STATUS MODAL ── */}
@@ -861,6 +823,34 @@ export default function ManagerOrdersPage() {
       )}
 
       </div>
+
+      {/* ── Mobile Filter Bottom Sheet ── */}
+      {filterOpen && (
+        <>
+          <div className="fixed inset-0 z-[80] bg-black/50 sm:hidden" onClick={() => setFilterOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-[85] bg-[#111111] border-t border-white/[0.08] rounded-t-[16px] px-4 pb-8 pt-4 sm:hidden">
+            <div className="w-8 h-1 bg-white/20 rounded-full mx-auto mb-5" />
+            <p className="text-[10px] uppercase tracking-[0.14em] text-white/30 mb-3" style={{ fontFamily: "var(--font-heading)" }}>Status</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              <button onClick={() => { setStatusFilter("all"); setFilterOpen(false); }} className={`h-10 rounded-[8px] text-[13px] border transition cursor-pointer ${statusFilter === "all" ? "bg-[#1a1a1a] border-white/[0.12] text-white font-medium" : "border-white/[0.07] text-white/40"}`}>
+                All · {orders.length}
+              </button>
+              {STATUSES.map((s) => (
+                <button key={s} onClick={() => { setStatusFilter(s); setFilterOpen(false); }} className={`h-10 rounded-[8px] text-[13px] flex items-center justify-center gap-2 border transition cursor-pointer capitalize ${statusFilter === s ? `${STATUS_STYLE[s]} border-transparent font-medium` : "border-white/[0.07] text-white/40"}`}>
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[s]}`} />
+                  {s} · {statusCounts[s] || 0}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-white/30 mb-3" style={{ fontFamily: "var(--font-heading)" }}>Payment</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([{ key: "all", label: "All" }, { key: "paid", label: "Paid" }, { key: "unpaid", label: "Unpaid" }] as const).map(({ key, label }) => (
+                <button key={key} onClick={() => { setPaymentFilter(key); setFilterOpen(false); }} className={`h-10 rounded-[8px] text-[13px] border transition cursor-pointer ${paymentFilter === key ? (key === "paid" ? "bg-green-500/15 border-green-500/30 text-green-400 font-medium" : key === "unpaid" ? "bg-orange-500/15 border-orange-500/30 text-orange-400 font-medium" : "bg-[#1a1a1a] border-white/[0.12] text-white font-medium") : "border-white/[0.07] text-white/40"}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* FAB */}
       <button

@@ -9,6 +9,7 @@ import {
   BarChart2,
   Users,
   FileText,
+  Mail,
   RefreshCw,
   LogOut,
   ChevronLeft,
@@ -88,6 +89,12 @@ export default function DashboardShell({
             Icon: BarChart2,
             active: false,
             action: () => { onAnalytics ? onAnalytics() : go(dashHref); setMobileOpen(false); },
+          },
+          {
+            label: "Campaigns",
+            Icon: Mail,
+            active: pathname === "/admin/campaigns",
+            action: () => go("/admin/campaigns"),
           },
         ]
       : []),
