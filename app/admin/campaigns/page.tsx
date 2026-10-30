@@ -15,6 +15,28 @@ import {
 
 /* ── Static config ──────────────────────────────────────────────────── */
 
+const GALLERY_IMAGES: string[] = [
+  "P64A2808.JPG","P64A2817.JPG","P64A2820.JPG","P64A2823.JPG","P64A2824.JPG",
+  "P64A2825.JPG","P64A2835.JPG","P64A2837.JPG","P64A2840.JPG","P64A2848.JPG",
+  "P64A2850.JPG","P64A2853.JPG","P64A2858.JPG","P64A2867.JPG","P64A2868.JPG",
+  "P64A2869.JPG","P64A2870.JPG","P64A2887.JPG","P64A2890.JPG","P64A2897.JPG",
+  "P64A2899.JPG","P64A2900.jpg","P64A2903.JPG","P64A2907.JPG","P64A2910.JPG",
+  "P64A2912.jpg","P64A2914.JPG","P64A2916.JPG","P64A2933.jpg","P64A2934.JPG",
+  "P64A2938.JPG","P64A2955.JPG","P64A2965.JPG","P64A2977.JPG","P64A2980.JPG",
+  "P64A2990.JPG","P64A2992.JPG","P64A2996.JPG","P64A2999.JPG","P64A3002.JPG",
+  "P64A3005.JPG","P64A3007.JPG","P64A3011.JPG","P64A3012.JPG","P64A3015.JPG",
+  "P64A3018.JPG","P64A3020.JPG","P64A3021.JPG","P64A3025.JPG","P64A3026.jpg",
+  "P64A3029.JPG","P64A3032.JPG","P64A3033.JPG","P64A3043.JPG","P64A3045.jpg",
+  "P64A3050.JPG","P64A3054.JPG","P64A3059.JPG","P64A3064.JPG","P64A3066.JPG",
+  "P64A3074.JPG","P64A3076.JPG","P64A3080.JPG","P64A3083.JPG","P64A3085.JPG",
+  "P64A3087.JPG","P64A3097.JPG","P64A3099.JPG","P64A3105.JPG","P64A3107.JPG",
+  "P64A3110.JPG","P64A3118.JPG","P64A3119.JPG","P64A3128.JPG","P64A3131.JPG",
+  "P64A3136.JPG","P64A3137.JPG","P64A3138.JPG","P64A3141.JPG","P64A3147.JPG",
+  "P64A3148.JPG","P64A3153.JPG","P64A3154.JPG","P64A3157.JPG","P64A3165.JPG",
+  "P64A3172.JPG","P64A3174.JPG","P64A3176.JPG","P64A3177.JPG","P64A3180.JPG",
+  "P64A3181.JPG",
+];
+
 const TEMPLATES = [
   { key:"promotional",  label:"Promotional",  Icon:Tag,       desc:"Sales, discounts & offers"   },
   { key:"newsletter",   label:"Newsletter",   Icon:Newspaper, desc:"Updates & curated content"   },
@@ -78,8 +100,15 @@ export default function CampaignsPage() {
   const [cSending, setCSending]       = useState(false);
   const [csvEmails, setCsvEmails]     = useState<{ email: string; name: string }[]>([]);
   const [baseUrl, setBaseUrl]         = useState("");
-  const iframeRef  = useRef<HTMLIFrameElement>(null);
-  const csvInputRef = useRef<HTMLInputElement>(null);
+  /* Hero image picker */
+  const [cHeroImage, setCHeroImage]         = useState<string | null>(null);
+  const [galleryOpen, setGalleryOpen]       = useState(false);
+  const [galleryPending, setGalleryPending] = useState<string | null>(null);
+  const [uploadError, setUploadError]       = useState("");
+  const [uploadLoading, setUploadLoading]   = useState(false);
+  const iframeRef    = useRef<HTMLIFrameElement>(null);
+  const csvInputRef  = useRef<HTMLInputElement>(null);
+  const heroUploadRef = useRef<HTMLInputElement>(null);
 
   const parseCsv = (text: string) => {
     const lines = text.split(/\r?\n/).filter(Boolean);
@@ -96,6 +125,48 @@ export default function CampaignsPage() {
       if (email && emailRe.test(email)) results.push({ email, name: nameCol >= 0 ? parts[nameCol]?.trim() || "" : "" });
     }
     setCsvEmails(results);
+  };
+
+  const handleHeroUpload = async (file: File) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setUploadError("Only JPG, PNG, or WebP files are accepted.");
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      setUploadError(`File is ${(file.size / 1024).toFixed(0)} KB — max 500 KB.`);
+      return;
+    }
+    /* Dimension check in browser */
+    const dimError = await new Promise<string | null>(resolve => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        if (img.width < 600)        resolve(`Image is ${img.width} px wide — must be at least 600 px.`);
+        else if (img.height < 200)  resolve(`Image is ${img.height} px tall — must be at least 200 px.`);
+        else if (img.height > 450)  resolve(`Image is ${img.height} px tall — must be 450 px or shorter.`);
+        else                        resolve(null);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve("Could not read image dimensions."); };
+      img.src = url;
+    });
+    if (dimError) { setUploadError(dimError); return; }
+
+    setUploadError("");
+    setUploadLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res  = await fetch("/api/admin/campaigns/upload-image", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) { setUploadError(data.error || "Upload failed."); return; }
+      setCHeroImage(data.url);
+    } catch {
+      setUploadError("Upload failed. Check your connection.");
+    } finally {
+      setUploadLoading(false);
+    }
   };
 
   useEffect(() => { setBaseUrl(window.location.origin); }, []);
@@ -140,8 +211,8 @@ export default function CampaignsPage() {
   /* Build email HTML whenever inputs change */
   const emailHTML = useMemo(() => {
     if (!baseUrl) return "";
-    return buildEmailHTML(cTemplate, cSubject, cBody, baseUrl);
-  }, [cTemplate, cSubject, cBody, baseUrl]);
+    return buildEmailHTML(cTemplate, cSubject, cBody, baseUrl, cHeroImage ?? undefined);
+  }, [cTemplate, cSubject, cBody, baseUrl, cHeroImage]);
 
   /* Write into iframe */
   useEffect(() => {
@@ -160,7 +231,12 @@ export default function CampaignsPage() {
   const openDrawer  = () => { setDrawerOpen(true); requestAnimationFrame(() => setDrawerAnim(true)); };
   const closeDrawer = () => {
     setDrawerAnim(false);
-    setTimeout(() => { setDrawerOpen(false); setCName(""); setCSubject(""); setCPreview(""); setCBody(""); setCSegment("all"); setCTemplate("promotional"); setCScheduleMode("now"); setCScheduleDate(""); setCSending(false); setCsvEmails([]); }, 300);
+    setTimeout(() => {
+      setDrawerOpen(false); setCName(""); setCSubject(""); setCPreview(""); setCBody("");
+      setCSegment("all"); setCTemplate("promotional"); setCScheduleMode("now");
+      setCScheduleDate(""); setCSending(false); setCsvEmails([]);
+      setCHeroImage(null); setGalleryPending(null); setUploadError("");
+    }, 300);
   };
 
   const handleSend = async () => {
@@ -522,6 +598,75 @@ export default function CampaignsPage() {
                   </div>
                 </div>
 
+                {/* Hero Image */}
+                <div className="space-y-3">
+                  <span className={sectionLabel} style={{ fontFamily:"var(--font-heading)" }}>Hero Image</span>
+
+                  {/* Preview or placeholder */}
+                  {cHeroImage ? (
+                    <div className="relative rounded-[8px] overflow-hidden border border-white/[0.08]">
+                      <img src={cHeroImage} alt="Hero" className="w-full h-[120px] object-cover block"/>
+                      <button
+                        onClick={() => { setCHeroImage(null); setGalleryPending(null); }}
+                        className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full bg-black/60 hover:bg-black/80 text-white transition cursor-pointer"
+                      >
+                        <X size={11}/>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-full h-[72px] border border-dashed border-white/[0.1] rounded-[8px] flex items-center justify-center gap-2 text-white/20 text-[12px]">
+                      <ImageIcon size={14}/> Using template default
+                    </div>
+                  )}
+
+                  {/* Picker buttons */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setGalleryPending(cHeroImage); setGalleryOpen(true); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 h-9 border border-white/[0.08] hover:border-white/[0.16] rounded-[8px] text-[12px] text-white/45 hover:text-white/70 transition cursor-pointer"
+                    >
+                      <ImageIcon size={12}/> Browse Gallery
+                    </button>
+                    <button
+                      onClick={() => heroUploadRef.current?.click()}
+                      disabled={uploadLoading}
+                      className="flex-1 flex items-center justify-center gap-1.5 h-9 border border-white/[0.08] hover:border-white/[0.16] rounded-[8px] text-[12px] text-white/45 hover:text-white/70 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                    >
+                      {uploadLoading
+                        ? <><span className="w-3 h-3 border-2 border-white/30 border-t-white/70 rounded-full animate-spin"/> Uploading…</>
+                        : <><Upload size={12}/> Upload Custom</>
+                      }
+                    </button>
+                  </div>
+
+                  {/* Constraints */}
+                  <p className="text-[10px] text-white/18 leading-relaxed">
+                    JPG / PNG / WebP &nbsp;·&nbsp; max 500 KB &nbsp;·&nbsp; min 600 px wide &nbsp;·&nbsp; 200–450 px tall
+                  </p>
+
+                  {/* Upload error */}
+                  {uploadError && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-red-400/80">
+                      <AlertCircle size={11}/> {uploadError}
+                    </div>
+                  )}
+
+                  {/* Hidden file input */}
+                  <input
+                    ref={heroUploadRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (!f) return;
+                      setUploadError("");
+                      handleHeroUpload(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+
                 {/* Audience */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -655,6 +800,78 @@ export default function CampaignsPage() {
           </div>
         </div>
       )}
+      {/* ── Gallery Picker Overlay ── */}
+      {galleryOpen && (
+        <div className="fixed inset-0 z-[200] flex flex-col bg-[#0a0a0a]">
+
+          {/* Header */}
+          <div className="h-14 flex items-center justify-between px-6 border-b border-white/[0.07] shrink-0 bg-[#0f0f0f]">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.14em] text-[#B80013]" style={{ fontFamily:"var(--font-heading)" }}>Select Hero Image</p>
+              <p className="text-[13px] font-medium text-white/60">{GALLERY_IMAGES.length} photos available</p>
+            </div>
+            <button
+              onClick={() => { setGalleryOpen(false); setGalleryPending(cHeroImage); }}
+              className="w-8 h-8 flex items-center justify-center rounded-[6px] text-white/30 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+            >
+              <X size={16}/>
+            </button>
+          </div>
+
+          {/* Scrollable image grid */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+              {GALLERY_IMAGES.map(fname => {
+                const src      = `/images/gallery/${fname}`;
+                const selected = galleryPending === src;
+                return (
+                  <button
+                    key={fname}
+                    onClick={() => setGalleryPending(selected ? null : src)}
+                    className="relative aspect-[4/3] overflow-hidden rounded-[6px] transition cursor-pointer focus:outline-none"
+                    style={{ boxShadow: selected ? "0 0 0 2px #B80013" : "0 0 0 1px rgba(255,255,255,0.07)" }}
+                  >
+                    <img src={src} alt="" loading="lazy" className="w-full h-full object-cover block"/>
+                    {selected && (
+                      <div className="absolute inset-0 bg-[#B80013]/25 flex items-center justify-center">
+                        <div className="w-7 h-7 rounded-full bg-[#B80013] flex items-center justify-center shadow-lg">
+                          <CheckCircle2 size={14} className="text-white"/>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-white/[0.07] shrink-0 bg-[#0f0f0f] flex items-center gap-3">
+            <p className="text-[11px] text-white/30 mr-auto">
+              {galleryPending ? "1 image selected" : "No image selected"}
+            </p>
+            <button
+              onClick={() => { setGalleryOpen(false); setGalleryPending(cHeroImage); }}
+              className="h-9 px-4 text-[12px] border border-white/[0.07] text-white/50 hover:text-white rounded-[8px] transition cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (galleryPending) { setCHeroImage(galleryPending); setUploadError(""); }
+                setGalleryOpen(false);
+              }}
+              disabled={!galleryPending}
+              className="h-9 px-5 flex items-center gap-2 bg-[#B80013] hover:bg-[#c8001a] disabled:opacity-40 disabled:cursor-not-allowed text-white text-[12px] font-bold rounded-[8px] transition cursor-pointer"
+              style={{ fontFamily:"var(--font-heading)" }}
+            >
+              <CheckCircle2 size={13}/> Use This Image
+            </button>
+          </div>
+
+        </div>
+      )}
+
     </DashboardShell>
   );
 }

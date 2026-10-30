@@ -1,4 +1,4 @@
-interface TemplateArgs { subject: string; body: string; baseUrl: string; }
+interface TemplateArgs { subject: string; body: string; baseUrl: string; heroImage?: string; }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const nl  = (s: string) => esc(s).replace(/\n/g, "<br/>");
@@ -16,9 +16,10 @@ const THUMBS = (baseUrl: string) => `
 /* ─────────────────────────────────────────────────────────────────────
    PROMOTIONAL — dark, punchy, one message
    ───────────────────────────────────────────────────────────────────── */
-export function buildPromo({ subject, body, baseUrl }: TemplateArgs): string {
+export function buildPromo({ subject, body, baseUrl, heroImage }: TemplateArgs): string {
   const h = esc(subject || "Your November Order Is Waiting");
   const b = nl(body || "This is your reminder that our November order books close on the 15th. Place your order now to guarantee your spot. We can't hold stock past the deadline.");
+  const hero = heroImage || `${baseUrl}/images/gallery/P64A3074.JPG`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,7 +45,7 @@ body { background: #0a0a0a; font-family: 'Montserrat', Arial, sans-serif; -webki
   </div>
 
   <!-- HERO IMAGE -->
-  <img src="${baseUrl}/images/gallery/P64A3074.jpg" alt="" style="width:100%;max-width:600px;height:280px;object-fit:cover;display:block;"/>
+  <img src="${hero}" alt="" style="width:100%;max-width:600px;height:280px;object-fit:cover;display:block;"/>
 
   <!-- CONTENT -->
   <div style="padding:44px 36px 36px;">
@@ -78,9 +79,10 @@ body { background: #0a0a0a; font-family: 'Montserrat', Arial, sans-serif; -webki
 /* ─────────────────────────────────────────────────────────────────────
    NEWSLETTER — editorial, on-brand fonts, warm
    ───────────────────────────────────────────────────────────────────── */
-export function buildNewsletter({ subject, body, baseUrl }: TemplateArgs): string {
+export function buildNewsletter({ subject, body, baseUrl, heroImage }: TemplateArgs): string {
   const h = esc(subject || "November Orders - What You Need to Know");
   const b = nl(body || "Each month we craft our menu around seasonal produce and your most-loved favourites. November is almost done. Your last chance to place before the 15th deadline.");
+  const hero = heroImage || `${baseUrl}/images/gallery/P64A3180.JPG`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,7 +104,7 @@ body { background: #F7F3EE; font-family: 'Roboto', Arial, sans-serif; -webkit-fo
   </div>
 
   <!-- IMAGE -->
-  <img src="${baseUrl}/images/gallery/P64A3180.jpg" alt="" style="width:100%;max-width:600px;height:320px;object-fit:cover;display:block;"/>
+  <img src="${hero}" alt="" style="width:100%;max-width:600px;height:320px;object-fit:cover;display:block;"/>
 
   <!-- INTRO -->
   <div style="background:#ffffff;padding:44px 36px 36px;">
@@ -147,9 +149,10 @@ body { background: #F7F3EE; font-family: 'Roboto', Arial, sans-serif; -webkit-fo
 /* ─────────────────────────────────────────────────────────────────────
    ANNOUNCEMENT — bold, centered, deadline-driven
    ───────────────────────────────────────────────────────────────────── */
-export function buildAnnouncement({ subject, body, baseUrl }: TemplateArgs): string {
+export function buildAnnouncement({ subject, body, baseUrl, heroImage }: TemplateArgs): string {
   const h = esc(subject || "Last Call - November Orders Close Soon");
   const b = nl(body || "We're putting the finishing touches on our November menu. Once the 15th passes, we can no longer accept new orders for this month. Don't miss your window.");
+  const hero = heroImage || `${baseUrl}/images/gallery/P64A3148.JPG`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -170,7 +173,7 @@ body { background: #080808; font-family: 'Montserrat', Arial, sans-serif; -webki
   </div>
 
   <!-- IMAGE -->
-  <img src="${baseUrl}/images/gallery/P64A3148.jpg" alt="" style="width:100%;max-width:600px;height:300px;object-fit:cover;display:block;"/>
+  <img src="${hero}" alt="" style="width:100%;max-width:600px;height:300px;object-fit:cover;display:block;"/>
 
   <!-- DEADLINE BLOCK -->
   <div style="padding:44px 36px 0;text-align:center;">
@@ -205,8 +208,8 @@ body { background: #080808; font-family: 'Montserrat', Arial, sans-serif; -webki
 </html>`;
 }
 
-export function buildEmailHTML(template: string, subject: string, body: string, baseUrl: string): string {
-  const args = { subject, body, baseUrl };
+export function buildEmailHTML(template: string, subject: string, body: string, baseUrl: string, heroImage?: string): string {
+  const args = { subject, body, baseUrl, heroImage };
   if (template === "newsletter")   return buildNewsletter(args);
   if (template === "announcement") return buildAnnouncement(args);
   return buildPromo(args);
