@@ -3,31 +3,19 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
-import {
-  Edit3,
-  Save,
-  Phone,
-  Home,
-  MapPin,
-  LogOut,
-  Trash2,
-  X,
-  Camera,
-} from "lucide-react";
+import { Camera, X, Save } from "lucide-react";
 
-export default function CustomerSidebar({ user }: any) {
+export default function CustomerSidebar({ user }: { user: any }) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [savedMessage, setSavedMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  /* ───────────── Fetch Customer Profile ───────────── */
   useEffect(() => {
     if (!user) return;
-    const fetchProfile = async () => {
+    const load = async () => {
       const { data, error } = await supabase
         .from("customers")
         .select("*")
@@ -35,34 +23,19 @@ export default function CustomerSidebar({ user }: any) {
         .single();
 
       if (error || !data) {
-        console.warn("⚠️ No customer record found. Creating one...");
-        await supabase.from("customers").insert({
-          id: user.id,
-          email: user.email,
-        });
-        setProfile({
-          id: user.id,
-          email: user.email,
-          name: "",
-          surname: "",
-          phone: "",
-          street: "",
-          city: "",
-          avatar_url: "",
-        });
+        await supabase.from("customers").insert({ id: user.id, email: user.email });
+        setProfile({ id: user.id, email: user.email, name: "", surname: "", phone: "", street: "", city: "", avatar_url: "" });
       } else {
         setProfile(data);
       }
       setLoading(false);
     };
-    fetchProfile();
+    load();
   }, [user]);
 
-  /* ───────────── Save Profile ───────────── */
-  const handleSaveProfile = async () => {
+  const handleSave = async () => {
     if (!profile) return;
     setSaving(true);
-
     const { error } = await supabase
       .from("customers")
       .update({
@@ -71,285 +44,192 @@ export default function CustomerSidebar({ user }: any) {
         phone: profile.phone,
         street: profile.street,
         city: profile.city,
-        avatar_url: profile.avatar_url,
         updated_at: new Date(),
       })
       .eq("id", user.id);
 
-    if (error) {
-      alert("Error saving: " + error.message);
-    } else {
-      setSavedMessage("Saved successfully!");
-      setEditing(false);
-      setTimeout(() => setSavedMessage(""), 1500);
-    }
-
     setSaving(false);
+    if (!error) {
+      setEditing(false);
+      setSavedMsg("Saved");
+      setTimeout(() => setSavedMsg(""), 2000);
+    }
   };
 
-  /* ───────────── Upload Avatar ───────────── */
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-  try {
-    const fileInput = event.target as HTMLInputElement;
-    const files = fileInput.files;
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.type)) return;
 
-    if (!files || files.length === 0) {
-      alert("Please select an image to upload.");
-      return;
-    }
-
-    const file = files[0];
-    if (!(file instanceof File)) {
-      alert("❌ Invalid file type. Please upload a real image file.");
-      return;
-    }
-
-    // ✅ Check supported formats
-    if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.type)) {
-      alert("Only PNG, JPG, and WEBP formats are supported.");
-      return;
-    }
-
-    const fileExt = file.name.split(".").pop();
-    const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
-
-    console.log("Uploading file:", fileName, "type:", file.type);
-
-    // ✅ Upload binary file, not JSON
-    const { data, error: uploadError } = await supabase.storage
+    const filePath = `avatars/${user.id}-${Date.now()}.${file.name.split(".").pop()}`;
+    const { error } = await supabase.storage
       .from("avatars")
-      .upload(filePath, file, {
-        cacheControl: "3600",
-        upsert: true,
-        contentType: file.type,
-      });
+      .upload(filePath, file, { cacheControl: "3600", upsert: true, contentType: file.type });
+    if (error) return;
 
-    if (uploadError) {
-      console.error("❌ Upload failed:", uploadError.message);
-      alert("❌ Upload failed: " + uploadError.message);
-      return;
-    }
-
-    const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(filePath);
-    const publicUrl = publicData.publicUrl;
-
-    console.log("✅ File uploaded successfully:", publicUrl);
-
-    // ✅ Save avatar URL to `customers`
-    const { error: dbError } = await supabase
-      .from("customers")
-      .update({ avatar_url: publicUrl })
-      .eq("id", user.id);
-
-    if (dbError) {
-      console.error("DB update error:", dbError.message);
-      alert("Error saving avatar: " + dbError.message);
-      return;
-    }
-
-    // ✅ Reflect new image instantly
-    setProfile((prev: any) => ({ ...prev, avatar_url: publicUrl }));
-    alert("✅ Avatar updated successfully!");
-
-    // ✅ Reset file input so same file can re-upload later
-    fileInput.value = "";
-  } catch (err: any) {
-    console.error("Unexpected upload error:", err);
-    alert("An unexpected error occurred: " + err.message);
-  }
-};
-
-
-
-
-  /* ───────────── Logout ───────────── */
-  const handleLogout = () => {
-  try {
-    // Kick off Supabase sign-out (don’t await so it runs async)
-    supabase.auth.signOut();
-
-    // Immediately clear any local and session storage
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // Subtle UI feedback to show it’s working
-    document.body.style.opacity = "0.5";
-    document.body.style.pointerEvents = "none";
-
-    // 🔥 Force a guaranteed reload and redirect
-    setTimeout(() => {
-      window.location.href = "/";
-    }, 300); // 300ms delay gives smooth transition
-  } catch (error) {
-    console.error("Logout error:", error);
-    alert("Logout failed. Please refresh manually.");
-  }
-};
-
-
-  /* ───────────── Delete Account ───────────── */
-  const handleDeleteAccount = async () => {
-    if (!confirm("Are you sure you want to permanently delete your account?")) return;
-    setDeleting(true);
-    await supabase.from("customers").delete().eq("id", user.id);
-    await supabase.auth.signOut();
-    window.location.href = "/";
+    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+    await supabase.from("customers").update({ avatar_url: data.publicUrl }).eq("id", user.id);
+    setProfile((p: any) => ({ ...p, avatar_url: data.publicUrl }));
+    e.target.value = "";
   };
 
-  /* ───────────── Avatar Uploader UI ───────────── */
-  const Avatar = () => (
-    <div className="relative w-28 h-28 rounded-full overflow-hidden border border-white/20 mb-3 group cursor-pointer">
-      {profile?.avatar_url ? (
-        <Image
-          src={profile.avatar_url}
-          alt="Profile"
-          fill
-          className="object-cover group-hover:opacity-60 transition"
-          onClick={() => fileInputRef.current?.click()}
-        />
-      ) : (
-        <div
-          className="bg-gray-700 w-full h-full flex items-center justify-center text-xs text-gray-300 group-hover:opacity-60 transition"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          No Image
-        </div>
-      )}
-      <div
-        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <Camera size={22} className="text-white" />
-      </div>
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        accept="image/*"
-        onChange={handleAvatarUpload}
-      />
-    </div>
-  );
-
-  if (loading)
+  if (loading || !profile) {
     return (
-      <div className="bg-[#111]/90 p-6 rounded-2xl text-center text-gray-400">
-        Loading profile...
+      <div className="px-4 py-5">
+        <div className="w-11 h-11 rounded-[8px] bg-white/[0.04] mb-3 animate-pulse" />
+        <div className="h-3 w-28 bg-white/[0.04] rounded mb-2 animate-pulse" />
+        <div className="h-2.5 w-36 bg-white/[0.04] rounded animate-pulse" />
       </div>
     );
+  }
+
+  const initials = [(profile.name || "")[0], (profile.surname || "")[0]]
+    .filter(Boolean).join("").toUpperCase() || "?";
+
+  const displayName = profile.name && profile.surname
+    ? `${profile.name} ${profile.surname}`
+    : profile.name || "—";
 
   return (
     <>
-      <aside className="bg-[#111]/90 p-6 rounded-2xl border border-white/10 shadow-[0_0_30px_rgba(255,0,0,0.1)]">
+      {/* ── Profile card — goes in DashboardShell's sidebarTop slot ── */}
+      <div className="px-4 py-5">
         {/* Avatar */}
-        <div className="flex flex-col items-center mb-6">
-          <Avatar />
-          <h2 className="font-semibold text-lg">
-            {profile.name || "User"} {profile.surname}
-          </h2>
-          <p className="text-xs text-gray-400">{profile.email}</p>
+        <div
+          className="relative w-11 h-11 rounded-[8px] overflow-hidden mb-3 cursor-pointer group"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {profile.avatar_url ? (
+            <Image src={profile.avatar_url} alt="" fill className="object-cover" />
+          ) : (
+            <div
+              className="w-full h-full bg-[#B80013]/20 flex items-center justify-center text-[#B80013] text-[13px] font-bold"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              {initials}
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Camera size={12} className="text-white" />
+          </div>
         </div>
 
-        {/* Details */}
-        <ul className="text-sm text-gray-300 space-y-3 mb-6">
-          <li className="flex items-center gap-2">
-            <Phone size={16} className="text-red-600" /> {profile.phone || "-"}
-          </li>
-          <li className="flex items-center gap-2">
-            <Home size={16} className="text-red-600" /> {profile.street || "-"}
-          </li>
-          <li className="flex items-center gap-2">
-            <MapPin size={16} className="text-red-600" /> {profile.city || "-"}
-          </li>
-        </ul>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={handleAvatarUpload}
+        />
 
-        {/* Actions */}
+        <p className="text-[14px] font-semibold text-white leading-tight truncate">{displayName}</p>
+        <p className="text-[11px] text-white/35 mt-0.5 truncate">{profile.email || user?.email}</p>
+
+        {/* Data rows */}
+        <div className="mt-4 space-y-3">
+          {[
+            { label: "Phone", value: profile.phone },
+            { label: "Address", value: profile.street },
+            { label: "City", value: profile.city },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p
+                className="text-[9px] uppercase tracking-[0.14em] text-white/25"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                {label}
+              </p>
+              <p className="text-[12px] text-white/55 mt-0.5 leading-tight">{value || "—"}</p>
+            </div>
+          ))}
+        </div>
+
         <button
           onClick={() => setEditing(true)}
-          className="flex items-center justify-center gap-2 bg-red-700 hover:bg-red-800 px-4 py-2 w-full rounded-full text-sm font-semibold"
+          className="mt-5 w-full h-[32px] text-[10px] font-bold uppercase tracking-[0.1em] border border-white/[0.1] rounded-[6px] text-white/45 hover:text-white hover:border-white/25 transition-colors cursor-pointer"
+          style={{ fontFamily: "var(--font-heading)" }}
         >
-          <Edit3 size={14} /> Edit Profile
+          Edit Profile
         </button>
+      </div>
 
-        <button
-          onClick={handleLogout}
-          className="flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-800 mt-6 px-4 py-2 w-full rounded-full text-sm"
-        >
-          <LogOut size={14} /> Logout
-        </button>
-
-        <button
-          onClick={handleDeleteAccount}
-          disabled={deleting}
-          className="flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 mt-3 px-4 py-2 w-full rounded-full text-sm text-red-400 border border-red-800"
-        >
-          <Trash2 size={14} /> {deleting ? "Deleting..." : "Delete Account"}
-        </button>
-      </aside>
-
-      {/* Edit Modal */}
+      {/* ── Edit Modal ── */}
       {editing && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#111]/95 border border-white/10 p-8 rounded-2xl w-full max-w-md relative">
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] p-4">
+          <div className="bg-[#111111] border border-white/[0.07] rounded-[12px] w-full max-w-md p-6 relative">
             <button
               onClick={() => setEditing(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-white/30 hover:text-white cursor-pointer transition-colors"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
 
-            <h3 className="text-xl font-semibold text-[#B80013] mb-4 text-center">
+            <p
+              className="text-[11px] uppercase tracking-[0.12em] text-white/50 mb-6"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
               Edit Profile
-            </h3>
+            </p>
 
-            {/* Avatar inside modal */}
-            <div className="flex justify-center mb-4">
-              <Avatar />
+            {/* Avatar in modal */}
+            <div
+              className="relative w-14 h-14 rounded-[8px] overflow-hidden mb-6 cursor-pointer group"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {profile.avatar_url ? (
+                <Image src={profile.avatar_url} alt="" fill className="object-cover" />
+              ) : (
+                <div
+                  className="w-full h-full bg-[#B80013]/20 flex items-center justify-center text-[#B80013] text-[16px] font-bold"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  {initials}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={14} className="text-white" />
+              </div>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {["name", "surname", "phone", "street", "city"].map((field) => (
+            <div className="space-y-5">
+              {[
+                { field: "name", placeholder: "First name" },
+                { field: "surname", placeholder: "Last name" },
+                { field: "phone", placeholder: "Phone number" },
+                { field: "street", placeholder: "Street address" },
+                { field: "city", placeholder: "City" },
+              ].map(({ field, placeholder }) => (
                 <input
                   key={field}
                   type="text"
-                  placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
+                  placeholder={placeholder}
                   value={profile[field] || ""}
-                  onChange={(e) =>
-                    setProfile((p: any) => ({
-                      ...p,
-                      [field]: e.target.value,
-                    }))
-                  }
-                  className="rounded-md bg-black/40 border border-white/20 px-3 py-2 text-sm focus:border-red-600 outline-none"
+                  onChange={(e) => setProfile((p: any) => ({ ...p, [field]: e.target.value }))}
+                  className="w-full bg-transparent border-b border-white/[0.1] focus:border-[#B80013] outline-none text-[14px] text-white py-2 placeholder-white/25 transition-colors"
                 />
               ))}
             </div>
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={handleSaveProfile}
+                onClick={handleSave}
                 disabled={saving}
-                className={`flex-1 py-2.5 rounded-full text-sm font-semibold flex items-center justify-center gap-2 transition ${
-                  saving
-                    ? "bg-gray-700 cursor-not-allowed"
-                    : "bg-red-700 hover:bg-red-800"
-                }`}
+                className="flex-1 h-[44px] bg-[#B80013] hover:bg-[#960010] text-white font-bold text-[12px] uppercase tracking-[0.1em] transition rounded-[4px] disabled:opacity-40 cursor-pointer flex items-center justify-center gap-2"
+                style={{ fontFamily: "var(--font-heading)" }}
               >
-                <Save size={14} /> {saving ? "Saving..." : "Save"}
+                <Save size={13} />
+                {saving ? "Saving…" : "Save Changes"}
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="flex-1 py-2.5 rounded-full text-sm font-semibold bg-gray-700 hover:bg-gray-800 transition"
+                className="flex-1 h-[44px] border border-white/[0.07] text-[12px] text-white/50 hover:text-white transition rounded-[4px] cursor-pointer"
               >
                 Cancel
               </button>
             </div>
 
-            {savedMessage && (
-              <p className="text-green-500 text-xs text-center mt-2">
-                {savedMessage}
-              </p>
+            {savedMsg && (
+              <p className="text-[12px] text-[#B80013] text-center mt-3">{savedMsg}</p>
             )}
           </div>
         </div>

@@ -216,7 +216,7 @@ export default function HomeHero() {
 
           <div className="relative flex-[3] rounded-2xl overflow-hidden">
             <KenBurns duration={16} dy={10} delay={4}>
-              <Image src="/images/brand/two.JPG" alt="Amal Foods freshly made pastries" fill sizes="25vw" className="object-cover" />
+              <Image src="/images/brand/two.JPG" alt="Amal Foods freshly made pastries" fill sizes="25vw" className="object-cover" priority />
             </KenBurns>
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
           </div>
@@ -268,7 +268,7 @@ export default function HomeHero() {
           src="/images/brand/one.JPG"
           alt="Amal Foods samoosas golden and crispy"
           fill
-          sizes="100vw"
+          sizes="(max-width: 768px) 100vw, 1px"
           className="object-cover object-center"
           priority
         />

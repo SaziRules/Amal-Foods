@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Roboto, Roboto_Condensed } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/Navbar";
 import FloatingButtons from "@/components/FloatingButtons";
 import Footer from "@/components/Footer";
+import { geistSans, geistMono } from "@/lib/fonts";
 
 const BASE_URL = "https://www.amalfoods.co.za";
-
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
-const roboto = Roboto({ weight: ["400", "500", "700"], subsets: ["latin"], variable: "--font-roboto" });
-const robotoCondensed = Roboto_Condensed({ weight: ["800"], subsets: ["latin"], variable: "--font-roboto-condensed" });
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
@@ -152,13 +147,19 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Condensed:wght@800&display=swap"
+          rel="stylesheet"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable} ${robotoCondensed.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
         style={{ fontFamily: "var(--font-roboto), system-ui, sans-serif" }}
       >
         <CartProvider>

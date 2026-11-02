@@ -198,7 +198,8 @@ export default function Navbar() {
   const hideNavbar =
     pathname?.startsWith("/studio") ||
     pathname?.startsWith("/admin") ||
-    pathname?.startsWith("/dashboard");
+    pathname?.startsWith("/dashboard") ||
+    pathname?.startsWith("/customer/dashboard");
 
   if (hideNavbar) return null;
 

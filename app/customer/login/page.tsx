@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CheckCircle } from "lucide-react";
@@ -23,15 +22,20 @@ export default function CustomerLogin() {
     }
 
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: "https://amalfoods.co.za/customer/dashboard",
-      },
+
+    const res = await fetch("/api/send-magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
 
-    if (error) setError(error.message);
-    else setMessage("Check your inbox. We've sent you a secure login link.");
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.error || "Something went wrong. Please try again.");
+    } else {
+      setMessage("Check your inbox. We've sent you a secure login link.");
+    }
 
     setLoading(false);
   };

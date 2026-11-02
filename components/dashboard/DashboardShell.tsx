@@ -18,9 +18,10 @@ import {
 } from "lucide-react";
 
 interface DashboardShellProps {
-  role: "manager" | "admin";
+  role: "manager" | "admin" | "customer";
   userEmail: string;
   pageTitle: string;
+  sidebarTop?: ReactNode;
   topBarActions?: ReactNode;
   sidebarActions?: ReactNode;
   onLogout: () => void;
@@ -35,6 +36,7 @@ export default function DashboardShell({
   role,
   userEmail,
   pageTitle,
+  sidebarTop,
   topBarActions,
   sidebarActions,
   onLogout,
@@ -52,12 +54,19 @@ export default function DashboardShell({
   const truncatedEmail =
     userEmail.length > 22 ? userEmail.slice(0, 22) + "…" : userEmail;
 
-  const dashHref = role === "admin" ? "/admin/dashboard" : "/dashboard/dashboard";
-  const ordersHref = role === "admin" ? "/admin/orders" : "/dashboard/orders";
+  const dashHref = role === "admin" ? "/admin/dashboard" : role === "customer" ? "/customer/dashboard" : "/dashboard/dashboard";
+  const ordersHref = role === "admin" ? "/admin/orders" : role === "customer" ? "/customer/dashboard" : "/dashboard/orders";
 
   const go = (href: string) => { router.push(href); setMobileOpen(false); };
 
-  const navItems = [
+  const navItems = role === "customer" ? [
+    {
+      label: "My Orders",
+      Icon: ShoppingBag,
+      active: pathname === "/customer/dashboard",
+      action: () => go("/customer/dashboard"),
+    },
+  ] : [
     {
       label: "Dashboard",
       Icon: LayoutDashboard,
@@ -146,24 +155,33 @@ export default function DashboardShell({
           </button>
         </div>
 
-        {/* User block */}
-        <div
-          className={`border-b border-white/[0.07] shrink-0 overflow-hidden transition-all duration-200 ease-in-out ${collapsed ? "md:max-h-0 md:py-0 md:px-0 max-h-24 py-4 px-4" : "max-h-24 py-4 px-4"}`}
-        >
-          <p className="text-[12px] text-white/40 truncate mb-1.5 whitespace-nowrap">
-            {truncatedEmail}
-          </p>
-          <span
-            className="text-[10px] font-medium tracking-[0.12em] uppercase px-2 py-0.5 rounded-[4px] whitespace-nowrap"
-            style={{
-              color: "#B80013",
-              backgroundColor: "rgba(184,0,19,0.12)",
-              fontFamily: "var(--font-heading)",
-            }}
+        {/* User block — hidden for customer (profile card replaces it) */}
+        {role !== "customer" && (
+          <div
+            className={`border-b border-white/[0.07] shrink-0 overflow-hidden transition-all duration-200 ease-in-out ${collapsed ? "md:max-h-0 md:py-0 md:px-0 max-h-24 py-4 px-4" : "max-h-24 py-4 px-4"}`}
           >
-            {role === "admin" ? "Owner" : "Manager"}
-          </span>
-        </div>
+            <p className="text-[12px] text-white/40 truncate mb-1.5 whitespace-nowrap">
+              {truncatedEmail}
+            </p>
+            <span
+              className="text-[10px] font-medium tracking-[0.12em] uppercase px-2 py-0.5 rounded-[4px] whitespace-nowrap"
+              style={{
+                color: "#B80013",
+                backgroundColor: "rgba(184,0,19,0.12)",
+                fontFamily: "var(--font-heading)",
+              }}
+            >
+              {role === "admin" ? "Owner" : "Manager"}
+            </span>
+          </div>
+        )}
+
+        {/* sidebarTop slot — profile card for customer role */}
+        {sidebarTop && (
+          <div className={`shrink-0 border-b border-white/[0.07] overflow-hidden transition-all duration-200 ease-in-out ${collapsed ? "md:max-h-0 md:opacity-0" : ""}`}>
+            {sidebarTop}
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="py-3 overflow-x-hidden shrink-0">
