@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { X, ShoppingBag } from "lucide-react";
+import { X, ShoppingBag, Download } from "lucide-react";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import CustomerSidebar from "@/components/CustomerSidebar";
 
@@ -38,6 +38,7 @@ export default function CustomerDashboard() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -71,6 +72,80 @@ export default function CustomerDashboard() {
     await supabase.from("customers").delete().eq("id", user.id);
     await supabase.auth.signOut();
     window.location.href = "/";
+  };
+
+  const handleDownloadInvoice = async (order: Order) => {
+    setDownloadingInvoice(true);
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      try {
+        const res = await fetch("/images/logo-light.png");
+        const blob = await res.blob();
+        const base64: string = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(",")[1]);
+          reader.readAsDataURL(blob);
+        });
+        doc.addImage(`data:image/png;base64,${base64}`, "PNG", pageWidth / 2 - 25, 10, 50, 20);
+      } catch {}
+
+      doc.setFontSize(16);
+      doc.text("PROFORMA INVOICE", pageWidth / 2, 40, { align: "center" });
+
+      doc.setFontSize(10);
+      const infoLines = [
+        `Date: ${new Date().toLocaleDateString()}`,
+        `Order Number: ${order.order_number || order.id}`,
+        `Email: ${user?.email || "—"}`,
+        `Branch: ${order.branch || "—"}`,
+        `Status: ${order.status || "—"}`,
+        `Payment: ${order.payment_status || "—"}`,
+      ];
+      infoLines.forEach((line, i) => doc.text(line, 14, 55 + i * 6));
+
+      const items = Array.isArray(order.items) ? order.items : [];
+      const rows = items.length > 0
+        ? items.map((item: any) => [
+            item.title || item.name || "—",
+            item.quantity || 1,
+            `R${Number(item.price || 0).toFixed(2)}`,
+            `R${(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
+          ])
+        : [["No items listed", "", "", ""]];
+
+      autoTable(doc, {
+        startY: 55 + infoLines.length * 6 + 5,
+        head: [["Item", "Qty", "Price", "Subtotal"]],
+        body: rows,
+        theme: "grid",
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [184, 0, 19], textColor: 255 },
+      });
+
+      const lastY = (doc as any).lastAutoTable.finalY ?? 100;
+      doc.setFontSize(11);
+      doc.text(`Total: R${Number(order.total).toFixed(2)}`, 14, lastY + 10);
+
+      doc.setFontSize(10);
+      const bankY = lastY + 25;
+      doc.text("EFT Banking Details:", 14, bankY);
+      doc.text("Bank: Nedbank", 14, bankY + 6);
+      doc.text("Account Name: Amal Holdings", 14, bankY + 12);
+      doc.text("Account Number: 1169327818", 14, bankY + 18);
+      doc.text("Reference: Your Full Name", 14, bankY + 24);
+      doc.text("Please send proof of payment to your nearest branch before collection.", 14, bankY + 30);
+
+      doc.save(`Amal-Foods-Invoice-${order.order_number || order.id}.pdf`);
+    } catch (err) {
+      console.error("Invoice download failed:", err);
+    } finally {
+      setDownloadingInvoice(false);
+    }
   };
 
   const filteredOrders = orders.filter((o) => {
@@ -304,6 +379,18 @@ export default function CustomerDashboard() {
                 <span className="text-[16px] font-bold text-[#B80013]">
                   R{Number(selectedOrder.total).toFixed(2)}
                 </span>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-white/[0.07]">
+                <button
+                  onClick={() => handleDownloadInvoice(selectedOrder)}
+                  disabled={downloadingInvoice}
+                  className="flex items-center gap-2 h-[34px] px-4 border border-white/[0.07] text-[11px] text-white/50 hover:text-white hover:border-white/20 rounded-[4px] transition disabled:opacity-40 cursor-pointer"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  <Download size={13} />
+                  {downloadingInvoice ? "Generating…" : "Download Invoice"}
+                </button>
               </div>
             </div>
           </div>
