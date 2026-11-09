@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { client } from '@/sanity/lib/client';
 import { urlFor } from '@/sanity/lib/image';
 import { useCart } from '@/context/CartContext';
-import { SlidersHorizontal, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { SlidersHorizontal, X, ChevronDown, ChevronUp, Search } from 'lucide-react';
 
 /* ─────────────────────────── constants ─────────────────────────────────── */
 
@@ -343,7 +343,7 @@ function ProductCard({ product, launched, region }: { product: Product; launched
       transition={{ duration: 0.2, ease: 'easeOut' }}
       className="group flex flex-col rounded-xl overflow-hidden border border-white/[0.08] hover:border-white/20 transition-colors duration-300 bg-[#141414]"
     >
-      <div className="relative aspect-[4/3] overflow-hidden shrink-0">
+      <div className="relative aspect-[8/3] overflow-hidden shrink-0">
         {imgSrc ? (
           <Image
             src={imgSrc} fill alt={product.title}
@@ -388,11 +388,11 @@ function ProductCard({ product, launched, region }: { product: Product; launched
           <p className="text-white/30 text-[10px] uppercase tracking-[0.2em] mt-1">{product.unit}</p>
         )}
 
-        <div className="mt-auto pt-4 border-t border-white/[0.07] space-y-3">
+        <div className="mt-auto pt-2 border-t border-white/[0.07] space-y-2">
           {/* Price */}
           {price !== null ? (
             <span
-              className="text-white text-2xl font-extrabold tabular-nums leading-none"
+              className="inline-block text-white text-3xl font-extrabold tabular-nums leading-none pb-0.5"
               style={{ fontFamily: 'var(--font-roboto-condensed)' }}
             >
               R{price}
@@ -402,39 +402,39 @@ function ProductCard({ product, launched, region }: { product: Product; launched
           )}
 
           {/* Cart row */}
-          <div className="flex items-center justify-between gap-3">
-            <span className={`text-[10px] font-bold uppercase tracking-[0.2em] transition-colors ${
-              launched && price !== null ? 'text-white/50' : 'text-white/18'
-            }`}>
-              Add to Cart
-            </span>
-
-            {/* Quantity stepper — always visible, inactive pre-launch */}
-            <div className={`flex items-center gap-1.5 border rounded-full px-1 py-1 transition-colors ${
-              launched && price !== null
+          <div className="flex items-center justify-between gap-2">
+            {/* Quantity stepper — disabled until Add to Cart is pressed */}
+            <div className={`flex items-center gap-1 border rounded-full px-1 py-1 transition-colors shrink-0 ${
+              launched && price !== null && quantity > 0
                 ? 'bg-white/[0.05] border-white/10'
-                : 'bg-transparent border-white/[0.06]'
+                : 'bg-transparent border-white/[0.06] opacity-30'
             }`}>
               <button
                 onClick={handleSubtract}
                 disabled={!launched || price === null || quantity === 0}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-20 bg-white/[0.08] hover:enabled:bg-[#B80013] text-white"
+                className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed bg-white/[0.08] hover:enabled:bg-[#B80013] text-white"
               >
                 −
               </button>
-              <span className={`text-[13px] font-bold tabular-nums w-5 text-center leading-none ${
-                launched && price !== null ? 'text-white' : 'text-white/20'
-              }`}>
+              <span className="text-[13px] font-bold tabular-nums w-5 text-center leading-none text-white">
                 {quantity}
               </span>
               <button
                 onClick={handleAdd}
-                disabled={!launched || price === null}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-20 bg-[#B80013] hover:enabled:bg-[#a20010] text-white"
+                disabled={!launched || price === null || quantity === 0}
+                className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed bg-[#B80013] hover:enabled:bg-[#a20010] text-white"
               >
                 +
               </button>
             </div>
+
+            <button
+              onClick={handleAdd}
+              disabled={!launched || price === null}
+              className="flex-1 self-stretch flex items-center justify-center text-center leading-none rounded-full bg-[#B80013] text-white text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:enabled:bg-[#a20010] cursor-pointer disabled:cursor-not-allowed disabled:opacity-25"
+            >
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>
@@ -938,19 +938,36 @@ export default function ProductsPage() {
                   </button>
                 )}
 
-                {/* Sort dropdown — right-aligned */}
-                <div className="ml-auto shrink-0 flex items-center gap-2">
-                  <span className="text-white/30 text-[10px] uppercase tracking-[0.25em] font-bold">Sort by:</span>
+                {/* Sort + Search — full width on mobile, right-aligned on desktop */}
+                <div className="w-full sm:w-auto sm:ml-auto grid grid-cols-2 sm:flex items-center gap-2">
+                  <span className="text-white/30 text-[10px] uppercase tracking-[0.25em] font-bold hidden sm:inline">Sort by:</span>
                   <select
                     value={sort}
                     onChange={e => setSort(e.target.value)}
-                    className="bg-[#1a1a1a] border border-white/15 text-white/55 text-[10px] uppercase tracking-[0.15em] rounded-full px-4 py-2 cursor-pointer hover:border-white/30 transition-colors outline-none appearance-none pr-8"
+                    className="w-full sm:w-auto bg-[#1a1a1a] border border-white/15 text-white/55 text-[10px] uppercase tracking-[0.15em] rounded-full px-4 py-2 cursor-pointer hover:border-white/30 transition-colors outline-none appearance-none pr-8"
                     style={sortSelectStyle}
                   >
                     {SORT_OPTIONS.map(o => (
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ))}
                   </select>
+
+                  {/* Search pill */}
+                  <div className="relative flex items-center">
+                    <Search size={11} className="absolute left-3 text-white/30 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={searchQ}
+                      onChange={e => setSearchQ(e.target.value.toLowerCase())}
+                      placeholder="Search products"
+                      className="w-full sm:w-72 bg-[#1a1a1a] border border-white/15 text-white/55 text-[10px] rounded-full pl-7 pr-6 py-2 outline-none hover:border-white/30 focus:border-white/40 transition-colors placeholder:text-white/25"
+                    />
+                    {searchQ && (
+                      <button onClick={() => setSearchQ('')} className="absolute right-2.5 text-white/30 hover:text-white/70 transition-colors">
+                        <X size={10} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
               </div>

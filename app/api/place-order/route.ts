@@ -18,26 +18,13 @@ async function generateOrderNumber(): Promise<string> {
   const currentYear = new Date().getFullYear().toString().slice(-2);
   const seed = YEAR_SEEDS[currentYear] ?? 4829;
 
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("orders")
-      .select("order_number")
-      .like("order_number", `Amal${currentYear}#%`)
-      .order("order_number", { ascending: false })
-      .limit(1);
+  const { data, error } = await supabaseAdmin.rpc("next_order_number", {
+    p_year: currentYear,
+    p_seed: seed,
+  });
 
-    if (error) throw error;
-
-    let nextSeq = seed;
-    if (data && data.length > 0) {
-      const match = data[0].order_number?.match(/#(\d+)$/);
-      if (match) nextSeq = parseInt(match[1], 10) + 1;
-    }
-
-    return `Amal${currentYear}#${String(nextSeq).padStart(4, "0")}`;
-  } catch {
-    return `Amal${currentYear}#${String(seed).padStart(4, "0")}`;
-  }
+  if (error) throw error;
+  return data as string;
 }
 
 export async function POST(req: Request) {
