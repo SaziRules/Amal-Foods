@@ -365,7 +365,7 @@ function ProductCard({ product, launched, region }: { product: Product; launched
         )}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#141414]/60 to-transparent pointer-events-none" />
         {product.label && (
-          <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.15em] bg-[#B80013] text-white px-2.5 py-1 rounded-full">
+          <span className="absolute top-3 left-3 text-[9px] font-bold uppercase tracking-[0.15em] bg-white/85 text-[#B80013] px-2.5 py-1 rounded-full">
             {LABEL_DISPLAY[product.label] ?? product.label}
           </span>
         )}
@@ -401,40 +401,37 @@ function ProductCard({ product, launched, region }: { product: Product; launched
             <span className="text-white/25 text-[10px] uppercase tracking-widest">Price TBC</span>
           )}
 
-          {/* Cart row */}
-          <div className="flex items-center justify-between gap-2">
-            {/* Quantity stepper — disabled until Add to Cart is pressed */}
-            <div className={`flex items-center gap-1 border rounded-full px-1 py-1 transition-colors shrink-0 ${
-              launched && price !== null && quantity > 0
-                ? 'bg-white/[0.05] border-white/10'
-                : 'bg-transparent border-white/[0.06] opacity-30'
-            }`}>
-              <button
-                onClick={handleSubtract}
-                disabled={!launched || price === null || quantity === 0}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed bg-white/[0.08] hover:enabled:bg-[#B80013] text-white"
-              >
-                −
-              </button>
-              <span className="text-[13px] font-bold tabular-nums w-5 text-center leading-none text-white">
-                {quantity}
-              </span>
+          {/* Cart row — stepper replaces button after first add */}
+          <div className="flex items-center gap-2">
+            {quantity === 0 ? (
               <button
                 onClick={handleAdd}
-                disabled={!launched || price === null || quantity === 0}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed bg-[#B80013] hover:enabled:bg-[#a20010] text-white"
+                disabled={!launched || price === null}
+                className="w-full py-2.5 flex items-center justify-center rounded-full bg-[#B80013] text-white text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:enabled:bg-[#a20010] cursor-pointer disabled:cursor-not-allowed disabled:opacity-25"
               >
-                +
+                Add to Cart
               </button>
-            </div>
-
-            <button
-              onClick={handleAdd}
-              disabled={!launched || price === null}
-              className="flex-1 self-stretch flex items-center justify-center text-center leading-none rounded-full bg-[#B80013] text-white text-[11px] font-bold uppercase tracking-[0.18em] transition-all duration-200 hover:enabled:bg-[#a20010] cursor-pointer disabled:cursor-not-allowed disabled:opacity-25"
-            >
-              Add to Cart
-            </button>
+            ) : (
+              <div className="flex items-center justify-between w-full border rounded-full px-1 py-1 bg-white/[0.05] border-white/10">
+                <button
+                  onClick={handleSubtract}
+                  disabled={!launched || price === null}
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed bg-white/[0.08] hover:enabled:bg-[#B80013] text-white"
+                >
+                  −
+                </button>
+                <span className="text-[13px] font-bold tabular-nums w-5 text-center leading-none text-white">
+                  {quantity}
+                </span>
+                <button
+                  onClick={handleAdd}
+                  disabled={!launched || price === null}
+                  className="w-7 h-7 flex items-center justify-center rounded-full text-base font-bold leading-none transition-colors disabled:cursor-not-allowed bg-[#B80013] hover:enabled:bg-[#a20010] text-white"
+                >
+                  +
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
