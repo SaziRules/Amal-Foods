@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 const ORDER_DATE = new Date('2026-10-01T00:00:00');
-const CLOSE_DATE = new Date('2026-11-15T00:00:00');
+const CLOSE_DATE = new Date('2026-11-16T00:00:00');
 
 function KenBurns({
   children,

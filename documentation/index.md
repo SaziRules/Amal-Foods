@@ -1,7 +1,7 @@
 # Amal Foods — System Documentation
 
 **Stack:** Next.js 15 · TypeScript · Tailwind CSS v4 · Sanity CMS · Supabase · Brevo  
-**Last updated:** September 2026
+**Last updated:** November 2026
 
 ---
 
@@ -14,8 +14,9 @@
 | [database-security.md](database-security.md) | RLS policies, grants, service role pattern |
 | [invoice.md](invoice.md) | PDF generation, `/api/send-invoice`, Resend email |
 | [products-page.md](products-page.md) | Products page, Sanity fetch, filters, sorting, countdown, cart stepper |
+| [ordering-season.md](ordering-season.md) | Seasonal ordering window, client countdown phases, server-side gate |
 | [admin.md](admin.md) | Admin dashboard, manager auth, order management |
-| [campaigns.md](campaigns.md) | Bulk email campaigns, Brevo sending, daily limit, CSV upload, email templates |
+| [campaigns.md](campaigns.md) | Bulk email campaigns, Brevo sending, daily limit, CSV upload, email templates, per-send history & report modal |
 
 ---
 
@@ -43,7 +44,9 @@ Supabase (PostgreSQL + Auth)
     ├── orders               — RLS enabled; anon blocked from reads
     ├── customers            — customer profiles
     ├── profiles             — Supabase Auth user profiles + roles
-    └── managers             — branch manager records
+    ├── managers             — branch manager records
+    ├── campaign_sends       — daily throttle counter for bulk sends (date PK + count)
+    └── campaigns            — per-send history (name, audience, counts, rates, sent_at)
 
 Sanity CMS
     └── product              — title, category, label, unit, pricing, image, active flag
@@ -56,4 +59,4 @@ Sanity CMS
 - **Service role for order INSERT** — Supabase RLS on anon INSERT proved unreliable; moved to server-side API route with service role key. Key never reaches the browser.
 - **Region lock** — Cart locks to the first item's region; mixing regions is blocked to prevent fulfilment errors across Durban/Joburg branches.
 - **Order number seeding** — Numbers start at a per-year random offset (`4829` for 2026) so public-facing order numbers never reveal real order volume.
-- **Orders open date** — `ORDER_DATE = 2026-10-01`. Cart stepper on product cards is disabled until this date.
+- **Seasonal ordering window** — `ORDER_DATE = 2026-10-01` → `CLOSE_DATE = 2026-11-16 00:00 SAST` (i.e. end of Sunday 15 Nov). Enforced client-side (countdown phases, stepper gating) and server-side (`/api/place-order` 403s outside the window). See [ordering-season.md](ordering-season.md).

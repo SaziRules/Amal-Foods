@@ -83,6 +83,9 @@ export default function CampaignsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [activeMenu, setActiveMenu]   = useState<string|null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [reportTarget, setReportTarget] = useState<any>(null);
+  const [page, setPage]                 = useState(1);
+  const PAGE_SIZE = 10;
 
   /* Composer */
   const [drawerOpen, setDrawerOpen]   = useState(false);
@@ -172,6 +175,27 @@ export default function CampaignsPage() {
   useEffect(() => { setBaseUrl(window.location.origin); }, []);
 
   const handleLogout = async () => { await supabase.auth.signOut(); router.push("/admin/login"); };
+  const loadCampaigns = async () => {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("*")
+      .order("sent_at", { ascending: false, nullsFirst: false });
+    if (!Array.isArray(data)) return;
+    setCampaigns(data.map(c => ({
+      id:           c.id,
+      name:         c.name,
+      subject:      c.subject,
+      audience:     c.audience || "—",
+      status:       c.status,
+      recipients:   c.recipients ?? 0,
+      sent_count:   c.sent_count ?? 0,
+      failed_count: c.failed_count ?? 0,
+      openRate:     Number(c.open_rate ?? 0),
+      clickRate:    Number(c.click_rate ?? 0),
+      sentAt:       c.sent_at,
+    })));
+  };
+
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.push("/admin/login"); return; }
@@ -179,6 +203,7 @@ export default function CampaignsPage() {
       const [custJson, ordRes] = await Promise.all([
         fetch("/api/admin/customers").then(r => r.json()),
         supabase.from("orders").select("cell_number, region, payment_status, created_at"),
+        loadCampaigns(),
       ]);
       if (Array.isArray(custJson)) setCustomers(custJson);
       if (ordRes.data) setOrders(ordRes.data);
@@ -261,7 +286,14 @@ export default function CampaignsPage() {
       const res  = await fetch("/api/admin/campaigns/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaignName: cName, subject: cSubject, htmlContent: emailHTML, recipients }),
+        body: JSON.stringify({
+          campaignName: cName,
+          subject:      cSubject,
+          htmlContent:  emailHTML,
+          recipients,
+          segment:      cSegment,
+          audience:     SEGMENTS.find(s => s.key === cSegment)?.label,
+        }),
       });
       const data = await res.json();
 
@@ -275,7 +307,9 @@ export default function CampaignsPage() {
       if (data.wasCapped)   parts.push(`Capped at daily limit (${data.cappedAt}/day).`);
       if (data.remaining === 0) parts.push("Daily campaign limit reached.");
       else parts.push(`${data.remaining} sends remaining today.`);
+      if (data.historyError) parts.push(`History save failed: ${data.historyError}`);
       alert(parts.join(" "));
+      await loadCampaigns();
       closeDrawer();
     } catch {
       alert("Something went wrong. Please try again.");
@@ -296,6 +330,11 @@ export default function CampaignsPage() {
     const mq = !search || c.name.toLowerCase().includes(search.toLowerCase()) || c.subject.toLowerCase().includes(search.toLowerCase());
     return ms && mq;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  useEffect(() => { setPage(1); }, [search, statusFilter]);
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [page, totalPages]);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (!user) return <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] text-white text-sm tracking-widest uppercase">Loading…</div>;
 
@@ -359,7 +398,7 @@ export default function CampaignsPage() {
         </div>
 
         {/* Desktop table */}
-        <div className="hidden md:block border border-white/[0.07] rounded-[8px] overflow-hidden mb-4">
+        <div className="hidden md:block border border-white/[0.07] rounded-[8px] mb-4">
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-white/[0.07] bg-[#111111]">
@@ -369,7 +408,7 @@ export default function CampaignsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => (
+              {paginated.map(c => (
                 <tr key={c.id} className="border-b border-white/[0.04] hover:bg-white/[0.015] transition last:border-0">
                   <td className="px-4 py-3.5 max-w-[210px]">
                     <p className="text-[13px] font-medium text-white truncate">{c.name}</p>
@@ -390,8 +429,8 @@ export default function CampaignsPage() {
                         <MoreHorizontal size={14} />
                       </button>
                       {activeMenu===c.id && (
-                        <div className="absolute right-0 top-8 z-20 bg-[#1a1a1a] border border-white/[0.1] rounded-[10px] py-1.5 w-44 shadow-2xl">
-                          {c.status==="sent" && <button className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-white/60 hover:text-white hover:bg-white/[0.05] transition cursor-pointer"><BarChart2 size={13}/> View Report</button>}
+                        <div className="absolute right-0 top-8 z-50 bg-[#1a1a1a] border border-white/[0.1] rounded-[10px] py-1.5 w-44 shadow-2xl">
+                          {c.status==="sent" && <button onClick={() => { setReportTarget(c); setActiveMenu(null); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-white/60 hover:text-white hover:bg-white/[0.05] transition cursor-pointer"><BarChart2 size={13}/> View Report</button>}
                           <button className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-white/60 hover:text-white hover:bg-white/[0.05] transition cursor-pointer"><Copy size={13}/> Duplicate</button>
                           {(c.status==="draft"||c.status==="scheduled") && <button className="w-full flex items-center gap-2.5 px-3 py-2 text-[12px] text-white/60 hover:text-white hover:bg-white/[0.05] transition cursor-pointer"><FileEdit size={13}/> Edit</button>}
                           <div className="h-px bg-white/[0.06] my-1"/>
@@ -416,7 +455,7 @@ export default function CampaignsPage() {
 
         {/* Mobile cards */}
         <div className="md:hidden space-y-3">
-          {filtered.map(c => (
+          {paginated.map(c => (
             <div key={c.id} className="bg-[#111111] border border-white/[0.07] rounded-[12px] overflow-hidden">
               <div className="px-4 pt-4 pb-3">
                 <div className="flex items-start justify-between gap-2 mb-2">
@@ -437,7 +476,7 @@ export default function CampaignsPage() {
               <div className="border-t border-white/[0.05] px-4 py-2.5 flex items-center justify-between">
                 <span className="text-[11px] text-white/25">{c.sentAt ? new Date(c.sentAt).toLocaleDateString("en-ZA",{day:"numeric",month:"short"}) : "—"}</span>
                 <div className="flex items-center gap-3">
-                  {c.status==="sent" && <button className="text-[11px] text-white/40 hover:text-white transition cursor-pointer flex items-center gap-1"><BarChart2 size={11}/> Report</button>}
+                  {c.status==="sent" && <button onClick={() => setReportTarget(c)} className="text-[11px] text-white/40 hover:text-white transition cursor-pointer flex items-center gap-1"><BarChart2 size={11}/> Report</button>}
                   <button className="text-[11px] text-white/40 hover:text-white transition cursor-pointer flex items-center gap-1"><Copy size={11}/> Duplicate</button>
                   <button onClick={() => setDeleteTarget(c)} className="text-red-400/50 hover:text-red-400 transition cursor-pointer"><Trash2 size={12}/></button>
                 </div>
@@ -454,6 +493,63 @@ export default function CampaignsPage() {
           )}
         </div>
 
+        {/* Pagination */}
+        {filtered.length > PAGE_SIZE && (
+          <div className="flex items-center justify-between gap-4 pt-4 pb-2">
+            <p className="text-[11px] text-white/35 tabular-nums">
+              {(page - 1) * PAGE_SIZE + 1}
+              {"–"}
+              {Math.min(page * PAGE_SIZE, filtered.length)}
+              {" of "}
+              {filtered.length.toLocaleString()}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="h-8 px-3 text-[11px] uppercase tracking-[0.1em] text-white/60 hover:text-white border border-white/[0.07] hover:border-white/[0.2] rounded-[6px] transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Prev
+              </button>
+              <div className="flex items-center gap-1 px-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter(n => n === 1 || n === totalPages || Math.abs(n - page) <= 1)
+                  .reduce<(number | "…")[]>((acc, n, i, arr) => {
+                    if (i > 0 && typeof arr[i - 1] === "number" && n - (arr[i - 1] as number) > 1) acc.push("…");
+                    acc.push(n);
+                    return acc;
+                  }, [])
+                  .map((n, i) =>
+                    n === "…" ? (
+                      <span key={`gap-${i}`} className="w-7 text-center text-[11px] text-white/25">…</span>
+                    ) : (
+                      <button
+                        key={n}
+                        onClick={() => setPage(n as number)}
+                        className={`w-7 h-7 text-[11px] rounded-[6px] tabular-nums transition cursor-pointer ${
+                          n === page
+                            ? "bg-[#B80013] text-white font-semibold"
+                            : "text-white/50 hover:text-white hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        {n}
+                      </button>
+                    )
+                  )}
+              </div>
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="h-8 px-3 text-[11px] uppercase tracking-[0.1em] text-white/60 hover:text-white border border-white/[0.07] hover:border-white/[0.2] rounded-[6px] transition disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* ── Delete Confirm ── */}
@@ -466,7 +562,117 @@ export default function CampaignsPage() {
             <p className="text-[13px] text-white/40 mb-7">This cannot be undone. Scheduled sends will be cancelled.</p>
             <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} className="flex-1 h-10 border border-white/[0.07] text-[13px] text-white/60 hover:text-white rounded-[8px] transition cursor-pointer">Cancel</button>
-              <button onClick={() => { setCampaigns(prev => prev.filter(c => c.id !== deleteTarget.id)); setDeleteTarget(null); }} className="flex-1 h-10 bg-red-700 hover:bg-red-800 text-[13px] font-semibold text-white rounded-[8px] transition cursor-pointer">Delete</button>
+              <button onClick={async () => {
+                const id = deleteTarget.id;
+                setCampaigns(prev => prev.filter(c => c.id !== id));
+                setDeleteTarget(null);
+                await supabase.from("campaigns").delete().eq("id", id);
+              }} className="flex-1 h-10 bg-red-700 hover:bg-red-800 text-[13px] font-semibold text-white rounded-[8px] transition cursor-pointer">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Campaign Report Modal ── */}
+      {reportTarget && (
+        <div className="fixed inset-0 z-[70] bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={() => setReportTarget(null)}>
+          <div className="bg-[#111111] border border-white/[0.1] rounded-t-[20px] sm:rounded-[14px] w-full sm:max-w-md max-h-[92dvh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 bg-white/[0.1] rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-5 border-b border-white/[0.07] shrink-0">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-[0.12em] text-[#B80013] mb-2" style={{ fontFamily:"var(--font-heading)" }}>Campaign Report</p>
+                <p className="text-[15px] font-semibold text-white leading-snug">{reportTarget.name}</p>
+                <p className="text-[12px] text-white/40 mt-1 line-clamp-2">{reportTarget.subject}</p>
+              </div>
+              <button onClick={() => setReportTarget(null)} className="p-1.5 text-white/40 hover:text-white transition rounded-[4px] hover:bg-white/[0.06] shrink-0">
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+              {/* Meta row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-white/30 mb-1.5" style={{ fontFamily:"var(--font-heading)" }}>Sent</p>
+                  <p className="text-[13px] text-white">
+                    {reportTarget.sentAt
+                      ? new Date(reportTarget.sentAt).toLocaleString("en-ZA", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })
+                      : "—"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-white/30 mb-1.5" style={{ fontFamily:"var(--font-heading)" }}>Status</p>
+                  <StatusChip status={reportTarget.status} />
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-white/30 mb-1.5" style={{ fontFamily:"var(--font-heading)" }}>Audience</p>
+                  <p className="text-[13px] text-white/75">{reportTarget.audience || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-[9px] uppercase tracking-[0.12em] text-white/30 mb-1.5" style={{ fontFamily:"var(--font-heading)" }}>Recipients</p>
+                  <p className="text-[13px] text-white/75 tabular-nums">{reportTarget.recipients.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Delivery */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-white/30 mb-3" style={{ fontFamily:"var(--font-heading)" }}>Delivery</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-white/[0.07] rounded-[8px] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-green-300/60 mb-1">Delivered</p>
+                    <p className="text-[22px] font-bold text-white tabular-nums" style={{ fontFamily:"var(--font-heading)" }}>
+                      {(reportTarget.sent_count ?? reportTarget.recipients ?? 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="border border-white/[0.07] rounded-[8px] px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.1em] text-red-300/60 mb-1">Failed</p>
+                    <p className="text-[22px] font-bold text-white tabular-nums" style={{ fontFamily:"var(--font-heading)" }}>
+                      {(reportTarget.failed_count ?? 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Engagement */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.12em] text-white/30 mb-3" style={{ fontFamily:"var(--font-heading)" }}>Engagement</p>
+                {reportTarget.openRate > 0 || reportTarget.clickRate > 0 ? (
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex items-baseline justify-between mb-2">
+                        <p className="text-[12px] text-white/50">Open Rate</p>
+                        <p className="text-[14px] text-white tabular-nums font-medium">{reportTarget.openRate.toFixed(1)}%</p>
+                      </div>
+                      <MiniBar value={reportTarget.openRate} max={60} color="bg-blue-400" />
+                    </div>
+                    <div>
+                      <div className="flex items-baseline justify-between mb-2">
+                        <p className="text-[12px] text-white/50">Click Rate</p>
+                        <p className="text-[14px] text-white tabular-nums font-medium">{reportTarget.clickRate.toFixed(1)}%</p>
+                      </div>
+                      <MiniBar value={reportTarget.clickRate} max={25} color="bg-[#B80013]" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-white/[0.08] rounded-[8px] px-4 py-5 text-center">
+                    <p className="text-[12px] text-white/40 mb-1">No engagement data yet</p>
+                    <p className="text-[11px] text-white/25">Open and click tracking will appear here once Brevo webhooks are wired up.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-white/[0.07] px-6 py-4 shrink-0">
+              <button onClick={() => setReportTarget(null)} className="w-full h-10 bg-white/[0.06] hover:bg-white/[0.1] text-[12px] uppercase tracking-[0.12em] text-white/80 rounded-[8px] transition cursor-pointer" style={{ fontFamily:"var(--font-heading)" }}>
+                Close
+              </button>
             </div>
           </div>
         </div>

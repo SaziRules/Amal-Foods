@@ -41,7 +41,7 @@ body { background: #0a0a0a; font-family: 'Montserrat', Arial, sans-serif; -webki
 
   <!-- URGENCY STRIP -->
   <div style="background:#B80013;padding:11px 32px;text-align:center;">
-    <p style="color:#fff;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;margin:0;">Orders Close &nbsp;·&nbsp; 15 November 2025</p>
+    <p style="color:#fff;font-size:11px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;margin:0;">Orders Close &nbsp;·&nbsp; 15 November 2026</p>
   </div>
 
   <!-- HERO IMAGE -->
@@ -100,7 +100,7 @@ body { background: #F7F3EE; font-family: 'Roboto', Arial, sans-serif; -webkit-fo
   <!-- HEADER -->
   <div style="background:#111111;padding:22px 36px;display:flex;align-items:center;justify-content:space-between;">
     <img src="${baseUrl}/images/logo-dark.png" alt="Amal Foods" style="height:44px;width:auto;display:block;"/>
-    <p style="color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:'Roboto Condensed',Arial;">November 2025</p>
+    <p style="color:rgba(255,255,255,0.3);font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-family:'Roboto Condensed',Arial;">November 2026</p>
   </div>
 
   <!-- IMAGE -->
@@ -118,7 +118,7 @@ body { background: #F7F3EE; font-family: 'Roboto', Arial, sans-serif; -webkit-fo
     <div style="border-top:1px solid rgba(0,0,0,0.08);padding-top:28px;display:flex;align-items:flex-start;gap:20px;">
       <div style="background:#B80013;color:#fff;font-family:'Roboto Condensed',Arial;font-weight:800;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;padding:10px 14px;white-space:nowrap;flex-shrink:0;">Closes</div>
       <div>
-        <p style="font-family:'Roboto Condensed',Arial;font-size:22px;font-weight:800;color:#111111;margin:0 0 4px;line-height:1.15;">15 November 2025</p>
+        <p style="font-family:'Roboto Condensed',Arial;font-size:22px;font-weight:800;color:#111111;margin:0 0 4px;line-height:1.15;">15 November 2026</p>
         <p style="color:rgba(0,0,0,0.4);font-size:13px;margin:0;">Orders received after this date cannot be guaranteed.</p>
       </div>
     </div>
@@ -180,7 +180,7 @@ body { background: #080808; font-family: 'Montserrat', Arial, sans-serif; -webki
     <p style="color:#B80013;font-size:10px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;margin:0 0 18px;">Order Deadline</p>
     <div style="display:inline-block;border:1px solid rgba(255,255,255,0.1);padding:18px 40px;margin:0 0 28px;">
       <p style="color:#ffffff;font-size:44px;font-weight:900;line-height:1;letter-spacing:-0.03em;margin:0;">15 NOV</p>
-      <p style="color:rgba(255,255,255,0.3);font-size:12px;letter-spacing:0.1em;margin:8px 0 0;">2025 &nbsp;·&nbsp; ORDERS CLOSE</p>
+      <p style="color:rgba(255,255,255,0.3);font-size:12px;letter-spacing:0.1em;margin:8px 0 0;">2026 &nbsp;·&nbsp; ORDERS CLOSE</p>
     </div>
   </div>
 

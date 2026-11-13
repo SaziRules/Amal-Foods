@@ -7,11 +7,13 @@ export const maxDuration = 60;
 const DAILY_LIMIT = 100;
 
 export async function POST(req: NextRequest) {
-  const { campaignName, subject, htmlContent, recipients } = await req.json() as {
+  const { campaignName, subject, htmlContent, recipients, segment, audience } = await req.json() as {
     campaignName: string;
     subject: string;
     htmlContent: string;
     recipients: { email: string; name: string }[];
+    segment?: string;
+    audience?: string;
   };
 
   if (!subject || !htmlContent || !Array.isArray(recipients) || recipients.length === 0) {
@@ -71,6 +73,24 @@ export async function POST(req: NextRequest) {
       .upsert({ date: today, count: sentToday + sent }, { onConflict: "date" });
   }
 
+  /* Record this campaign in history (open/click rates stay at 0 until Brevo
+     webhooks are wired up). Status reflects outcome: 'sent' if any succeeded,
+     'failed' if none did. */
+  const { error: historyError } = await supabaseAdmin.from("campaigns").insert({
+    name:         campaignName || subject,
+    subject,
+    audience:     audience || null,
+    segment:      segment || null,
+    status:       sent > 0 ? "sent" : "failed",
+    recipients:   recipients.length,
+    sent_count:   sent,
+    failed_count: failed,
+    sent_at:      new Date().toISOString(),
+  });
+  if (historyError) {
+    console.error("campaigns insert failed:", historyError);
+  }
+
   return NextResponse.json({
     sent,
     failed,
@@ -78,5 +98,6 @@ export async function POST(req: NextRequest) {
     cappedAt: DAILY_LIMIT,
     remaining: Math.max(0, remaining - sent),
     errors: errors.slice(0, 5),
+    historyError: historyError?.message ?? null,
   });
 }

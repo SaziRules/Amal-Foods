@@ -14,6 +14,11 @@ const YEAR_SEEDS: Record<string, number> = {
   "26": 4829, // 2026 — reset after DB wipe 28 Sep 2026
 };
 
+// Ordering window — explicit SAST (+02:00) so the cutoff doesn't drift with
+// server timezone. Close is end-of-Sunday 15 Nov 2026 = 00:00 Mon 16 Nov SAST.
+const ORDER_OPEN  = new Date('2026-10-01T00:00:00+02:00').getTime();
+const ORDER_CLOSE = new Date('2026-11-16T00:00:00+02:00').getTime();
+
 async function generateOrderNumber(): Promise<string> {
   const currentYear = new Date().getFullYear().toString().slice(-2);
   const seed = YEAR_SEEDS[currentYear] ?? 4829;
@@ -29,6 +34,14 @@ async function generateOrderNumber(): Promise<string> {
 
 export async function POST(req: Request) {
   try {
+    const now = Date.now();
+    if (now < ORDER_OPEN) {
+      return NextResponse.json({ error: "Ordering is not yet open for this season." }, { status: 403 });
+    }
+    if (now >= ORDER_CLOSE) {
+      return NextResponse.json({ error: "Ordering has closed for this season." }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const required = ["customer_name", "cell_number", "branch", "region", "payment_method", "items", "total"];

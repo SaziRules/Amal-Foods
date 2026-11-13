@@ -1,18 +1,21 @@
 # Email Campaigns
 
 **Files involved:**
-- `app/admin/campaigns/page.tsx` — campaigns UI (composer, preview, audience, table)
-- `app/api/admin/campaigns/send/route.ts` — validates daily limit, sends via Brevo, records count
+- `app/admin/campaigns/page.tsx` — campaigns UI (composer, preview, audience, history table, report modal)
+- `app/api/admin/campaigns/send/route.ts` — validates daily limit, sends via Brevo, records daily count and per-campaign history
 - `app/api/admin/customers/route.ts` — returns all customer records (bypasses RLS via service role)
 - `lib/brevo.ts` — Brevo transactional email helper
 - `lib/emailTemplates.ts` — HTML email template builders (3 templates)
 - `lib/supabaseAdmin.ts` — service role Supabase client (server-side only)
+- `supabase/migrations/20261113000000_campaigns_history.sql` — `campaigns` table + RLS policies
 
 ---
 
 ## 1. Overview
 
 The Campaigns page (`/admin/campaigns`) allows the admin to compose, preview, and send bulk HTML email campaigns to customers. Campaigns are sent via Brevo's transactional SMTP API, limited to **100 emails per day** to preserve 200 of Brevo's 300 free daily sends for order invoice emails.
+
+Every send persists a per-campaign record to the `campaigns` table so the page can render a history list, status chips, delivery stats, and a per-row Report modal. The daily throttle counter (`campaign_sends`) is maintained separately — see §5 and §6.
 
 ---
 
@@ -97,10 +100,12 @@ Content-Type: application/json
 
 | Field | Type | Notes |
 |---|---|---|
-| `campaignName` | string | For logging |
+| `campaignName` | string | Used as `campaigns.name`; falls back to `subject` if empty |
 | `subject` | string | Email subject line |
 | `htmlContent` | string | Full rendered HTML from `buildEmailHTML()` |
 | `recipients` | `{email, name}[]` | From CSV or fetched from `/api/admin/customers` |
+| `segment` | string? | Optional. Segment key (`all`, `kzn`, `cpt`, `jhb`, `inactive`, `paid`, `unpaid`) — persisted to `campaigns.segment` |
+| `audience` | string? | Optional. Human-readable label (e.g. `"All Customers"`) — persisted to `campaigns.audience` |
 
 **Flow:**
 
@@ -109,6 +114,7 @@ Content-Type: application/json
 3. Slices `recipients` to the remaining daily allowance
 4. Sends in parallel batches of 10 via `lib/brevo.ts`
 5. Upserts the updated count back to `campaign_sends`
+6. Inserts a row into `campaigns` (status `sent` if any succeeded, `failed` if none). Insert runs unconditionally — a fully-failed send still produces a history row. See §6.
 
 **Response:**
 
@@ -119,9 +125,12 @@ Content-Type: application/json
   "wasCapped": false,
   "cappedAt": 100,
   "remaining": 13,
-  "errors": []
+  "errors": [],
+  "historyError": null
 }
 ```
+
+`historyError` is `null` on success. If the `campaigns` insert itself fails, the message surfaces here (and in the server console as `campaigns insert failed: ...`). The HTTP status stays `200` because the Brevo send already succeeded — the admin UI surfaces `historyError` in the completion alert so the operator notices.
 
 `maxDuration = 60` is set on the route to accommodate up to 100 sequential-batch sends within Vercel's serverless timeout.
 
@@ -145,7 +154,89 @@ The send route upserts into this table on every successful send using `onConflic
 
 ---
 
-## 6. Brevo Integration (`lib/brevo.ts`)
+## 6. Campaign History (`campaigns` table)
+
+Separate from `campaign_sends` (which is a daily throttle counter — one row per date), `campaigns` stores one row per send and powers the entire history list, stats tiles, status filters, and Report modal on `/admin/campaigns`.
+
+### Schema
+
+Migration: `supabase/migrations/20261113000000_campaigns_history.sql`.
+
+```sql
+create table public.campaigns (
+  id            uuid primary key default gen_random_uuid(),
+  name          text not null,
+  subject       text not null,
+  audience      text,
+  segment       text,
+  status        text not null default 'sent',   -- 'sent' | 'failed' (draft/scheduled reserved for future)
+  recipients    integer not null default 0,     -- length of the request payload
+  sent_count    integer not null default 0,     -- Brevo successes
+  failed_count  integer not null default 0,     -- Brevo failures
+  open_rate     numeric not null default 0,     -- always 0 until Brevo webhooks are wired up
+  click_rate    numeric not null default 0,     -- "
+  sent_at       timestamptz,
+  created_at    timestamptz not null default now()
+);
+```
+
+RLS: `SELECT` and `DELETE` granted to `authenticated`. Inserts happen server-side via `supabaseAdmin` (service role, bypasses RLS).
+
+### Fetching
+
+`loadCampaigns()` in `app/admin/campaigns/page.tsx` runs on page mount (in parallel with the customers + orders fetches) and again after every successful send:
+
+```ts
+supabase.from("campaigns").select("*").order("created_at", { ascending: false })
+```
+
+Snake-case DB columns are mapped to the camelCase shape the table/cards expect (`open_rate` → `openRate`, `sent_at` → `sentAt`, etc.).
+
+### Report modal
+
+The `⋯` row menu "View Report" (desktop) and the mobile "Report" link both call `setReportTarget(c)`, which opens a modal showing:
+
+- Campaign name + subject
+- Sent date/time (SAST, long format) and status chip
+- Audience label and total recipient count
+- **Delivery** stat cards — Delivered (`sent_count`) and Failed (`failed_count`)
+- **Engagement** — if both `openRate` and `clickRate` are `0`, a dashed placeholder reads *"No engagement data yet — Brevo webhooks not wired up."* Otherwise two `MiniBar` rows render the percentages.
+
+Dismissed via backdrop click, Close button, or `X`.
+
+### Delete
+
+The delete-confirm modal's Delete button optimistically removes the row from UI state and issues a `supabase.from("campaigns").delete().eq("id", id)`. Row disappearance is permanent.
+
+### Backfilling historical sends
+
+`campaign_sends` only stores a daily total, so true per-campaign history for pre-migration sends isn't recoverable. A one-time SQL seeds placeholder rows (one per past date) so the history list isn't empty after the migration lands:
+
+```sql
+INSERT INTO public.campaigns
+  (name, subject, audience, status, recipients, sent_count, failed_count, sent_at)
+SELECT
+  'Campaign · ' || to_char(date, 'DD Mon YYYY'),
+  'Daily send (' || to_char(date, 'DD Mon') || ')',
+  'All Customers',
+  'sent',
+  count,
+  count,
+  0,
+  (date::timestamp + interval '12 hours') AT TIME ZONE 'Africa/Johannesburg'
+FROM public.campaign_sends
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.campaigns c
+  WHERE c.sent_at::date = campaign_sends.date
+    AND c.name LIKE 'Campaign · %'
+);
+```
+
+Idempotent — safe to re-run.
+
+---
+
+## 7. Brevo Integration (`lib/brevo.ts`)
 
 ```ts
 sender:  { name: "Amal Foods", email: "admin@amalfoods.co.za" }
@@ -164,7 +255,7 @@ Unlike invoice emails, campaign sends do **not** CC `orders@amalfoods.co.za` (wo
 
 ---
 
-## 7. RLS Bypass — `/api/admin/customers`
+## 8. RLS Bypass — `/api/admin/customers`
 
 The `customers` table has RLS policies that restrict reads to the authenticated user's own row (`auth.uid() = id`). Admin sessions cannot read all rows via the anon client.
 
@@ -178,6 +269,6 @@ The service role key (`SUPABASE_SERVICE_ROLE_KEY`) is never exposed to the brows
 
 ---
 
-## 8. Access Control
+## 9. Access Control
 
 The campaigns page is admin-only. On mount it calls `supabase.auth.getUser()` — no session redirects to `/admin/login`. The `DashboardShell` nav only renders the Campaigns item when `role === "admin"`.
